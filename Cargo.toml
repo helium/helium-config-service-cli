@@ -14,4 +14,6 @@ serde_json = "1.0.87"
 serde-hex = "0.1.0"
 clap = { version = "4.0.18", features = ["derive"] }
 config = { version = "0.13.2", default-features=false, features = ["toml"] }
-helium-proto = { git = "https://github.com/helium/proto", branch="macpie/config_service_grpc", features=["services"]}
+helium-proto = { git = "https://github.com/helium/proto", branch="master", features=["services"]}
+dialoguer = "0.10.2"
+toml = "0.5.9"
