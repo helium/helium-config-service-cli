@@ -3,7 +3,7 @@ mod settings;
 
 use crate::settings::Settings;
 use clap::{Parser, Subcommand};
-use config_service_cli::{DevaddrRange, Eui, PrettyJson, Result, Route};
+use helium_config_service_cli::{DevaddrRange, Eui, PrettyJson, Result, Route};
 use std::fs;
 use std::path::PathBuf;
 

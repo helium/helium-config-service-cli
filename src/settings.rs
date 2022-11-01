@@ -1,5 +1,5 @@
 use config::{Config, File};
-use config_service_cli::{HexField, Result};
+use helium_config_service_cli::{HexField, Result};
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
 
