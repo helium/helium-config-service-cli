@@ -1,7 +1,7 @@
 use config::{Config, File};
 use config_service_cli::{HexField, Result};
 use serde::Deserialize;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Deserialize)]
 pub struct Settings {
@@ -15,7 +15,7 @@ pub struct Settings {
 }
 
 impl Settings {
-    pub fn new(path: &PathBuf) -> Result<Self> {
+    pub fn new(path: &Path) -> Result<Self> {
         Config::builder()
             .add_source(File::with_name(path.to_str().expect("settings file name")))
             .build()

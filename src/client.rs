@@ -13,9 +13,9 @@ pub struct RouteClient {
 }
 
 impl OrgClient {
-    pub async fn new(host: &String) -> Result<Self> {
+    pub async fn new(host: &str) -> Result<Self> {
         Ok(Self {
-            client: org_client::OrgClient::connect(host.clone()).await?,
+            client: org_client::OrgClient::connect(host.to_owned()).await?,
         })
     }
 
@@ -31,9 +31,9 @@ impl OrgClient {
 }
 
 impl RouteClient {
-    pub async fn new(host: &String) -> Result<Self> {
+    pub async fn new(host: &str) -> Result<Self> {
         Ok(Self {
-            client: route_client::RouteClient::connect(host.clone()).await?,
+            client: route_client::RouteClient::connect(host.to_owned()).await?,
         })
     }
 

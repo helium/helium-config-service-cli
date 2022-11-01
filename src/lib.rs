@@ -3,7 +3,7 @@ use helium_proto::services::config::{
     ServerV1,
 };
 use serde::{Deserialize, Deserializer, Serialize};
-use std::{fs, num::ParseIntError, path::PathBuf, str::FromStr};
+use std::{fs, num::ParseIntError, path::Path, str::FromStr};
 
 pub type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -19,7 +19,7 @@ impl<S: ?Sized + serde::Serialize> PrettyJson for S {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct HexField<const WIDTH: usize>(pub u64);
 
 impl<const WIDTH: usize> HexField<WIDTH> {
@@ -74,7 +74,7 @@ pub struct RouteList {
 }
 
 impl RouteList {
-    pub fn write_all(&self, out_dir: &PathBuf) -> Result<()> {
+    pub fn write_all(&self, out_dir: &Path) -> Result<()> {
         for route in &self.routes {
             route.write(out_dir)?;
         }
@@ -108,7 +108,7 @@ impl Route {
             nonce: 1,
         }
     }
-    pub fn from_file(dir: &PathBuf, id: String) -> Result<Self> {
+    pub fn from_file(dir: &Path, id: String) -> Result<Self> {
         let filename = dir.join(id).with_extension("json");
         let data = fs::read_to_string(filename).expect("Could not read file");
         let listing: Self = serde_json::from_str(&data)?;
@@ -119,14 +119,14 @@ impl Route {
         format!("{}.json", self.id.clone())
     }
 
-    pub fn write(&self, out_dir: &PathBuf) -> Result<()> {
+    pub fn write(&self, out_dir: &Path) -> Result<()> {
         let data = serde_json::to_string_pretty(&self)?;
         let filename = out_dir.join(self.filename());
         fs::write(filename, data).expect("unable to write file");
         Ok(())
     }
 
-    pub fn remove(&self, out_dir: &PathBuf) -> Result<()> {
+    pub fn remove(&self, out_dir: &Path) -> Result<()> {
         let filename = out_dir.join(self.filename());
         fs::remove_file(filename)?;
         Ok(())
@@ -155,7 +155,7 @@ pub struct Server {
     protocol: Option<Protocol>,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct DevaddrRange {
     #[serde(deserialize_with = "HexField::<8>::deserialize")]
     start_addr: HexField<8>,
@@ -175,7 +175,7 @@ impl DevaddrRange {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Eui {
     #[serde(deserialize_with = "HexField::<16>::deserialize")]
     app_eui: HexField<16>,
