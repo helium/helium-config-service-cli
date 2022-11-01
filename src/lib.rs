@@ -3,7 +3,7 @@ use helium_proto::services::config::{
     ServerV1,
 };
 use serde::{Deserialize, Deserializer, Serialize};
-use std::{fs, num::ParseIntError, path::Path, str::FromStr};
+use std::{fs, path::Path, str::FromStr};
 
 pub type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -49,8 +49,9 @@ impl<'de, const WIDTH: usize> Deserialize<'de> for HexField<WIDTH> {
 }
 
 impl<const WIDTH: usize> FromStr for HexField<WIDTH> {
-    type Err = ParseIntError;
+    type Err = Box<dyn std::error::Error>;
     fn from_str(s: &str) -> std::result::Result<HexField<WIDTH>, Self::Err> {
+        verify_len("net_id", &s, WIDTH)?;
         Ok(HexField::<WIDTH>(u64::from_str_radix(s, 16)?))
     }
 }

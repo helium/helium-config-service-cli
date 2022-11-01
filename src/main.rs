@@ -21,6 +21,8 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Commands {
+    /// Initialize your settings file
+    Init,
     /// Org commands
     Org {
         #[command(subcommand)]
@@ -110,6 +112,7 @@ async fn main() -> Result<()> {
     fs::create_dir_all(&settings.out_dir)?;
 
     match cli.command {
+        Commands::Init => Settings::interactive_init()?,
         Commands::Devaddr {
             start_addr,
             end_addr,
