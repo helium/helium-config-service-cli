@@ -1,17 +1,18 @@
 use config::{Config, File};
 use dialoguer::{Confirm, Input};
-use helium_config_service_cli::{HexField, Result};
+use helium_config_service_cli::hex_field::HexField;
+use helium_config_service_cli::Result;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 use std::{
     fs,
     path::{Path, PathBuf},
-    str::FromStr,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Settings {
     pub oui: u64,
-    #[serde(deserialize_with = "HexField::<6>::deserialize")]
+    #[serde(with = "HexField::<6>")]
     pub net_id: HexField<6>,
     pub owner: String,
     pub config_host: String,

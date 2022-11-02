@@ -1,4 +1,4 @@
-use helium_config_service_cli::{HexField, Org, OrgList, Result, Route, RouteList};
+use helium_config_service_cli::{hex_field::HexField, Org, OrgList, Result, Route, RouteList};
 use helium_proto::services::config::{
     org_client, route_client, OrgCreateReqV1, OrgGetReqV1, OrgListReqV1, RouteCreateReqV1,
     RouteDeleteReqV1, RouteGetReqV1, RouteListReqV1, RouteUpdateReqV1,
