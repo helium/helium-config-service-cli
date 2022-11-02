@@ -1,7 +1,7 @@
 use helium_config_service_cli::{HexField, Org, OrgList, Result, Route, RouteList};
 use helium_proto::services::config::{
-    org_client, route_client, OrgGetReqV1, OrgListReqV1, RouteCreateReqV1, RouteDeleteReqV1,
-    RouteGetReqV1, RouteListReqV1, RouteUpdateReqV1,
+    org_client, route_client, OrgCreateReqV1, OrgGetReqV1, OrgListReqV1, RouteCreateReqV1,
+    RouteDeleteReqV1, RouteGetReqV1, RouteListReqV1, RouteUpdateReqV1,
 };
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -27,6 +27,15 @@ impl OrgClient {
     pub async fn get(&mut self, oui: u64) -> Result<Org> {
         let request = OrgGetReqV1 { oui };
         Ok(self.client.get(request).await?.into_inner().into())
+    }
+
+    pub async fn create(&mut self, oui: u64) -> Result<Org> {
+        let request = OrgCreateReqV1 {
+            org: Some(Org::new(oui).into()),
+            signature: "sig".into(),
+            timestamp: current_timestamp()?,
+        };
+        Ok(self.client.create(request).await?.into_inner().into())
     }
 }
 

@@ -5,7 +5,7 @@ use crate::settings::Settings;
 use clap::{Parser, Subcommand};
 use helium_config_service_cli::{DevaddrRange, Eui, PrettyJson, Result, Route};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Parser)]
 #[command(name = "helium-config-cli")]
@@ -66,6 +66,14 @@ enum OrgCommands {
 
     /// View your Org (oui taken from default.toml)
     Get,
+
+    /// Create an organization
+    Create {
+        #[arg(long)]
+        oui: u64,
+        #[arg(long)]
+        commit: bool,
+    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -112,7 +120,7 @@ async fn main() -> Result<()> {
     fs::create_dir_all(&settings.out_dir)?;
 
     match cli.command {
-        Commands::Init => Settings::interactive_init()?,
+        Commands::Init => Settings::interactive_init(&cli.config)?,
         Commands::Devaddr {
             start_addr,
             end_addr,
@@ -171,6 +179,27 @@ async fn main() -> Result<()> {
             match command {
                 OrgCommands::List => org_client.list().await?.print_pretty_json()?,
                 OrgCommands::Get => org_client.get(settings.oui).await?.print_pretty_json()?,
+                OrgCommands::Create { oui, commit } => {
+                    let new_settings = settings.set_oui(oui);
+                    let dir = cli.config.parent().unwrap_or(Path::new("./config"));
+
+                    match commit {
+                        false => {
+                            println!("==============: DRY RUN :==============");
+                            new_settings.maybe_write(new_settings.filename(dir).as_path())?
+                        }
+                        true => {
+                            let response = org_client.create(oui).await?;
+                            println!("==============: CREATED :==============");
+                            response.print_pretty_json()?;
+                            new_settings.write(new_settings.filename(dir).as_path())?;
+                            println!(
+                                "pass arguments `--config {}` to operate the CLI as this OUI",
+                                new_settings.filename(dir).display()
+                            )
+                        }
+                    }
+                }
             };
         }
         Commands::Route { command } => {

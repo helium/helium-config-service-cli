@@ -69,6 +69,17 @@ pub struct Org {
     nonce: u32,
 }
 
+impl Org {
+    pub fn new(oui: u64) -> Self {
+        Self {
+            oui,
+            owner: "owner".into(),
+            payer: "payer".into(),
+            nonce: 0,
+        }
+    }
+}
+
 #[derive(Debug, Serialize)]
 pub struct RouteList {
     routes: Vec<Route>,
@@ -219,6 +230,17 @@ impl From<OrgV1> for Org {
             oui: org.oui,
             owner: String::from_utf8(org.owner).unwrap(),
             payer: String::from_utf8(org.payer).unwrap(),
+            nonce: org.nonce,
+        }
+    }
+}
+
+impl From<Org> for OrgV1 {
+    fn from(org: Org) -> Self {
+        Self {
+            oui: org.oui,
+            owner: org.owner.into(),
+            payer: org.payer.into(),
             nonce: org.nonce,
         }
     }

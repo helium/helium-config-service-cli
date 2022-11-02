@@ -1,8 +1,12 @@
 use config::{Config, File};
-use helium_config_service_cli::{HexField, Result};
 use dialoguer::{Confirm, Input};
+use helium_config_service_cli::{HexField, Result};
 use serde::{Deserialize, Serialize};
-use std::{fs, path::{Path, PathBuf}, str::FromStr};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Settings {
@@ -17,13 +21,18 @@ pub struct Settings {
 
 impl Settings {
     pub fn new(path: &Path) -> Result<Self> {
+        if !path.exists() {
+            println!("{path:?} does not exist, let's create it...");
+            Self::interactive_init(path)?;
+        }
         Config::builder()
             .add_source(File::with_name(path.to_str().expect("settings file name")))
             .build()
             .and_then(|config| config.try_deserialize())
             .map_err(|e| e.into())
     }
-    pub fn interactive_init() -> Result<()> {
+
+    pub fn interactive_init(path: &Path) -> Result<()> {
         let oui = Input::new().with_prompt("Assigned OUI").interact()?;
         let net_id = Input::<String>::new()
             .with_prompt("Net ID")
@@ -57,14 +66,33 @@ impl Settings {
             out_dir,
             max_copies,
         };
-        let output = toml::to_string_pretty(&s)?;
+        s.maybe_write(path)
+    }
+
+    pub fn maybe_write(&self, path: &Path) -> Result<()> {
+        let output = toml::to_string_pretty(self)?;
         println!("\n======== Configuration ==========");
         println!("{output}");
-
-        if Confirm::new().with_prompt("Write to file?").interact()? {
-            fs::write("./config/default.toml", &output)?;
+        if Confirm::new()
+            .with_prompt(format!("Write to file {}?", path.display()))
+            .interact()?
+        {
+            self.write(path)?;
         }
+        Ok(())
+    }
 
+    pub fn set_oui(self, oui: u64) -> Self {
+        Self { oui, ..self }
+    }
+
+    pub fn filename(&self, dir: &Path) -> PathBuf {
+        dir.join(format!("oui-{}.toml", self.oui))
+    }
+
+    pub fn write(&self, path: &Path) -> Result<()> {
+        let output = toml::to_string_pretty(self)?;
+        fs::write(path, &output)?;
         Ok(())
     }
 }
