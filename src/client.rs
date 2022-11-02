@@ -29,9 +29,9 @@ impl OrgClient {
         Ok(self.client.get(request).await?.into_inner().into())
     }
 
-    pub async fn create(&mut self, oui: u64) -> Result<Org> {
+    pub async fn create(&mut self, oui: u64, owner: &str) -> Result<Org> {
         let request = OrgCreateReqV1 {
-            org: Some(Org::new(oui).into()),
+            org: Some(Org::new(oui, owner).into()),
             signature: "sig".into(),
             timestamp: current_timestamp()?,
         };

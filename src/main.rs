@@ -85,7 +85,7 @@ async fn main() -> Result {
                             new_settings.maybe_write(new_settings.filename(dir).as_path())?
                         }
                         true => {
-                            let response = org_client.create(oui).await?;
+                            let response = org_client.create(oui, &new_settings.owner).await?;
                             println!("==============: CREATED :==============");
                             response.print_pretty_json()?;
                             new_settings.write(new_settings.filename(dir).as_path())?;

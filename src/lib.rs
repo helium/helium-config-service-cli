@@ -37,11 +37,11 @@ pub struct Org {
 }
 
 impl Org {
-    pub fn new(oui: u64) -> Self {
+    pub fn new(oui: u64, owner: &str) -> Self {
         Self {
             oui,
-            owner: "owner".into(),
-            payer: "payer".into(),
+            owner: owner.into(),
+            payer: owner.into(),
             nonce: 0,
         }
     }
