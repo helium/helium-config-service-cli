@@ -33,7 +33,7 @@ impl Settings {
             .map_err(|e| e.into())
     }
 
-    pub fn interactive_init(path: &Path) -> Result<()> {
+    pub fn interactive_init(path: &Path) -> Result {
         let oui = Input::new().with_prompt("Assigned OUI").interact()?;
         let net_id = Input::<String>::new()
             .with_prompt("Net ID")
@@ -70,7 +70,7 @@ impl Settings {
         s.maybe_write(path)
     }
 
-    pub fn maybe_write(&self, path: &Path) -> Result<()> {
+    pub fn maybe_write(&self, path: &Path) -> Result {
         let output = toml::to_string_pretty(self)?;
         println!("\n======== Configuration ==========");
         println!("{output}");
@@ -91,7 +91,7 @@ impl Settings {
         dir.join(format!("oui-{}.toml", self.oui))
     }
 
-    pub fn write(&self, path: &Path) -> Result<()> {
+    pub fn write(&self, path: &Path) -> Result {
         let output = toml::to_string_pretty(self)?;
         fs::write(path, &output)?;
         Ok(())

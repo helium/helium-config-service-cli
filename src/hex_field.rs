@@ -1,3 +1,4 @@
+use crate::Result;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::str::FromStr;
 
@@ -11,7 +12,7 @@ impl<const WIDTH: usize> From<HexField<WIDTH>> for u64 {
 }
 
 impl<const WIDTH: usize> Serialize for HexField<WIDTH> {
-    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
@@ -21,7 +22,7 @@ impl<const WIDTH: usize> Serialize for HexField<WIDTH> {
 }
 
 impl<'de, const WIDTH: usize> Deserialize<'de> for HexField<WIDTH> {
-    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
@@ -34,7 +35,7 @@ impl<'de, const WIDTH: usize> Deserialize<'de> for HexField<WIDTH> {
                 formatter.write_str(&format!("hex string {} wide", IN_WIDTH))
             }
 
-            fn visit_str<E>(self, value: &str) -> std::result::Result<HexField<IN_WIDTH>, E>
+            fn visit_str<E>(self, value: &str) -> anyhow::Result<HexField<IN_WIDTH>, E>
             where
                 E: serde::de::Error,
             {
@@ -48,8 +49,8 @@ impl<'de, const WIDTH: usize> Deserialize<'de> for HexField<WIDTH> {
 }
 
 impl<const WIDTH: usize> FromStr for HexField<WIDTH> {
-    type Err = Box<dyn std::error::Error>;
-    fn from_str(s: &str) -> std::result::Result<HexField<WIDTH>, Self::Err> {
+    type Err = anyhow::Error;
+    fn from_str(s: &str) -> Result<HexField<WIDTH>> {
         Ok(HexField::<WIDTH>(u64::from_str_radix(s, 16)?))
     }
 }

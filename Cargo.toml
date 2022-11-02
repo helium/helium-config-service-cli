@@ -17,3 +17,4 @@ config = { version = "0.13.2", default-features=false, features = ["toml"] }
 helium-proto = { git = "https://github.com/helium/proto", branch="master", features=["services"]}
 dialoguer = "0.10.2"
 toml = "0.5.9"
+anyhow = "1.0.66"

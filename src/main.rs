@@ -10,7 +10,7 @@ use std::fs;
 use std::path::Path;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result {
     let cli = Cli::parse();
     let settings = Settings::new(&cli.config)?;
     fs::create_dir_all(&settings.out_dir)?;

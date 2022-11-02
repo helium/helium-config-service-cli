@@ -1,5 +1,6 @@
 pub mod hex_field;
 
+use anyhow::Error;
 use helium_proto::services::config::{
     server_v1::Protocol, DevaddrRangeV1, EuiV1, OrgListResV1, OrgV1, RouteListResV1, RouteV1,
     ServerV1,
@@ -8,14 +9,14 @@ use hex_field::HexField;
 use serde::{Deserialize, Serialize};
 use std::{fs, path::Path};
 
-pub type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
+pub type Result<T = (), E = Error> = anyhow::Result<T, E>;
 
 pub trait PrettyJson {
-    fn print_pretty_json(&self) -> Result<()>;
+    fn print_pretty_json(&self) -> Result;
 }
 
 impl<S: ?Sized + serde::Serialize> PrettyJson for S {
-    fn print_pretty_json(&self) -> Result<()> {
+    fn print_pretty_json(&self) -> Result {
         let pretty = serde_json::to_string_pretty(&self)?;
         println!("{pretty}");
         Ok(())
@@ -52,7 +53,7 @@ pub struct RouteList {
 }
 
 impl RouteList {
-    pub fn write_all(&self, out_dir: &Path) -> Result<()> {
+    pub fn write_all(&self, out_dir: &Path) -> Result {
         for route in &self.routes {
             route.write(out_dir)?;
         }
@@ -97,14 +98,14 @@ impl Route {
         format!("{}.json", self.id.clone())
     }
 
-    pub fn write(&self, out_dir: &Path) -> Result<()> {
+    pub fn write(&self, out_dir: &Path) -> Result {
         let data = serde_json::to_string_pretty(&self)?;
         let filename = out_dir.join(self.filename());
         fs::write(filename, data).expect("unable to write file");
         Ok(())
     }
 
-    pub fn remove(&self, out_dir: &Path) -> Result<()> {
+    pub fn remove(&self, out_dir: &Path) -> Result {
         let filename = out_dir.join(self.filename());
         fs::remove_file(filename)?;
         Ok(())
