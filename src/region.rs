@@ -10,7 +10,7 @@ use std::{
 
 #[derive(clap::ValueEnum, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[clap(rename_all = "snake_case")]
-pub enum SupportedRegion {
+pub enum Region {
     Us915,
     Eu868,
     Eu433,
@@ -27,7 +27,7 @@ pub enum SupportedRegion {
     Cd900_1a,
 }
 
-impl SupportedRegion {
+impl Region {
     pub fn from_i32(v: i32) -> Result<Self> {
         ProtoRegion::from_i32(v)
             .map(|r| r.into())
@@ -35,7 +35,7 @@ impl SupportedRegion {
     }
 }
 
-impl Serialize for SupportedRegion {
+impl Serialize for Region {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -45,7 +45,7 @@ impl Serialize for SupportedRegion {
     }
 }
 
-impl<'de> Deserialize<'de> for SupportedRegion {
+impl<'de> Deserialize<'de> for Region {
     fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
     where
         D: Deserializer<'de>,
@@ -53,13 +53,13 @@ impl<'de> Deserialize<'de> for SupportedRegion {
         struct RegionVisitor;
 
         impl<'de> de::Visitor<'de> for RegionVisitor {
-            type Value = SupportedRegion;
+            type Value = Region;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 formatter.write_str("region string")
             }
 
-            fn visit_str<E>(self, value: &str) -> std::result::Result<SupportedRegion, E>
+            fn visit_str<E>(self, value: &str) -> std::result::Result<Region, E>
             where
                 E: de::Error,
             {
@@ -73,71 +73,56 @@ impl<'de> Deserialize<'de> for SupportedRegion {
     }
 }
 
-impl From<SupportedRegion> for ProtoRegion {
-    fn from(region: SupportedRegion) -> Self {
+impl From<Region> for ProtoRegion {
+    fn from(region: Region) -> Self {
         ProtoRegion::from(&region)
     }
 }
 
-impl From<&SupportedRegion> for ProtoRegion {
-    fn from(sr: &SupportedRegion) -> Self {
+impl From<&Region> for ProtoRegion {
+    fn from(sr: &Region) -> Self {
         match sr {
-            SupportedRegion::Us915 => ProtoRegion::Us915,
-            SupportedRegion::Eu868 => ProtoRegion::Eu868,
-            SupportedRegion::Eu433 => ProtoRegion::Eu433,
-            SupportedRegion::Cn470 => ProtoRegion::Cn470,
-            SupportedRegion::Cn779 => ProtoRegion::Cn779,
-            SupportedRegion::Au915 => ProtoRegion::Au915,
-            SupportedRegion::As923_1 => ProtoRegion::As9231,
-            SupportedRegion::As923_1b => ProtoRegion::As9231b,
-            SupportedRegion::As923_2 => ProtoRegion::As9232,
-            SupportedRegion::As923_3 => ProtoRegion::As9233,
-            SupportedRegion::As923_4 => ProtoRegion::As9234,
-            SupportedRegion::Kr920 => ProtoRegion::Kr920,
-            SupportedRegion::In865 => ProtoRegion::In865,
-            SupportedRegion::Cd900_1a => ProtoRegion::Cd9001a,
+            Region::Us915 => ProtoRegion::Us915,
+            Region::Eu868 => ProtoRegion::Eu868,
+            Region::Eu433 => ProtoRegion::Eu433,
+            Region::Cn470 => ProtoRegion::Cn470,
+            Region::Cn779 => ProtoRegion::Cn779,
+            Region::Au915 => ProtoRegion::Au915,
+            Region::As923_1 => ProtoRegion::As9231,
+            Region::As923_1b => ProtoRegion::As9231b,
+            Region::As923_2 => ProtoRegion::As9232,
+            Region::As923_3 => ProtoRegion::As9233,
+            Region::As923_4 => ProtoRegion::As9234,
+            Region::Kr920 => ProtoRegion::Kr920,
+            Region::In865 => ProtoRegion::In865,
+            Region::Cd900_1a => ProtoRegion::Cd9001a,
         }
     }
 }
 
-impl From<ProtoRegion> for SupportedRegion {
+impl From<ProtoRegion> for Region {
     fn from(r: ProtoRegion) -> Self {
         match r {
-            ProtoRegion::Us915 => SupportedRegion::Us915,
-            ProtoRegion::Eu868 => SupportedRegion::Eu868,
-            ProtoRegion::Eu433 => SupportedRegion::Eu433,
-            ProtoRegion::Cn470 => SupportedRegion::Cn470,
-            ProtoRegion::Cn779 => SupportedRegion::Cn779,
-            ProtoRegion::Au915 => SupportedRegion::Au915,
-            ProtoRegion::As9231 => SupportedRegion::As923_1,
-            ProtoRegion::As9231b => SupportedRegion::As923_1b,
-            ProtoRegion::As9232 => SupportedRegion::As923_2,
-            ProtoRegion::As9233 => SupportedRegion::As923_3,
-            ProtoRegion::As9234 => SupportedRegion::As923_4,
-            ProtoRegion::Kr920 => SupportedRegion::Kr920,
-            ProtoRegion::In865 => SupportedRegion::In865,
-            ProtoRegion::Cd9001a => SupportedRegion::Cd900_1a,
+            ProtoRegion::Us915 => Region::Us915,
+            ProtoRegion::Eu868 => Region::Eu868,
+            ProtoRegion::Eu433 => Region::Eu433,
+            ProtoRegion::Cn470 => Region::Cn470,
+            ProtoRegion::Cn779 => Region::Cn779,
+            ProtoRegion::Au915 => Region::Au915,
+            ProtoRegion::As9231 => Region::As923_1,
+            ProtoRegion::As9231b => Region::As923_1b,
+            ProtoRegion::As9232 => Region::As923_2,
+            ProtoRegion::As9233 => Region::As923_3,
+            ProtoRegion::As9234 => Region::As923_4,
+            ProtoRegion::Kr920 => Region::Kr920,
+            ProtoRegion::In865 => Region::In865,
+            ProtoRegion::Cd9001a => Region::Cd900_1a,
         }
     }
 }
 
-impl From<SupportedRegion> for i32 {
-    fn from(region: SupportedRegion) -> Self {
+impl From<Region> for i32 {
+    fn from(region: Region) -> Self {
         ProtoRegion::from(region) as i32
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::region::SupportedRegion;
-    use std::collections::BTreeMap;
-
-    #[test]
-    fn hashmap_supported_region_ser() {
-        let a = BTreeMap::from([(SupportedRegion::As923_1, "one")]);
-        let s = serde_json::to_string_pretty(&a).unwrap();
-        println!("{}", s);
-        let b: BTreeMap<SupportedRegion, &str> = serde_json::from_str(&s).unwrap();
-        println!("{b:?}");
     }
 }

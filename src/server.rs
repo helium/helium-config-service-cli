@@ -1,4 +1,4 @@
-use crate::{region::SupportedRegion, Result};
+use crate::{region::Region, Result};
 use anyhow::anyhow;
 use helium_proto::services::config::{
     protocol_http_roaming_v1::FlowTypeV1, server_v1, ProtocolGwmpMappingV1, ProtocolGwmpV1,
@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 pub type Port = u32;
-pub type GwmpMap = BTreeMap<SupportedRegion, Port>;
+pub type GwmpMap = BTreeMap<Region, Port>;
 
 #[derive(Serialize, Debug, Deserialize, PartialEq, Eq, Default)]
 pub struct Server {
@@ -63,7 +63,7 @@ impl Protocol {
         Protocol::PacketRouter
     }
 
-    pub fn make_gwmp_mapping(region: SupportedRegion, port: Port) -> GwmpMap {
+    pub fn make_gwmp_mapping(region: Region, port: Port) -> GwmpMap {
         BTreeMap::from([(region, port)])
     }
 
@@ -180,7 +180,7 @@ impl From<server_v1::Protocol> for Protocol {
             server_v1::Protocol::Gwmp(gwmp) => {
                 let mut mapping = BTreeMap::new();
                 for entry in gwmp.mapping {
-                    let region = SupportedRegion::from_i32(entry.region).unwrap();
+                    let region = Region::from_i32(entry.region).unwrap();
                     mapping.insert(region, entry.port);
                 }
                 Protocol::Gwmp(Gwmp { mapping })
@@ -201,7 +201,7 @@ mod tests {
     /// Serialize regions as lowercase with underscores in the right places.
     use super::{Gwmp, Protocol, Server};
     use crate::{
-        region::SupportedRegion,
+        region::Region,
         server::{FlowType, Http},
     };
     use serde_test::{assert_ser_tokens, Token};
@@ -236,11 +236,7 @@ mod tests {
     #[test]
     fn gwmp_ser() {
         let gwmp = Protocol::Gwmp(Gwmp {
-            mapping: BTreeMap::from([
-                (SupportedRegion::As923_1, 1),
-                (SupportedRegion::Us915, 2),
-                (SupportedRegion::Eu868, 3),
-            ]),
+            mapping: BTreeMap::from([(Region::As923_1, 1), (Region::Us915, 2), (Region::Eu868, 3)]),
         });
 
         assert_ser_tokens(
