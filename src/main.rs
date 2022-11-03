@@ -185,7 +185,7 @@ async fn main() -> Result {
                     }
                 }
                 RouteCommands::Push { id, commit } => {
-                    let route = Route::from_file(&settings.out_dir, id)?;
+                    let route = Route::from_file(&settings.out_dir, &id)?;
                     match commit {
                         false => {
                             println!("==============: DRY RUN :==============");
