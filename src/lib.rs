@@ -1,12 +1,15 @@
 pub mod hex_field;
+pub mod region;
+pub mod server;
 
 use anyhow::Error;
 use helium_proto::services::config::{
-    server_v1::Protocol, DevaddrRangeV1, EuiV1, OrgListResV1, OrgV1, RouteListResV1, RouteV1,
-    ServerV1,
+    DevaddrRangeV1, EuiV1, OrgListResV1, OrgV1, RouteListResV1, RouteV1,
 };
 use hex_field::HexField;
+pub use region::SupportedRegion;
 use serde::{Deserialize, Serialize};
+use server::Server;
 use std::{fs, path::Path};
 
 pub type Result<T = (), E = Error> = anyhow::Result<T, E>;
@@ -87,7 +90,10 @@ impl Route {
             nonce: 1,
         }
     }
-    pub fn from_file(dir: &Path, id: String) -> Result<Self> {
+    pub fn from_file<S>(dir: &Path, id: S) -> Result<Self>
+    where
+        S: AsRef<Path>,
+    {
         let filename = dir.join(id).with_extension("json");
         let data = fs::read_to_string(filename).expect("Could not read file");
         let listing: Self = serde_json::from_str(&data)?;
@@ -125,13 +131,10 @@ impl Route {
     pub fn add_devaddr(&mut self, range: DevaddrRange) {
         self.devaddr_ranges.push(range);
     }
-}
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub struct Server {
-    host: String,
-    port: u32,
-    protocol: Option<Protocol>,
+    pub fn set_server(&mut self, server: Server) {
+        self.server = Some(server);
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -232,26 +235,6 @@ impl From<Route> for RouteV1 {
             server: route.server.map(|s| s.into()),
             max_copies: route.max_copies,
             nonce: route.nonce,
-        }
-    }
-}
-
-impl From<Server> for ServerV1 {
-    fn from(server: Server) -> Self {
-        Self {
-            host: server.host.into(),
-            port: server.port,
-            protocol: server.protocol,
-        }
-    }
-}
-
-impl From<ServerV1> for Server {
-    fn from(server: ServerV1) -> Self {
-        Self {
-            host: String::from_utf8(server.host).unwrap(),
-            port: server.port,
-            protocol: server.protocol,
         }
     }
 }
