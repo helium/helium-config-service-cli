@@ -3,7 +3,8 @@ mod cmds;
 mod settings;
 
 use clap::Parser;
-use cmds::{Cli, Commands, OrgCommands, RouteCommands};
+use cmds::{Cli, Commands, OrgCommands, ProtocolType, RouteCommands};
+use helium_config_service_cli::server::{Protocol, Server};
 use helium_config_service_cli::{DevaddrRange, Eui, PrettyJson, Result, Route};
 use settings::Settings;
 use std::fs;
@@ -24,24 +25,13 @@ async fn main() -> Result {
             commit,
         } => {
             let devaddr = DevaddrRange::new(&start_addr, &end_addr)?;
-
-            match route {
-                Some(route_id) => {
-                    let mut r = Route::from_file(&settings.out_dir, route_id.clone())?;
-                    r.add_devaddr(devaddr);
-                    if commit {
-                        println!("Devaddr added");
-                        r.write(&settings.out_dir)?;
-                    } else {
-                        println!("Replace {route_id} with the following, or pass --commit:");
-                        r.print_pretty_json()?;
-                    }
-                }
-                None => {
-                    println!("Put this into the 'devaddr_ranges' section of your file:");
-                    devaddr.print_pretty_json()?;
-                }
-            }
+            update_route_section(
+                &settings.out_dir,
+                route,
+                commit,
+                RouteUpdate::AddDevaddr(devaddr),
+                "devaddr_ranges",
+            )?;
         }
         Commands::Eui {
             dev_eui,
@@ -50,25 +40,35 @@ async fn main() -> Result {
             commit,
         } => {
             let eui = Eui::new(&app_eui, &dev_eui)?;
-
-            match route {
-                Some(route_id) => {
-                    let mut r = Route::from_file(&settings.out_dir, route_id.clone())?;
-                    r.add_eui(eui);
-
-                    if commit {
-                        println!("EUI added");
-                        r.write(&settings.out_dir)?;
-                    } else {
-                        println!("Replace {route_id} with the following, or pass --commit:");
-                        r.print_pretty_json()?;
-                    }
-                }
-                None => {
-                    println!("Put this into the 'euis' section of your file:");
-                    eui.print_pretty_json()?;
-                }
-            }
+            update_route_section(
+                &settings.out_dir,
+                route,
+                commit,
+                RouteUpdate::AddEui(eui),
+                "euis",
+            )?;
+        }
+        Commands::Protocol {
+            protocol: protocol_type,
+            host,
+            port,
+            route,
+            commit,
+        } => {
+            let protocol = match protocol_type {
+                ProtocolType::PacketRouter => Protocol::packet_router(),
+                ProtocolType::Gwmp => Protocol::gwmp(),
+                ProtocolType::Http => Protocol::http(),
+            };
+            let server = Server::new(host, port, protocol);
+            update_route_section(
+                &settings.out_dir,
+                route,
+                commit,
+                RouteUpdate::SetServer(server),
+                "server",
+            )?;
+        }
         }
         Commands::Org { command } => {
             let mut org_client = client::OrgClient::new(&settings.config_host).await?;
@@ -135,7 +135,7 @@ async fn main() -> Result {
                     }
                 },
                 RouteCommands::Delete { id, commit } => {
-                    let route = Route::from_file(&settings.out_dir, id.clone())?;
+                    let route = Route::from_file(&settings.out_dir, &id)?;
                     match commit {
                         false => {
                             println!("==============: DRY RUN :==============");
@@ -154,7 +154,7 @@ async fn main() -> Result {
                     }
                 }
                 RouteCommands::Push { id, commit } => {
-                    let route = Route::from_file(&settings.out_dir, id.clone())?;
+                    let route = Route::from_file(&settings.out_dir, id)?;
                     match commit {
                         false => {
                             println!("==============: DRY RUN :==============");
@@ -177,4 +177,53 @@ async fn main() -> Result {
     };
 
     Ok(())
+}
+
+fn update_route_section(
+    out_dir: &Path,
+    route: Option<String>,
+    commit: bool,
+    action: RouteUpdate,
+    section_name: &str,
+) -> Result {
+    match route {
+        Some(route_id) => {
+            let mut r = Route::from_file(out_dir, &route_id)?;
+            match action {
+                RouteUpdate::AddDevaddr(range) => r.add_devaddr(range),
+                RouteUpdate::AddEui(eui) => r.add_eui(eui),
+                RouteUpdate::SetServer(server) => r.set_server(server),
+            };
+
+            if commit {
+                println!("{route_id} updated");
+                r.write(out_dir)?;
+            } else {
+                println!("Replace {route_id} with the following, or pass --commit:");
+                r.print_pretty_json()?;
+            }
+        }
+        None => {
+            println!("Put this into the '{section_name}' section of your file:");
+            action.print_pretty_json()?;
+        }
+    }
+    Ok(())
+}
+
+enum RouteUpdate {
+    AddDevaddr(DevaddrRange),
+    AddEui(Eui),
+    SetServer(Server),
+}
+
+impl RouteUpdate {
+    fn print_pretty_json(&self) -> Result {
+        match self {
+            RouteUpdate::AddDevaddr(d) => d.print_pretty_json()?,
+            RouteUpdate::AddEui(e) => e.print_pretty_json()?,
+            RouteUpdate::SetServer(s) => s.print_pretty_json()?,
+        }
+        Ok(())
+    }
 }

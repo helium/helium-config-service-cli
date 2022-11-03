@@ -1,3 +1,4 @@
+use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 use clap::{Parser, Subcommand};
 
@@ -51,6 +52,28 @@ pub enum Commands {
         #[arg(short, long)]
         commit: bool,
     },
+    /// Output format for inserting Protocol
+    Protocol {
+        /// Protocol to route packets over
+        #[arg(value_enum)]
+        protocol: ProtocolType,
+        #[arg(long, default_value = "localhost")]
+        host: String,
+        #[arg(long, default_value = "8080")]
+        port: u32,
+        /// ID of route to apply protocol (same as filename)
+        route: Option<String>,
+        /// Write the protocol into the route file
+        #[arg(long)]
+        commit: bool,
+    },
+}
+
+#[derive(ValueEnum, Clone, Debug)]
+pub enum ProtocolType {
+    PacketRouter,
+    Gwmp,
+    Http,
 }
 
 #[derive(Debug, Subcommand)]
