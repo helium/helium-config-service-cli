@@ -83,8 +83,8 @@ impl Route {
         self.server.gwmp_add_mapping(map)
     }
 
-    pub fn update_http(&mut self, http: Http) -> Result {
-        self.server.update_http(http)
+    pub fn http_update(&mut self, http: Http) -> Result {
+        self.server.http_update(http)
     }
 }
 

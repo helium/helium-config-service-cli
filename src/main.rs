@@ -225,7 +225,7 @@ fn update_route_section(
                 RouteUpdate::AddEui(eui) => r.add_eui(eui),
                 RouteUpdate::SetServer(server) => r.set_server(server),
                 RouteUpdate::AddGwmpMapping(map) => r.gwmp_add_mapping(map)?,
-                RouteUpdate::UpdateHttp(http) => r.update_http(http)?,
+                RouteUpdate::UpdateHttp(http) => r.http_update(http)?,
             };
 
             if commit {

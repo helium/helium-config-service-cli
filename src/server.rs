@@ -34,9 +34,9 @@ impl Server {
         Err(anyhow!("server has no protocol to update"))
     }
 
-    pub fn update_http(&mut self, http: Http) -> Result {
+    pub fn http_update(&mut self, http: Http) -> Result {
         if let Some(ref mut p) = self.protocol {
-            return p.update_http(http);
+            return p.http_update(http);
         }
         Err(anyhow!("server has no protocol to update"))
     }
@@ -86,7 +86,7 @@ impl Protocol {
         }
     }
 
-    fn update_http(&mut self, http: Http) -> Result {
+    fn http_update(&mut self, http: Http) -> Result {
         match self {
             Protocol::Http(_) => {
                 *self = Protocol::Http(http);
