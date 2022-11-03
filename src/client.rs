@@ -1,4 +1,4 @@
-use helium_config_service_cli::{HexField, Org, OrgList, Result, Route, RouteList};
+use helium_config_service_cli::{hex_field::HexField, Org, OrgList, Result, Route, RouteList};
 use helium_proto::services::config::{
     org_client, route_client, OrgCreateReqV1, OrgGetReqV1, OrgListReqV1, RouteCreateReqV1,
     RouteDeleteReqV1, RouteGetReqV1, RouteListReqV1, RouteUpdateReqV1,
@@ -29,9 +29,9 @@ impl OrgClient {
         Ok(self.client.get(request).await?.into_inner().into())
     }
 
-    pub async fn create(&mut self, oui: u64) -> Result<Org> {
+    pub async fn create(&mut self, oui: u64, owner: &str) -> Result<Org> {
         let request = OrgCreateReqV1 {
-            org: Some(Org::new(oui).into()),
+            org: Some(Org::new(oui, owner).into()),
             signature: "sig".into(),
             timestamp: current_timestamp()?,
         };

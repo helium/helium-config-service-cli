@@ -1,58 +1,25 @@
+pub mod hex_field;
+
+use anyhow::Error;
 use helium_proto::services::config::{
     server_v1::Protocol, DevaddrRangeV1, EuiV1, OrgListResV1, OrgV1, RouteListResV1, RouteV1,
     ServerV1,
 };
-use serde::{Deserialize, Deserializer, Serialize};
-use std::{fs, path::Path, str::FromStr};
+use hex_field::HexField;
+use serde::{Deserialize, Serialize};
+use std::{fs, path::Path};
 
-pub type Result<T = ()> = std::result::Result<T, Box<dyn std::error::Error>>;
+pub type Result<T = (), E = Error> = anyhow::Result<T, E>;
 
 pub trait PrettyJson {
-    fn print_pretty_json(&self) -> Result<()>;
+    fn print_pretty_json(&self) -> Result;
 }
 
 impl<S: ?Sized + serde::Serialize> PrettyJson for S {
-    fn print_pretty_json(&self) -> Result<()> {
+    fn print_pretty_json(&self) -> Result {
         let pretty = serde_json::to_string_pretty(&self)?;
         println!("{pretty}");
         Ok(())
-    }
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct HexField<const WIDTH: usize>(pub u64);
-
-impl<const WIDTH: usize> HexField<WIDTH> {
-    pub fn into_inner(&self) -> u64 {
-        self.0
-    }
-}
-
-impl<const WIDTH: usize> Serialize for HexField<WIDTH> {
-    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        // pad with 0s to the left up to WIDTH
-        serializer.serialize_str(&format!("{:0>width$X}", self.0, width = WIDTH))
-    }
-}
-
-impl<'de, const WIDTH: usize> Deserialize<'de> for HexField<WIDTH> {
-    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let buf = String::deserialize(deserializer)?;
-        HexField::<WIDTH>::from_str(&buf).map_err(serde::de::Error::custom)
-    }
-}
-
-impl<const WIDTH: usize> FromStr for HexField<WIDTH> {
-    type Err = Box<dyn std::error::Error>;
-    fn from_str(s: &str) -> std::result::Result<HexField<WIDTH>, Self::Err> {
-        verify_len("net_id", &s, WIDTH)?;
-        Ok(HexField::<WIDTH>(u64::from_str_radix(s, 16)?))
     }
 }
 
@@ -70,11 +37,11 @@ pub struct Org {
 }
 
 impl Org {
-    pub fn new(oui: u64) -> Self {
+    pub fn new(oui: u64, owner: &str) -> Self {
         Self {
             oui,
-            owner: "owner".into(),
-            payer: "payer".into(),
+            owner: owner.into(),
+            payer: owner.into(),
             nonce: 0,
         }
     }
@@ -86,7 +53,7 @@ pub struct RouteList {
 }
 
 impl RouteList {
-    pub fn write_all(&self, out_dir: &Path) -> Result<()> {
+    pub fn write_all(&self, out_dir: &Path) -> Result {
         for route in &self.routes {
             route.write(out_dir)?;
         }
@@ -97,7 +64,7 @@ impl RouteList {
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Route {
     id: String,
-    #[serde(deserialize_with = "HexField::<6>::deserialize")]
+    #[serde(with = "HexField::<6>")]
     net_id: HexField<6>,
     pub devaddr_ranges: Vec<DevaddrRange>,
     pub euis: Vec<Eui>,
@@ -131,14 +98,14 @@ impl Route {
         format!("{}.json", self.id.clone())
     }
 
-    pub fn write(&self, out_dir: &Path) -> Result<()> {
+    pub fn write(&self, out_dir: &Path) -> Result {
         let data = serde_json::to_string_pretty(&self)?;
         let filename = out_dir.join(self.filename());
         fs::write(filename, data).expect("unable to write file");
         Ok(())
     }
 
-    pub fn remove(&self, out_dir: &Path) -> Result<()> {
+    pub fn remove(&self, out_dir: &Path) -> Result {
         let filename = out_dir.join(self.filename());
         fs::remove_file(filename)?;
         Ok(())
@@ -169,17 +136,14 @@ pub struct Server {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct DevaddrRange {
-    #[serde(deserialize_with = "HexField::<8>::deserialize")]
+    #[serde(with = "HexField::<8>")]
     start_addr: HexField<8>,
-    #[serde(deserialize_with = "HexField::<8>::deserialize")]
+    #[serde(with = "HexField::<8>")]
     end_addr: HexField<8>,
 }
 
 impl DevaddrRange {
     pub fn new(start_addr: &str, end_addr: &str) -> Result<Self> {
-        verify_len("start_addr", start_addr, 8)?;
-        verify_len("end_addr", end_addr, 8)?;
-
         Ok(Self {
             start_addr: HexField(u64::from_str_radix(start_addr, 16)?),
             end_addr: HexField(u64::from_str_radix(end_addr, 16)?),
@@ -189,30 +153,18 @@ impl DevaddrRange {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Eui {
-    #[serde(deserialize_with = "HexField::<16>::deserialize")]
+    #[serde(with = "HexField::<16>")]
     app_eui: HexField<16>,
-    #[serde(deserialize_with = "HexField::<16>::deserialize")]
+    #[serde(with = "HexField::<16>")]
     dev_eui: HexField<16>,
 }
 
 impl Eui {
     pub fn new(app_eui: &str, dev_eui: &str) -> Result<Self> {
-        verify_len("dev_eui", dev_eui, 16)?;
-        verify_len("app_eui", app_eui, 16)?;
-
         Ok(Self {
             app_eui: HexField(u64::from_str_radix(app_eui, 16)?),
             dev_eui: HexField(u64::from_str_radix(dev_eui, 16)?),
         })
-    }
-}
-
-fn verify_len(name: &str, input: &str, expected_len: usize) -> Result<()> {
-    match input.len() {
-        len if len == expected_len => Ok(()),
-        len => Err(format!(
-            "{name} is {len} chars long, should be {expected_len}"
-        ))?,
     }
 }
 
@@ -273,7 +225,7 @@ impl From<Route> for RouteV1 {
     fn from(route: Route) -> Self {
         Self {
             id: route.id.into(),
-            net_id: route.net_id.into_inner(),
+            net_id: route.net_id.into(),
             devaddr_ranges: route.devaddr_ranges.into_iter().map(|r| r.into()).collect(),
             euis: route.euis.into_iter().map(|e| e.into()).collect(),
             oui: route.oui,
@@ -345,33 +297,6 @@ mod tests {
     use helium_proto::services::config::{DevaddrRangeV1, EuiV1, RouteV1};
 
     use crate::{DevaddrRange, Eui, HexField, Route};
-
-    #[test]
-    fn hex_net_id_field() {
-        let field = &HexField::<6>(0xC00053);
-        let val = serde_json::to_string(field).unwrap();
-        // value includes quotes
-        assert_eq!(6 + 2, val.len());
-        assert_eq!(r#""C00053""#.to_string(), val);
-    }
-
-    #[test]
-    fn hex_devaddr_field() {
-        let field = &HexField::<8>(0x22ab);
-        let val = serde_json::to_string(field).unwrap();
-        // value includes quotes
-        assert_eq!(8 + 2, val.len());
-        assert_eq!(r#""000022AB""#.to_string(), val);
-    }
-
-    #[test]
-    fn hex_eui_field() {
-        let field = &HexField::<16>(0x0ABD_68FD_E91E_E0DB);
-        let val = serde_json::to_string(field).unwrap();
-        // value includes quotes
-        assert_eq!(16 + 2, val.len());
-        assert_eq!(r#""0ABD68FDE91EE0DB""#.to_string(), val)
-    }
 
     #[test]
     fn deserialize_devaddr() {
