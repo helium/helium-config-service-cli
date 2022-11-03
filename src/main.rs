@@ -4,7 +4,7 @@ mod settings;
 
 use clap::Parser;
 use cmds::{Cli, Commands, OrgCommands, ProtocolType, RouteCommands};
-use helium_config_service_cli::server::{Protocol, Server};
+use helium_config_service_cli::server::{GwmpMap, Http, Protocol, Server};
 use helium_config_service_cli::{DevaddrRange, Eui, PrettyJson, Result, Route};
 use settings::Settings;
 use std::fs;
@@ -56,9 +56,9 @@ async fn main() -> Result {
             commit,
         } => {
             let protocol = match protocol_type {
-                ProtocolType::PacketRouter => Protocol::packet_router(),
-                ProtocolType::Gwmp => Protocol::gwmp(),
-                ProtocolType::Http => Protocol::http(),
+                ProtocolType::PacketRouter => Protocol::default_packet_router(),
+                ProtocolType::Gwmp => Protocol::default_gwmp(),
+                ProtocolType::Http => Protocol::default_http(),
             };
             let server = Server::new(host, port, protocol);
             update_route_section(
@@ -69,6 +69,36 @@ async fn main() -> Result {
                 "server",
             )?;
         }
+        Commands::GwmpMapping {
+            region,
+            port,
+            route,
+            commit,
+        } => {
+            let mapping = Protocol::make_gwmp_mapping(region, port);
+            update_route_section(
+                &settings.out_dir,
+                route,
+                commit,
+                RouteUpdate::AddGwmpMapping(mapping),
+                "mapping",
+            )?;
+        }
+        Commands::Http {
+            flow_type,
+            dedupe_timeout,
+            path,
+            route,
+            commit,
+        } => {
+            let http = Protocol::make_http(flow_type, dedupe_timeout, path);
+            update_route_section(
+                &settings.out_dir,
+                route,
+                commit,
+                RouteUpdate::UpdateHttp(http),
+                "protocol",
+            )?;
         }
         Commands::Org { command } => {
             let mut org_client = client::OrgClient::new(&settings.config_host).await?;
@@ -193,6 +223,8 @@ fn update_route_section(
                 RouteUpdate::AddDevaddr(range) => r.add_devaddr(range),
                 RouteUpdate::AddEui(eui) => r.add_eui(eui),
                 RouteUpdate::SetServer(server) => r.set_server(server),
+                RouteUpdate::AddGwmpMapping(map) => r.gwmp_add_mapping(map)?,
+                RouteUpdate::UpdateHttp(http) => r.update_http(http)?,
             };
 
             if commit {
@@ -215,6 +247,8 @@ enum RouteUpdate {
     AddDevaddr(DevaddrRange),
     AddEui(Eui),
     SetServer(Server),
+    AddGwmpMapping(GwmpMap),
+    UpdateHttp(Http),
 }
 
 impl RouteUpdate {
@@ -223,6 +257,8 @@ impl RouteUpdate {
             RouteUpdate::AddDevaddr(d) => d.print_pretty_json()?,
             RouteUpdate::AddEui(e) => e.print_pretty_json()?,
             RouteUpdate::SetServer(s) => s.print_pretty_json()?,
+            RouteUpdate::AddGwmpMapping(map) => map.print_pretty_json()?,
+            RouteUpdate::UpdateHttp(http) => http.print_pretty_json()?,
         }
         Ok(())
     }

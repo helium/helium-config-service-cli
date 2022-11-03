@@ -8,8 +8,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 pub type Port = u32;
+pub type GwmpMap = BTreeMap<SupportedRegion, Port>;
 
-#[derive(Serialize, Debug, Deserialize, PartialEq)]
+#[derive(Serialize, Debug, Deserialize, PartialEq, Eq, Default)]
 pub struct Server {
     pub host: String,
     pub port: Port,
@@ -24,9 +25,24 @@ impl Server {
             protocol: Some(protocol),
         }
     }
+
+    pub fn gwmp_add_mapping(&mut self, map: GwmpMap) -> Result {
+        if let Some(ref mut p) = self.protocol {
+            return p.gwmp_add_mapping(map);
+        }
+
+        Err(anyhow!("server has no protocol to update"))
+    }
+
+    pub fn update_http(&mut self, http: Http) -> Result {
+        if let Some(ref mut p) = self.protocol {
+            return p.update_http(http);
+        }
+        Err(anyhow!("server has no protocol to update"))
+    }
 }
 
-#[derive(Serialize, Debug, Deserialize, PartialEq)]
+#[derive(Serialize, Debug, Deserialize, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Protocol {
     Gwmp(Gwmp),
@@ -35,34 +51,68 @@ pub enum Protocol {
 }
 
 impl Protocol {
-    pub fn gwmp() -> Protocol {
+    pub fn default_gwmp() -> Protocol {
         Protocol::Gwmp(Gwmp::default())
     }
 
-    pub fn http() -> Protocol {
+    pub fn default_http() -> Protocol {
         Protocol::Http(Http::default())
     }
 
-    pub fn packet_router() -> Protocol {
+    pub fn default_packet_router() -> Protocol {
         Protocol::PacketRouter
+    }
+
+    pub fn make_gwmp_mapping(region: SupportedRegion, port: Port) -> GwmpMap {
+        BTreeMap::from([(region, port)])
+    }
+
+    pub fn make_http(flow_type: FlowType, dedupe_timeout: u32, path: String) -> Http {
+        Http {
+            flow_type,
+            dedupe_timeout,
+            path,
+        }
+    }
+
+    fn gwmp_add_mapping(&mut self, map: GwmpMap) -> Result {
+        match self {
+            Protocol::Gwmp(Gwmp { ref mut mapping }) => {
+                mapping.extend(map);
+                Ok(())
+            }
+            Protocol::Http(_) => Err(anyhow!("cannot add region mapping to http")),
+            Protocol::PacketRouter => Err(anyhow!("cannot add region mapping to packet router")),
+        }
+    }
+
+    fn update_http(&mut self, http: Http) -> Result {
+        match self {
+            Protocol::Http(_) => {
+                *self = Protocol::Http(http);
+                Ok(())
+            }
+            Protocol::Gwmp(_) => Err(anyhow!("cannot update gwmp with http details")),
+            Protocol::PacketRouter => Err(anyhow!("cannot update packet router with http details")),
+        }
     }
 }
 
-#[derive(Serialize, Debug, Deserialize, PartialEq, Default)]
+#[derive(Serialize, Debug, Deserialize, PartialEq, Eq, Default)]
 pub struct Gwmp {
-    mapping: BTreeMap<SupportedRegion, Port>,
+    pub mapping: GwmpMap,
 }
 
-#[derive(Serialize, Debug, Deserialize, PartialEq, Default)]
+#[derive(Serialize, Debug, Deserialize, PartialEq, Eq, Default)]
 pub struct Http {
     flow_type: FlowType,
     dedupe_timeout: u32,
     path: String,
 }
 
-#[derive(Serialize, Debug, Deserialize, PartialEq, Default)]
+#[derive(clap::ValueEnum, Clone, Serialize, Debug, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "lowercase")]
-enum FlowType {
+pub enum FlowType {
     #[default]
     Sync,
     Async,

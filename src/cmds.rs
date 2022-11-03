@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand, ValueEnum};
+use helium_config_service_cli::{server::FlowType, SupportedRegion};
 use std::path::PathBuf;
-use clap::{Parser, Subcommand};
 
 #[derive(Debug, Parser)]
 #[command(name = "helium-config-cli")]
@@ -62,6 +62,29 @@ pub enum Commands {
         #[arg(long, default_value = "8080")]
         port: u32,
         /// ID of route to apply protocol (same as filename)
+        route: Option<String>,
+        /// Write the protocol into the route file
+        #[arg(long)]
+        commit: bool,
+    },
+    GwmpMapping {
+        #[arg(value_enum)]
+        region: SupportedRegion,
+        port: u32,
+        /// ID of the route to apply the mapping
+        route: Option<String>,
+        /// Write the protocol into the route file
+        #[arg(long)]
+        commit: bool,
+    },
+    Http {
+        #[arg(short, long, value_enum)]
+        flow_type: FlowType,
+        #[arg(short, long)]
+        dedupe_timeout: u32,
+        #[arg(short, long)]
+        path: String,
+        /// ID of the route to apply the mapping
         route: Option<String>,
         /// Write the protocol into the route file
         #[arg(long)]

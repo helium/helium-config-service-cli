@@ -9,7 +9,7 @@ use helium_proto::services::config::{
 use hex_field::HexField;
 pub use region::SupportedRegion;
 use serde::{Deserialize, Serialize};
-use server::Server;
+use server::{GwmpMap, Http, Server};
 use std::{fs, path::Path};
 
 pub type Result<T = (), E = Error> = anyhow::Result<T, E>;
@@ -64,7 +64,7 @@ impl RouteList {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Route {
     id: String,
     #[serde(with = "HexField::<6>")]
@@ -72,7 +72,7 @@ pub struct Route {
     pub devaddr_ranges: Vec<DevaddrRange>,
     pub euis: Vec<Eui>,
     oui: u64,
-    server: Option<Server>,
+    pub server: Server,
     max_copies: u32,
     nonce: u32,
 }
@@ -85,7 +85,7 @@ impl Route {
             devaddr_ranges: vec![],
             euis: vec![],
             oui,
-            server: None,
+            server: Server::default(),
             max_copies,
             nonce: 1,
         }
@@ -133,7 +133,15 @@ impl Route {
     }
 
     pub fn set_server(&mut self, server: Server) {
-        self.server = Some(server);
+        self.server = server;
+    }
+
+    pub fn gwmp_add_mapping(&mut self, map: GwmpMap) -> Result {
+        self.server.gwmp_add_mapping(map)
+    }
+
+    pub fn update_http(&mut self, http: Http) -> Result {
+        self.server.update_http(http)
     }
 }
 
@@ -217,7 +225,7 @@ impl From<RouteV1> for Route {
             devaddr_ranges: route.devaddr_ranges.into_iter().map(|r| r.into()).collect(),
             euis: route.euis.into_iter().map(|e| e.into()).collect(),
             oui: route.oui,
-            server: route.server.map(|s| s.into()),
+            server: route.server.map_or_else(Server::default, |s| s.into()),
             max_copies: route.max_copies,
             nonce: route.nonce,
         }
@@ -232,7 +240,7 @@ impl From<Route> for RouteV1 {
             devaddr_ranges: route.devaddr_ranges.into_iter().map(|r| r.into()).collect(),
             euis: route.euis.into_iter().map(|e| e.into()).collect(),
             oui: route.oui,
-            server: route.server.map(|s| s.into()),
+            server: Some(route.server.into()),
             max_copies: route.max_copies,
             nonce: route.nonce,
         }
@@ -277,9 +285,9 @@ impl From<Eui> for EuiV1 {
 
 #[cfg(test)]
 mod tests {
-    use helium_proto::services::config::{DevaddrRangeV1, EuiV1, RouteV1};
+    use helium_proto::services::config::{DevaddrRangeV1, EuiV1, RouteV1, ServerV1};
 
-    use crate::{DevaddrRange, Eui, HexField, Route};
+    use crate::{server::Server, DevaddrRange, Eui, HexField, Route};
 
     #[test]
     fn deserialize_devaddr() {
@@ -321,7 +329,7 @@ mod tests {
                 dev_eui: HexField(12302652060662178304),
             }],
             oui: 66,
-            server: None,
+            server: Server::default(),
             max_copies: 999,
             nonce: 1337,
         };
@@ -337,7 +345,11 @@ mod tests {
                 dev_eui: 12302652060662178304,
             }],
             oui: 66,
-            server: None,
+            server: Some(ServerV1 {
+                host: "".into(),
+                port: 0,
+                protocol: None,
+            }),
             max_copies: 999,
             nonce: 1337,
         };
