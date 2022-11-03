@@ -4,8 +4,9 @@ mod settings;
 
 use clap::Parser;
 use cmds::{Cli, Commands, OrgCommands, ProtocolType, RouteCommands};
+use helium_config_service_cli::route::Route;
 use helium_config_service_cli::server::{GwmpMap, Http, Protocol, Server};
-use helium_config_service_cli::{DevaddrRange, Eui, PrettyJson, Result, Route};
+use helium_config_service_cli::{DevaddrRange, Eui, PrettyJson, Result};
 use settings::Settings;
 use std::fs;
 use std::path::Path;

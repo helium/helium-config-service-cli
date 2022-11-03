@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand, ValueEnum};
-use helium_config_service_cli::{server::FlowType, SupportedRegion};
+use helium_config_service_cli::{region::SupportedRegion, server::FlowType};
 use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
@@ -67,6 +67,7 @@ pub enum Commands {
         #[arg(long)]
         commit: bool,
     },
+    /// Map a LoRa region to a Port
     GwmpMapping {
         #[arg(value_enum)]
         region: SupportedRegion,
@@ -77,6 +78,7 @@ pub enum Commands {
         #[arg(long)]
         commit: bool,
     },
+    /// Update the details of an Http Route
     Http {
         #[arg(short, long, value_enum)]
         flow_type: FlowType,
