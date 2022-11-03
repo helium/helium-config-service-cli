@@ -1,5 +1,5 @@
 use crate::Result;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::str::FromStr;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -14,7 +14,7 @@ impl<const WIDTH: usize> From<HexField<WIDTH>> for u64 {
 impl<const WIDTH: usize> Serialize for HexField<WIDTH> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: Serializer,
     {
         // pad with 0s to the left up to WIDTH
         serializer.serialize_str(&format!("{:0>width$X}", self.0, width = WIDTH))
