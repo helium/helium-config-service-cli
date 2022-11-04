@@ -550,6 +550,7 @@ dependencies = [
  "helium-crypto",
  "helium-proto",
  "prost",
+ "rand",
  "serde",
  "serde-hex",
  "serde_json",

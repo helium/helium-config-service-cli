@@ -2,11 +2,13 @@ mod client;
 mod cmds;
 mod settings;
 
+use anyhow::Context;
 use clap::Parser;
 use cmds::{Cli, Commands, OrgCommands, ProtocolType, RouteCommands};
 use helium_config_service_cli::route::Route;
 use helium_config_service_cli::server::{GwmpMap, Http, Protocol, Server};
 use helium_config_service_cli::{DevaddrRange, Eui, PrettyJson, Result};
+
 use settings::Settings;
 use std::fs;
 use std::path::Path;
@@ -14,11 +16,12 @@ use std::path::Path;
 #[tokio::main]
 async fn main() -> Result {
     let cli = Cli::parse();
-    let settings = Settings::new(&cli.config)?;
+    let settings = Settings::new(&cli.config).context("reading settings")?;
     fs::create_dir_all(&settings.out_dir)?;
 
     match cli.command {
         Commands::Init => Settings::interactive_init(&cli.config)?,
+        Commands::Generate { commit } => settings.maybe_generate_keypair(commit)?,
         Commands::Devaddr {
             start_addr,
             end_addr,

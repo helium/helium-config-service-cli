@@ -18,6 +18,11 @@ pub struct Cli {
 pub enum Commands {
     /// Initialize your settings file
     Init,
+    /// Make a new keypair
+    Generate {
+        #[arg(short, long)]
+        commit: bool,
+    },
     /// Org commands
     Org {
         #[command(subcommand)]
