@@ -1,11 +1,14 @@
 use crate::{region::Region, Result};
 use anyhow::anyhow;
-use helium_proto::services::config::{
-    protocol_http_roaming_v1::FlowTypeV1, server_v1, ProtocolGwmpMappingV1, ProtocolGwmpV1,
-    ServerV1,
-};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+
+pub mod proto {
+    pub use helium_proto::services::config::{
+        protocol_http_roaming_v1::FlowTypeV1, server_v1::Protocol, ProtocolGwmpMappingV1,
+        ProtocolGwmpV1, ProtocolHttpRoamingV1, ProtocolPacketRouterV1, ServerV1,
+    };
+}
 
 pub type Port = u32;
 pub type GwmpMap = BTreeMap<Region, Port>;
@@ -120,24 +123,33 @@ pub enum FlowType {
 
 impl FlowType {
     fn from_i32(v: i32) -> Result<Self> {
-        FlowTypeV1::from_i32(v)
+        proto::FlowTypeV1::from_i32(v)
             .map(|ft| ft.into())
             .ok_or_else(|| anyhow!("unsupported flow type {v}"))
     }
 }
 
-impl From<FlowTypeV1> for FlowType {
-    fn from(ft: FlowTypeV1) -> Self {
+impl From<proto::FlowTypeV1> for FlowType {
+    fn from(ft: proto::FlowTypeV1) -> Self {
         match ft {
-            FlowTypeV1::Sync => FlowType::Sync,
-            FlowTypeV1::Async => FlowType::Async,
+            proto::FlowTypeV1::Sync => FlowType::Sync,
+            proto::FlowTypeV1::Async => FlowType::Async,
         }
     }
 }
 
-impl From<Server> for ServerV1 {
+impl From<FlowType> for proto::FlowTypeV1 {
+    fn from(ft: FlowType) -> Self {
+        match ft {
+            FlowType::Sync => proto::FlowTypeV1::Sync,
+            FlowType::Async => proto::FlowTypeV1::Async,
+        }
+    }
+}
+
+impl From<Server> for proto::ServerV1 {
     fn from(server: Server) -> Self {
-        ServerV1 {
+        proto::ServerV1 {
             host: server.host.into(),
             port: server.port,
             protocol: server.protocol.map(|p| p.into()),
@@ -145,8 +157,8 @@ impl From<Server> for ServerV1 {
     }
 }
 
-impl From<ServerV1> for Server {
-    fn from(server: ServerV1) -> Self {
+impl From<proto::ServerV1> for Server {
+    fn from(server: proto::ServerV1) -> Self {
         Server {
             host: String::from_utf8(server.host).unwrap(),
             port: server.port,
@@ -155,29 +167,35 @@ impl From<ServerV1> for Server {
     }
 }
 
-impl From<Protocol> for server_v1::Protocol {
+impl From<Protocol> for proto::Protocol {
     fn from(protocol: Protocol) -> Self {
         match protocol {
             Protocol::Gwmp(gwmp) => {
                 let mut mapping = vec![];
                 for (region, port) in gwmp.mapping.into_iter() {
-                    mapping.push(ProtocolGwmpMappingV1 {
+                    mapping.push(proto::ProtocolGwmpMappingV1 {
                         region: region.into(),
                         port,
                     })
                 }
-                server_v1::Protocol::Gwmp(ProtocolGwmpV1 { mapping })
+                proto::Protocol::Gwmp(proto::ProtocolGwmpV1 { mapping })
             }
-            Protocol::Http(_) => todo!(),
-            Protocol::PacketRouter => todo!(),
+            Protocol::Http(http) => proto::Protocol::HttpRoaming(proto::ProtocolHttpRoamingV1 {
+                flow_type: proto::FlowTypeV1::from(http.flow_type) as i32,
+                dedupe_timeout: http.dedupe_timeout,
+                path: http.path,
+            }),
+            Protocol::PacketRouter => {
+                proto::Protocol::PacketRouter(proto::ProtocolPacketRouterV1 {})
+            }
         }
     }
 }
 
-impl From<server_v1::Protocol> for Protocol {
-    fn from(proto: server_v1::Protocol) -> Self {
+impl From<proto::Protocol> for Protocol {
+    fn from(proto: proto::Protocol) -> Self {
         match proto {
-            server_v1::Protocol::Gwmp(gwmp) => {
+            proto::Protocol::Gwmp(gwmp) => {
                 let mut mapping = BTreeMap::new();
                 for entry in gwmp.mapping {
                     let region = Region::from_i32(entry.region).unwrap();
@@ -185,12 +203,12 @@ impl From<server_v1::Protocol> for Protocol {
                 }
                 Protocol::Gwmp(Gwmp { mapping })
             }
-            server_v1::Protocol::HttpRoaming(http) => Protocol::Http(Http {
+            proto::Protocol::HttpRoaming(http) => Protocol::Http(Http {
                 flow_type: FlowType::from_i32(http.flow_type).unwrap(),
                 dedupe_timeout: http.dedupe_timeout,
                 path: http.path,
             }),
-            server_v1::Protocol::PacketRouter(_args) => Protocol::PacketRouter,
+            proto::Protocol::PacketRouter(_args) => Protocol::PacketRouter,
         }
     }
 }

@@ -4,11 +4,16 @@ pub mod route;
 pub mod server;
 
 use anyhow::Error;
-use helium_proto::services::config::{DevaddrRangeV1, EuiV1, OrgListResV1, OrgV1, RouteListResV1};
 use hex_field::HexField;
 use route::Route;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
+
+pub mod proto {
+    pub use helium_proto::services::config::{
+        DevaddrRangeV1, EuiV1, OrgListResV1, OrgV1, RouteListResV1,
+    };
+}
 
 pub type Result<T = (), E = Error> = anyhow::Result<T, E>;
 
@@ -96,16 +101,16 @@ impl Eui {
     }
 }
 
-impl From<OrgListResV1> for OrgList {
-    fn from(org_list: OrgListResV1) -> Self {
+impl From<proto::OrgListResV1> for OrgList {
+    fn from(org_list: proto::OrgListResV1) -> Self {
         Self {
             orgs: org_list.orgs.into_iter().map(|o| o.into()).collect(),
         }
     }
 }
 
-impl From<OrgV1> for Org {
-    fn from(org: OrgV1) -> Self {
+impl From<proto::OrgV1> for Org {
+    fn from(org: proto::OrgV1) -> Self {
         Self {
             oui: org.oui,
             owner: String::from_utf8(org.owner).unwrap(),
@@ -115,7 +120,7 @@ impl From<OrgV1> for Org {
     }
 }
 
-impl From<Org> for OrgV1 {
+impl From<Org> for proto::OrgV1 {
     fn from(org: Org) -> Self {
         Self {
             oui: org.oui,
@@ -126,16 +131,16 @@ impl From<Org> for OrgV1 {
     }
 }
 
-impl From<RouteListResV1> for RouteList {
-    fn from(route_list: RouteListResV1) -> Self {
+impl From<proto::RouteListResV1> for RouteList {
+    fn from(route_list: proto::RouteListResV1) -> Self {
         Self {
             routes: route_list.routes.into_iter().map(|r| r.into()).collect(),
         }
     }
 }
 
-impl From<DevaddrRangeV1> for DevaddrRange {
-    fn from(range: DevaddrRangeV1) -> Self {
+impl From<proto::DevaddrRangeV1> for DevaddrRange {
+    fn from(range: proto::DevaddrRangeV1) -> Self {
         Self {
             start_addr: HexField(range.start_addr),
             end_addr: HexField(range.end_addr),
@@ -143,7 +148,7 @@ impl From<DevaddrRangeV1> for DevaddrRange {
     }
 }
 
-impl From<DevaddrRange> for DevaddrRangeV1 {
+impl From<DevaddrRange> for proto::DevaddrRangeV1 {
     fn from(range: DevaddrRange) -> Self {
         Self {
             start_addr: range.start_addr.0,
@@ -152,8 +157,8 @@ impl From<DevaddrRange> for DevaddrRangeV1 {
     }
 }
 
-impl From<EuiV1> for Eui {
-    fn from(range: EuiV1) -> Self {
+impl From<proto::EuiV1> for Eui {
+    fn from(range: proto::EuiV1) -> Self {
         Self {
             app_eui: HexField(range.app_eui),
             dev_eui: HexField(range.dev_eui),
@@ -161,7 +166,7 @@ impl From<EuiV1> for Eui {
     }
 }
 
-impl From<Eui> for EuiV1 {
+impl From<Eui> for proto::EuiV1 {
     fn from(range: Eui) -> Self {
         Self {
             app_eui: range.app_eui.0,
