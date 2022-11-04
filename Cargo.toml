@@ -18,3 +18,4 @@ helium-proto = { git = "https://github.com/helium/proto", branch="master", featu
 dialoguer = "0.10.2"
 toml = "0.5.9"
 anyhow = "1.0.66"
+serde_test = "1.0.147"

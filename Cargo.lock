@@ -338,6 +338,7 @@ dependencies = [
  "serde",
  "serde-hex",
  "serde_json",
+ "serde_test",
  "tokio",
  "toml",
  "tonic",
@@ -346,7 +347,7 @@ dependencies = [
 [[package]]
 name = "helium-proto"
 version = "0.1.0"
-source = "git+https://github.com/helium/proto?branch=master#71ded2e0126f66d26ff1b5a6eb2ece5abbd6bab0"
+source = "git+https://github.com/helium/proto?branch=master#16646a75c98d06c55a07ec12c318f913075d1b49"
 dependencies = [
  "bytes",
  "prost",
@@ -908,6 +909,15 @@ checksum = "6ce777b7b150d76b9cf60d28b55f5847135a003f7d7350c6be7a773508ce7d45"
 dependencies = [
  "itoa",
  "ryu",
+ "serde",
+]
+
+[[package]]
+name = "serde_test"
+version = "1.0.147"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "641666500e4e6fba7b91b73651a375cb53579468ab3c38389289b802797cad94"
+dependencies = [
  "serde",
 ]
 

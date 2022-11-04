@@ -1,5 +1,6 @@
+use clap::{Parser, Subcommand, ValueEnum};
+use helium_config_service_cli::{region::Region, server::FlowType};
 use std::path::PathBuf;
-use clap::{Parser, Subcommand};
 
 #[derive(Debug, Parser)]
 #[command(name = "helium-config-cli")]
@@ -51,6 +52,53 @@ pub enum Commands {
         #[arg(short, long)]
         commit: bool,
     },
+    /// Output format for inserting Protocol
+    Protocol {
+        /// Protocol to route packets over
+        #[arg(value_enum)]
+        protocol: ProtocolType,
+        #[arg(long, default_value = "localhost")]
+        host: String,
+        #[arg(long, default_value = "8080")]
+        port: u32,
+        /// ID of route to apply protocol (same as filename)
+        route: Option<String>,
+        /// Write the protocol into the route file
+        #[arg(long)]
+        commit: bool,
+    },
+    /// Map a LoRa region to a Port
+    GwmpMapping {
+        #[arg(value_enum)]
+        region: Region,
+        port: u32,
+        /// ID of the route to apply the mapping
+        route: Option<String>,
+        /// Write the protocol into the route file
+        #[arg(long)]
+        commit: bool,
+    },
+    /// Update the details of an Http Route
+    Http {
+        #[arg(short, long, value_enum)]
+        flow_type: FlowType,
+        #[arg(short, long)]
+        dedupe_timeout: u32,
+        #[arg(short, long)]
+        path: String,
+        /// ID of the route to apply the mapping
+        route: Option<String>,
+        /// Write the protocol into the route file
+        #[arg(long)]
+        commit: bool,
+    },
+}
+
+#[derive(ValueEnum, Clone, Debug)]
+pub enum ProtocolType {
+    PacketRouter,
+    Gwmp,
+    Http,
 }
 
 #[derive(Debug, Subcommand)]
