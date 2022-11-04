@@ -11,13 +11,21 @@ use std::{
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Settings {
+    /// Which OUI is being used
     pub oui: u64,
+    /// NetID assigned to the OUI, or the Helium NetID
     #[serde(with = "HexField::<6>")]
     pub net_id: HexField<6>,
+    /// Public Key of the OUI owner
     pub owner: String,
+    /// URI for the configuration service
     pub config_host: String,
+    /// Destination for routing files
     pub out_dir: PathBuf,
+    /// Default max_copies setting
     pub max_copies: u32,
+    /// File to load keypair from
+    pub keypair: String,
 }
 
 impl Settings {
