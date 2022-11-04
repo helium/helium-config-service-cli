@@ -1,7 +1,9 @@
+use anyhow::anyhow;
 use config::{Config, File};
 use dialoguer::{Confirm, Input};
 use helium_config_service_cli::hex_field::HexField;
 use helium_config_service_cli::Result;
+use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use std::{
@@ -11,13 +13,21 @@ use std::{
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Settings {
+    /// Which OUI is being used
     pub oui: u64,
+    /// NetID assigned to the OUI, or the Helium NetID
     #[serde(with = "HexField::<6>")]
     pub net_id: HexField<6>,
+    /// Public Key of the OUI owner
     pub owner: String,
+    /// URI for the configuration service
     pub config_host: String,
+    /// Destination for routing files
     pub out_dir: PathBuf,
+    /// Default max_copies setting
     pub max_copies: u32,
+    /// File to load keypair from
+    pub keypair: PathBuf,
 }
 
 impl Settings {
@@ -58,6 +68,11 @@ impl Settings {
             .with_prompt("Default Max Copies")
             .default(15)
             .interact()?;
+        let keypair: PathBuf = Input::<String>::new()
+            .with_prompt("Where is your keypair?")
+            .default("./keypair.bin".into())
+            .interact()?
+            .into();
 
         let s = Settings {
             oui,
@@ -66,6 +81,7 @@ impl Settings {
             config_host,
             out_dir,
             max_copies,
+            keypair,
         };
         s.maybe_write(path)
     }
@@ -95,5 +111,34 @@ impl Settings {
         let output = toml::to_string_pretty(self)?;
         fs::write(path, &output)?;
         Ok(())
+    }
+
+    pub fn keypair(&self) -> Result<helium_crypto::Keypair> {
+        let data = std::fs::read(&self.keypair)?;
+        Ok(helium_crypto::Keypair::try_from(&data[..])?)
+    }
+
+    pub fn maybe_generate_keypair(&self, commit: bool) -> Result {
+        if self.keypair.exists() && !commit {
+            return Err(anyhow!(
+                "{:?} exists, to overwrite with new keypair pass `--commit`",
+                self.keypair
+            ));
+        }
+        self.generate_keypair()
+    }
+
+    pub fn generate_keypair(&self) -> Result {
+        let key = helium_crypto::Keypair::generate(
+            helium_crypto::KeyTag {
+                network: helium_crypto::Network::MainNet,
+                key_type: helium_crypto::KeyType::Ed25519,
+            },
+            &mut OsRng,
+        );
+        if let Some(parent) = self.keypair.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        fs::write(&self.keypair, &key.to_vec()).map_err(|e| e.into())
     }
 }
