@@ -2,11 +2,7 @@ use crate::Result;
 use anyhow::anyhow;
 use helium_proto::Region as ProtoRegion;
 use serde::{de, Deserialize, Deserializer, Serialize};
-#[allow(unused_imports)]
-use std::{
-    fmt::{self, Display},
-    str::FromStr,
-};
+use std::{fmt, str::FromStr};
 
 #[derive(clap::ValueEnum, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[clap(rename_all = "snake_case")]
