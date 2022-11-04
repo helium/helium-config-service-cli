@@ -219,21 +219,21 @@ fn update_route_section(
 ) -> Result {
     match route {
         Some(route_id) => {
-            let mut r = Route::from_file(out_dir, &route_id)?;
+            let mut route = Route::from_file(out_dir, &route_id)?;
             match action {
-                RouteUpdate::AddDevaddr(range) => r.add_devaddr(range),
-                RouteUpdate::AddEui(eui) => r.add_eui(eui),
-                RouteUpdate::SetServer(server) => r.set_server(server),
-                RouteUpdate::AddGwmpMapping(map) => r.gwmp_add_mapping(map)?,
-                RouteUpdate::UpdateHttp(http) => r.http_update(http)?,
+                RouteUpdate::AddDevaddr(range) => route.add_devaddr(range),
+                RouteUpdate::AddEui(eui) => route.add_eui(eui),
+                RouteUpdate::SetServer(server) => route.set_server(server),
+                RouteUpdate::AddGwmpMapping(map) => route.gwmp_add_mapping(map)?,
+                RouteUpdate::UpdateHttp(http) => route.http_update(http)?,
             };
 
             if commit {
                 println!("{route_id} updated");
-                r.write(out_dir)?;
+                route.write(out_dir)?;
             } else {
                 println!("Replace {route_id} with the following, or pass --commit:");
-                r.print_pretty_json()?;
+                route.print_pretty_json()?;
             }
         }
         None => {
