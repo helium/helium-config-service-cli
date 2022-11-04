@@ -58,6 +58,9 @@ impl Settings {
             .with_prompt("Default Max Copies")
             .default(15)
             .interact()?;
+        let keypair = Input::new()
+            .with_prompt("Where is your keypair?")
+            .interact()?;
 
         let s = Settings {
             oui,
@@ -66,6 +69,7 @@ impl Settings {
             config_host,
             out_dir,
             max_copies,
+            keypair,
         };
         s.maybe_write(path)
     }
@@ -95,5 +99,10 @@ impl Settings {
         let output = toml::to_string_pretty(self)?;
         fs::write(path, &output)?;
         Ok(())
+    }
+
+    pub fn keypair(&self) -> Result<helium_crypto::Keypair> {
+        let data = std::fs::read(&self.keypair)?;
+        Ok(helium_crypto::Keypair::try_from(&data[..])?)
     }
 }

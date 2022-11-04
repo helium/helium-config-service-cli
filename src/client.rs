@@ -1,9 +1,13 @@
 use helium_config_service_cli::{
     hex_field::HexField, route::Route, Org, OrgList, Result, RouteList,
 };
-use helium_proto::services::config::{
-    org_client, route_client, OrgCreateReqV1, OrgGetReqV1, OrgListReqV1, RouteCreateReqV1,
-    RouteDeleteReqV1, RouteGetReqV1, RouteListReqV1, RouteUpdateReqV1,
+use helium_crypto::{Keypair, Sign};
+use helium_proto::{
+    services::config::{
+        org_client, route_client, OrgCreateReqV1, OrgGetReqV1, OrgListReqV1, RouteCreateReqV1,
+        RouteDeleteReqV1, RouteGetReqV1, RouteListReqV1, RouteUpdateReqV1,
+    },
+    Message,
 };
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -109,3 +113,31 @@ impl RouteClient {
 fn current_timestamp() -> Result<u64> {
     Ok(SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis() as u64)
 }
+
+pub trait MsgSign: Message + std::clone::Clone {
+    fn sign(self, keypair: Keypair) -> Result<Self>
+    where
+        Self: std::marker::Sized;
+}
+
+macro_rules! impl_sign {
+    ($txn_type:ty, $( $sig: ident ),+ ) => {
+        impl MsgSign for $txn_type {
+            fn sign(self, keypair: Keypair) -> Result<Self> {
+                let mut txn = self.clone();
+                $(txn.$sig = vec![];)+
+                let buf = txn.encode_to_vec();
+                let sig = keypair.sign(&buf)?;
+                $(txn.$sig = sig)+;
+                Ok(txn)
+            }
+        }
+    }
+}
+
+impl_sign!(OrgCreateReqV1, signature);
+impl_sign!(RouteListReqV1, signature);
+impl_sign!(RouteGetReqV1, signature);
+impl_sign!(RouteCreateReqV1, signature);
+impl_sign!(RouteDeleteReqV1, signature);
+impl_sign!(RouteUpdateReqV1, signature);
