@@ -116,7 +116,9 @@ async fn main() -> Result {
                             new_settings.maybe_write(new_settings.filename(dir).as_path())?
                         }
                         true => {
-                            let response = org_client.create(oui, &new_settings.owner).await?;
+                            let response = org_client
+                                .create(oui, &new_settings.owner, new_settings.keypair()?)
+                                .await?;
                             println!("==============: CREATED :==============");
                             response.print_pretty_json()?;
                             new_settings.write(new_settings.filename(dir).as_path())?;
@@ -133,7 +135,9 @@ async fn main() -> Result {
             let mut route_client = client::RouteClient::new(&settings.config_host).await?;
             match command {
                 RouteCommands::List { commit } => {
-                    let response = route_client.list(settings.oui, settings.owner).await?;
+                    let response = route_client
+                        .list(settings.oui, &settings.owner, settings.keypair()?)
+                        .await?;
                     response.print_pretty_json()?;
 
                     if commit {
@@ -141,7 +145,9 @@ async fn main() -> Result {
                     }
                 }
                 RouteCommands::Get { id, commit } => {
-                    let response = route_client.get(id, settings.owner).await?;
+                    let response = route_client
+                        .get(&id, &settings.owner, settings.keypair()?)
+                        .await?;
                     response.print_pretty_json()?;
 
                     if commit {
@@ -158,7 +164,8 @@ async fn main() -> Result {
                                 settings.net_id,
                                 settings.oui,
                                 settings.max_copies,
-                                settings.owner,
+                                &settings.owner,
+                                settings.keypair()?,
                             )
                             .await?;
                         response.print_pretty_json()?;
@@ -173,13 +180,14 @@ async fn main() -> Result {
                             route.print_pretty_json()?;
                         }
                         true => {
-                            let removed = route_client.delete(id, settings.owner).await.and_then(
-                                |route| {
+                            let removed = route_client
+                                .delete(&id, &settings.owner, settings.keypair()?)
+                                .await
+                                .and_then(|route| {
                                     println!("==============: DELETED :==============");
                                     route.remove(&settings.out_dir)?;
                                     Ok(route)
-                                },
-                            )?;
+                                })?;
                             removed.print_pretty_json()?;
                         }
                     }
@@ -192,13 +200,14 @@ async fn main() -> Result {
                             route.print_pretty_json()?;
                         }
                         true => {
-                            let updated = route_client.push(route, settings.owner).await.and_then(
-                                |updated_route| {
+                            let updated = route_client
+                                .push(route, &settings.owner, settings.keypair()?)
+                                .await
+                                .and_then(|updated_route| {
                                     println!("==============: PUSHED :==============");
                                     updated_route.write(&settings.out_dir)?;
                                     Ok(updated_route)
-                                },
-                            )?;
+                                })?;
                             updated.print_pretty_json()?;
                         }
                     }

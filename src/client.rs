@@ -35,13 +35,18 @@ impl OrgClient {
         Ok(self.client.get(request).await?.into_inner().into())
     }
 
-    pub async fn create(&mut self, oui: u64, owner: &str) -> Result<Org> {
+    pub async fn create(&mut self, oui: u64, owner: &str, keypair: Keypair) -> Result<Org> {
         let request = OrgCreateReqV1 {
             org: Some(Org::new(oui, owner).into()),
-            signature: "sig".into(),
+            signature: vec![],
             timestamp: current_timestamp()?,
         };
-        Ok(self.client.create(request).await?.into_inner().into())
+        Ok(self
+            .client
+            .create(request.sign(keypair)?)
+            .await?
+            .into_inner()
+            .into())
     }
 }
 
@@ -52,24 +57,34 @@ impl RouteClient {
         })
     }
 
-    pub async fn list(&mut self, oui: u64, owner: String) -> Result<RouteList> {
+    pub async fn list(&mut self, oui: u64, owner: &str, keypair: Keypair) -> Result<RouteList> {
         let request = RouteListReqV1 {
             oui,
             owner: owner.into(),
             timestamp: current_timestamp()?,
-            signature: "sig".into(),
+            signature: vec![],
         };
-        Ok(self.client.list(request).await?.into_inner().into())
+        Ok(self
+            .client
+            .list(request.sign(keypair)?)
+            .await?
+            .into_inner()
+            .into())
     }
 
-    pub async fn get(&mut self, id: String, owner: String) -> Result<Route> {
+    pub async fn get(&mut self, id: &str, owner: &str, keypair: Keypair) -> Result<Route> {
         let request = RouteGetReqV1 {
             id: id.into(),
             owner: owner.into(),
-            signature: "sig".into(),
+            signature: vec![],
             timestamp: current_timestamp()?,
         };
-        Ok(self.client.get(request).await?.into_inner().into())
+        Ok(self
+            .client
+            .get(request.sign(keypair)?)
+            .await?
+            .into_inner()
+            .into())
     }
 
     pub async fn create(
@@ -77,36 +92,52 @@ impl RouteClient {
         net_id: HexField<6>,
         oui: u64,
         max_copies: u32,
-        owner: String,
+        owner: &str,
+        keypair: Keypair,
     ) -> Result<Route> {
         let request = RouteCreateReqV1 {
             oui,
             route: Some(Route::new(net_id, oui, max_copies).into()),
             owner: owner.into(),
             timestamp: current_timestamp()?,
-            signature: "sig".into(),
+            signature: vec![],
         };
-        Ok(self.client.create(request).await?.into_inner().into())
+        Ok(self
+            .client
+            .create(request.sign(keypair)?)
+            .await?
+            .into_inner()
+            .into())
     }
 
-    pub async fn delete(&mut self, id: String, owner: String) -> Result<Route> {
+    pub async fn delete(&mut self, id: &str, owner: &str, keypair: Keypair) -> Result<Route> {
         let request = RouteDeleteReqV1 {
             id: id.into(),
             owner: owner.into(),
             timestamp: current_timestamp()?,
-            signature: "sig".into(),
+            signature: vec![],
         };
-        Ok(self.client.delete(request).await?.into_inner().into())
+        Ok(self
+            .client
+            .delete(request.sign(keypair)?)
+            .await?
+            .into_inner()
+            .into())
     }
 
-    pub async fn push(&mut self, route: Route, owner: String) -> Result<Route> {
+    pub async fn push(&mut self, route: Route, owner: &str, keypair: Keypair) -> Result<Route> {
         let request = RouteUpdateReqV1 {
             route: Some(route.inc_nonce().into()),
             owner: owner.into(),
             timestamp: current_timestamp()?,
-            signature: "sig".into(),
+            signature: vec![],
         };
-        Ok(self.client.update(request).await?.into_inner().into())
+        Ok(self
+            .client
+            .update(request.sign(keypair)?)
+            .await?
+            .into_inner()
+            .into())
     }
 }
 

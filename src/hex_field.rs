@@ -2,7 +2,7 @@ use crate::Result;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::str::FromStr;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct HexField<const WIDTH: usize>(pub u64);
 
 impl<const WIDTH: usize> From<HexField<WIDTH>> for u64 {
