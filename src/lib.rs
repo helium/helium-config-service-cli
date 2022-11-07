@@ -4,7 +4,6 @@ pub mod route;
 pub mod server;
 
 use anyhow::Error;
-use hex_field::HexField;
 use route::Route;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -69,35 +68,28 @@ impl RouteList {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct DevaddrRange {
-    #[serde(with = "HexField::<8>")]
-    start_addr: HexField<8>,
-    #[serde(with = "HexField::<8>")]
-    end_addr: HexField<8>,
+    start_addr: hex_field::HexDevAddr,
+    end_addr: hex_field::HexDevAddr,
 }
 
 impl DevaddrRange {
-    pub fn new(start_addr: &str, end_addr: &str) -> Result<Self> {
+    pub fn new(start_addr: hex_field::HexDevAddr, end_addr: hex_field::HexDevAddr) -> Result<Self> {
         Ok(Self {
-            start_addr: HexField(u64::from_str_radix(start_addr, 16)?),
-            end_addr: HexField(u64::from_str_radix(end_addr, 16)?),
+            start_addr,
+            end_addr,
         })
     }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Eui {
-    #[serde(with = "HexField::<16>")]
-    app_eui: HexField<16>,
-    #[serde(with = "HexField::<16>")]
-    dev_eui: HexField<16>,
+    app_eui: hex_field::HexEui,
+    dev_eui: hex_field::HexEui,
 }
 
 impl Eui {
-    pub fn new(app_eui: &str, dev_eui: &str) -> Result<Self> {
-        Ok(Self {
-            app_eui: HexField(u64::from_str_radix(app_eui, 16)?),
-            dev_eui: HexField(u64::from_str_radix(dev_eui, 16)?),
-        })
+    pub fn new(app_eui: hex_field::HexEui, dev_eui: hex_field::HexEui) -> Result<Self> {
+        Ok(Self { app_eui, dev_eui })
     }
 }
 
@@ -142,8 +134,8 @@ impl From<proto::RouteListResV1> for RouteList {
 impl From<proto::DevaddrRangeV1> for DevaddrRange {
     fn from(range: proto::DevaddrRangeV1) -> Self {
         Self {
-            start_addr: HexField(range.start_addr),
-            end_addr: HexField(range.end_addr),
+            start_addr: range.start_addr.into(),
+            end_addr: range.end_addr.into(),
         }
     }
 }
@@ -160,8 +152,8 @@ impl From<DevaddrRange> for proto::DevaddrRangeV1 {
 impl From<proto::EuiV1> for Eui {
     fn from(range: proto::EuiV1) -> Self {
         Self {
-            app_eui: HexField(range.app_eui),
-            dev_eui: HexField(range.dev_eui),
+            app_eui: range.app_eui.into(),
+            dev_eui: range.dev_eui.into(),
         }
     }
 }
@@ -177,7 +169,7 @@ impl From<Eui> for proto::EuiV1 {
 
 #[cfg(test)]
 mod tests {
-    use crate::{DevaddrRange, Eui, HexField};
+    use crate::{hex_field, DevaddrRange, Eui};
 
     #[test]
     fn deserialize_devaddr() {
@@ -185,8 +177,8 @@ mod tests {
         let val: DevaddrRange = serde_json::from_str(d).unwrap();
         assert_eq!(
             DevaddrRange {
-                start_addr: HexField::<8>(0x11223344),
-                end_addr: HexField::<8>(0x22334455)
+                start_addr: hex_field::devaddr(0x11223344),
+                end_addr: hex_field::devaddr(0x22334455)
             },
             val
         );
@@ -198,8 +190,8 @@ mod tests {
         let val: Eui = serde_json::from_str(d).unwrap();
         assert_eq!(
             Eui {
-                app_eui: HexField::<16>(0x1122334411223344),
-                dev_eui: HexField::<16>(0x2233445522334455)
+                app_eui: hex_field::eui(0x1122334411223344),
+                dev_eui: hex_field::eui(0x2233445522334455)
             },
             val
         );

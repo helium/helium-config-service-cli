@@ -1,6 +1,4 @@
-use helium_config_service_cli::{
-    hex_field::HexField, route::Route, Org, OrgList, Result, RouteList,
-};
+use helium_config_service_cli::{hex_field, route::Route, Org, OrgList, Result, RouteList};
 use helium_crypto::{Keypair, Sign};
 use helium_proto::{
     services::config::{
@@ -89,7 +87,7 @@ impl RouteClient {
 
     pub async fn create(
         &mut self,
-        net_id: HexField<6>,
+        net_id: hex_field::HexNetID,
         oui: u64,
         max_copies: u32,
         owner: &str,

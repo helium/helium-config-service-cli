@@ -28,7 +28,7 @@ async fn main() -> Result {
             route,
             commit,
         } => {
-            let devaddr = DevaddrRange::new(&start_addr, &end_addr)?;
+            let devaddr = DevaddrRange::new(start_addr, end_addr)?;
             update_route_section(
                 &settings.out_dir,
                 route,
@@ -43,7 +43,7 @@ async fn main() -> Result {
             route,
             commit,
         } => {
-            let eui = Eui::new(&app_eui, &dev_eui)?;
+            let eui = Eui::new(app_eui, dev_eui)?;
             update_route_section(
                 &settings.out_dir,
                 route,
