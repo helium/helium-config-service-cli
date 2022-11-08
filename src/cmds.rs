@@ -18,6 +18,8 @@ pub struct Cli {
 pub enum Commands {
     /// Initialize your settings file
     Init,
+    /// Information about your identity
+    Info,
     /// Make a new keypair
     Generate {
         #[arg(short, long)]
