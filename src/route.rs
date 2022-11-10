@@ -1,8 +1,9 @@
 use crate::{
-    hex_field::HexField,
+    hex_field,
     server::{GwmpMap, Http, Server},
     DevaddrRange, Eui, Result,
 };
+use anyhow::Context;
 use helium_proto::services::config::RouteV1 as ProtoRoute;
 use serde::{Deserialize, Serialize};
 use std::{fs, path::Path};
@@ -10,8 +11,7 @@ use std::{fs, path::Path};
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Route {
     id: String,
-    #[serde(with = "HexField::<6>")]
-    net_id: HexField<6>,
+    net_id: hex_field::HexNetID,
     pub devaddr_ranges: Vec<DevaddrRange>,
     pub euis: Vec<Eui>,
     oui: u64,
@@ -21,7 +21,7 @@ pub struct Route {
 }
 
 impl Route {
-    pub fn new(net_id: HexField<6>, oui: u64, max_copies: u32) -> Self {
+    pub fn new(net_id: hex_field::HexNetID, oui: u64, max_copies: u32) -> Self {
         Self {
             id: "".into(),
             net_id,
@@ -38,8 +38,11 @@ impl Route {
         S: AsRef<Path>,
     {
         let filename = dir.join(id).with_extension("json");
-        let data = fs::read_to_string(filename).expect("Could not read file");
-        let listing: Self = serde_json::from_str(&data)?;
+        let data = fs::read_to_string(&filename)
+            .context("reading route file")
+            .expect("Could not read file");
+        let listing: Self = serde_json::from_str(&data)
+            .context(format!("parsing route file {}", filename.display()))?;
         Ok(listing)
     }
 
@@ -92,7 +95,7 @@ impl From<ProtoRoute> for Route {
     fn from(route: ProtoRoute) -> Self {
         Self {
             id: String::from_utf8(route.id).unwrap(),
-            net_id: HexField::<6>(route.net_id),
+            net_id: route.net_id.into(),
             devaddr_ranges: route.devaddr_ranges.into_iter().map(|r| r.into()).collect(),
             euis: route.euis.into_iter().map(|e| e.into()).collect(),
             oui: route.oui,
@@ -120,21 +123,21 @@ impl From<Route> for ProtoRoute {
 
 #[cfg(test)]
 mod tests {
-    use crate::{server::Server, DevaddrRange, Eui, HexField, Route};
+    use crate::{hex_field, server::Server, DevaddrRange, Eui, Route};
     use helium_proto::services::config::{DevaddrRangeV1, EuiV1, RouteV1, ServerV1};
 
     #[test]
     fn route_to_route_v1_conversion() {
         let route = Route {
             id: "route_id".into(),
-            net_id: HexField(1),
+            net_id: hex_field::net_id(1),
             devaddr_ranges: vec![DevaddrRange {
-                start_addr: HexField(287454020),
-                end_addr: HexField(2005440768),
+                start_addr: hex_field::devaddr(287454020),
+                end_addr: hex_field::devaddr(2005440768),
             }],
             euis: vec![Eui {
-                app_eui: HexField(12302652060662178304),
-                dev_eui: HexField(12302652060662178304),
+                app_eui: hex_field::eui(12302652060662178304),
+                dev_eui: hex_field::eui(12302652060662178304),
             }],
             oui: 66,
             server: Server::default(),

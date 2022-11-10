@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand, ValueEnum};
-use helium_config_service_cli::{region::Region, server::FlowType};
+use helium_config_service_cli::{hex_field, region::Region, server::FlowType};
 use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
@@ -39,8 +39,10 @@ pub enum Commands {
 
     /// Output format for inserting Devaddr
     Devaddr {
-        start_addr: String,
-        end_addr: String,
+        #[arg(value_parser = hex_field::validate_devaddr)]
+        start_addr: hex_field::HexDevAddr,
+        #[arg(value_parser = hex_field::validate_devaddr)]
+        end_addr: hex_field::HexDevAddr,
         /// ID of route to apply devaddr range to (same as filename)
         route: Option<String>,
         /// Add the verified devaddr entry to the routes file
@@ -49,10 +51,10 @@ pub enum Commands {
     },
     /// Output format for inserting EUI
     Eui {
-        #[arg(short, long)]
-        dev_eui: String,
-        #[arg(short, long)]
-        app_eui: String,
+        #[arg(short, long, value_parser = hex_field::validate_eui)]
+        dev_eui: hex_field::HexEui,
+        #[arg(short, long, value_parser = hex_field::validate_eui)]
+        app_eui: hex_field::HexEui,
         /// ID of route to apply eui to (same as filename)
         route: Option<String>,
         /// Add the verified eui entry to the routes file

@@ -1,11 +1,10 @@
 use anyhow::anyhow;
 use config::{Config, File};
 use dialoguer::{Confirm, Input};
-use helium_config_service_cli::hex_field::HexField;
+use helium_config_service_cli::hex_field;
 use helium_config_service_cli::Result;
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -16,8 +15,7 @@ pub struct Settings {
     /// Which OUI is being used
     pub oui: u64,
     /// NetID assigned to the OUI, or the Helium NetID
-    #[serde(with = "HexField::<6>")]
-    pub net_id: HexField<6>,
+    pub net_id: hex_field::HexNetID,
     /// Public Key of the OUI owner
     pub owner: String,
     /// URI for the configuration service
@@ -45,14 +43,8 @@ impl Settings {
 
     pub fn interactive_init(path: &Path) -> Result {
         let oui = Input::new().with_prompt("Assigned OUI").interact()?;
-        let net_id = Input::<String>::new()
+        let net_id = Input::<hex_field::HexNetID>::new()
             .with_prompt("Net ID")
-            .validate_with(|input: &String| -> std::result::Result<(), &str> {
-                match HexField::<6>::from_str(input) {
-                    Ok(_) => Ok(()),
-                    Err(_err) => Err("insert a hex number with 6 digits"),
-                }
-            })
             .interact()?;
         let owner = Input::new().with_prompt("Owner Public Key").interact()?;
         let config_host = Input::new()
@@ -76,7 +68,7 @@ impl Settings {
 
         let s = Settings {
             oui,
-            net_id: HexField::<6>::from_str(&net_id)?,
+            net_id,
             owner,
             config_host,
             out_dir,
