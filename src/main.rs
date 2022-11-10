@@ -9,6 +9,7 @@ use helium_config_service_cli::route::Route;
 use helium_config_service_cli::server::{GwmpMap, Http, Protocol, Server};
 use helium_config_service_cli::{DevaddrRange, Eui, PrettyJson, Result};
 
+use serde_json::json;
 use settings::Settings;
 use std::fs;
 use std::path::Path;
@@ -21,6 +22,18 @@ async fn main() -> Result {
 
     match cli.command {
         Commands::Init => Settings::interactive_init(&cli.config)?,
+        Commands::Info => {
+            let output = json!({
+                "oui": settings.oui,
+                "host": settings.config_host,
+                "default_max_copies": settings.max_copies,
+                "net_id": settings.net_id,
+                "keypair_location": settings.keypair,
+                "keypair_pubkey": settings.keypair()?.public_key(),
+                "owner_pubkey": settings.owner
+            });
+            println!("{}", serde_json::to_string_pretty(&output)?);
+        }
         Commands::Generate { commit } => settings.maybe_generate_keypair(commit)?,
         Commands::Devaddr {
             start_addr,
