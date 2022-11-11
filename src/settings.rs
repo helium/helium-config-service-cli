@@ -1,8 +1,7 @@
+use crate::{hex_field, Result};
 use anyhow::anyhow;
 use config::{Config, File};
 use dialoguer::{Confirm, Input};
-use helium_config_service_cli::hex_field;
-use helium_config_service_cli::Result;
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 use std::{

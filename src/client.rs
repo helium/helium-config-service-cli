@@ -1,4 +1,4 @@
-use helium_config_service_cli::{hex_field, route::Route, OrgList, OrgResponse, Result, RouteList};
+use crate::{hex_field, route::Route, OrgList, OrgResponse, Result, RouteList};
 use helium_crypto::{Keypair, Sign};
 use helium_proto::{
     services::config::{
@@ -50,7 +50,7 @@ impl OrgClient {
         };
         Ok(self
             .client
-            .create_helium(request.sign(keypair)?)
+            .create_helium(request.sign(&keypair)?)
             .await?
             .into_inner()
             .into())
@@ -72,7 +72,7 @@ impl OrgClient {
         };
         Ok(self
             .client
-            .create_roamer(request.sign(keypair)?)
+            .create_roamer(request.sign(&keypair)?)
             .await?
             .into_inner()
             .into())
@@ -95,13 +95,13 @@ impl RouteClient {
         };
         Ok(self
             .client
-            .list(request.sign(keypair)?)
+            .list(request.sign(&keypair)?)
             .await?
             .into_inner()
             .into())
     }
 
-    pub async fn get(&mut self, id: &str, owner: &str, keypair: Keypair) -> Result<Route> {
+    pub async fn get(&mut self, id: &str, owner: &str, keypair: &Keypair) -> Result<Route> {
         let request = RouteGetReqV1 {
             id: id.into(),
             owner: owner.into(),
@@ -133,7 +133,7 @@ impl RouteClient {
         };
         Ok(self
             .client
-            .create(request.sign(keypair)?)
+            .create(request.sign(&keypair)?)
             .await?
             .into_inner()
             .into())
@@ -148,7 +148,7 @@ impl RouteClient {
         };
         Ok(self
             .client
-            .delete(request.sign(keypair)?)
+            .delete(request.sign(&keypair)?)
             .await?
             .into_inner()
             .into())
@@ -163,7 +163,7 @@ impl RouteClient {
         };
         Ok(self
             .client
-            .update(request.sign(keypair)?)
+            .update(request.sign(&keypair)?)
             .await?
             .into_inner()
             .into())
@@ -175,7 +175,7 @@ fn current_timestamp() -> Result<u64> {
 }
 
 pub trait MsgSign: Message + std::clone::Clone {
-    fn sign(self, keypair: Keypair) -> Result<Self>
+    fn sign(self, keypair: &Keypair) -> Result<Self>
     where
         Self: std::marker::Sized;
 }
@@ -183,7 +183,7 @@ pub trait MsgSign: Message + std::clone::Clone {
 macro_rules! impl_sign {
     ($txn_type:ty, $( $sig: ident ),+ ) => {
         impl MsgSign for $txn_type {
-            fn sign(self, keypair: Keypair) -> Result<Self> {
+            fn sign(self, keypair: &Keypair) -> Result<Self> {
                 let mut txn = self.clone();
                 $(txn.$sig = vec![];)+
                 let buf = txn.encode_to_vec();
