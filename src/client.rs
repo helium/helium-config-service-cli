@@ -1,9 +1,10 @@
-use helium_config_service_cli::{hex_field, route::Route, Org, OrgList, Result, RouteList};
+use helium_config_service_cli::{hex_field, route::Route, OrgList, OrgResponse, Result, RouteList};
 use helium_crypto::{Keypair, Sign};
 use helium_proto::{
     services::config::{
-        org_client, route_client, OrgCreateReqV1, OrgGetReqV1, OrgListReqV1, RouteCreateReqV1,
-        RouteDeleteReqV1, RouteGetReqV1, RouteListReqV1, RouteUpdateReqV1,
+        org_client, route_client, OrgCreateHeliumReqV1, OrgCreateRoamerReqV1, OrgGetReqV1,
+        OrgListReqV1, RouteCreateReqV1, RouteDeleteReqV1, RouteGetReqV1, RouteListReqV1,
+        RouteUpdateReqV1,
     },
     Message,
 };
@@ -28,20 +29,50 @@ impl OrgClient {
         Ok(self.client.list(request).await?.into_inner().into())
     }
 
-    pub async fn get(&mut self, oui: u64) -> Result<Org> {
+    pub async fn get(&mut self, oui: u64) -> Result<OrgResponse> {
         let request = OrgGetReqV1 { oui };
         Ok(self.client.get(request).await?.into_inner().into())
     }
 
-    pub async fn create(&mut self, oui: u64, owner: &str, keypair: Keypair) -> Result<Org> {
-        let request = OrgCreateReqV1 {
-            org: Some(Org::new(oui, owner).into()),
-            signature: vec![],
+    pub async fn create_helium(
+        &mut self,
+        owner: &str,
+        payer: &str,
+        devaddr_count: u64,
+        keypair: Keypair,
+    ) -> Result<OrgResponse> {
+        let request = OrgCreateHeliumReqV1 {
+            owner: owner.into(),
+            payer: payer.into(),
+            devaddrs: devaddr_count,
             timestamp: current_timestamp()?,
+            signature: vec![],
         };
         Ok(self
             .client
-            .create(request.sign(keypair)?)
+            .create_helium(request.sign(keypair)?)
+            .await?
+            .into_inner()
+            .into())
+    }
+
+    pub async fn create_roamer(
+        &mut self,
+        owner: &str,
+        payer: &str,
+        net_id: u64,
+        keypair: Keypair,
+    ) -> Result<OrgResponse> {
+        let request = OrgCreateRoamerReqV1 {
+            owner: owner.into(),
+            payer: payer.into(),
+            net_id,
+            timestamp: current_timestamp()?,
+            signature: vec![],
+        };
+        Ok(self
+            .client
+            .create_roamer(request.sign(keypair)?)
             .await?
             .into_inner()
             .into())
@@ -164,9 +195,10 @@ macro_rules! impl_sign {
     }
 }
 
-impl_sign!(OrgCreateReqV1, signature);
 impl_sign!(RouteListReqV1, signature);
 impl_sign!(RouteGetReqV1, signature);
 impl_sign!(RouteCreateReqV1, signature);
 impl_sign!(RouteDeleteReqV1, signature);
 impl_sign!(RouteUpdateReqV1, signature);
+impl_sign!(OrgCreateHeliumReqV1, signature);
+impl_sign!(OrgCreateRoamerReqV1, signature);

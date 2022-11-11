@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand, ValueEnum};
+use clap::{Args, Parser, Subcommand, ValueEnum};
 use helium_config_service_cli::{hex_field, region::Region, server::FlowType};
 use std::path::PathBuf;
 
@@ -118,13 +118,10 @@ pub enum OrgCommands {
     /// View your Org (oui taken from default.toml)
     Get,
 
-    /// Create an organization
-    Create {
-        #[arg(long)]
-        oui: u64,
-        #[arg(long)]
-        commit: bool,
-    },
+    /// Create an OUI Organization under the Helium NetID
+    CreateHelium(OrgCreateHelium),
+    /// Create a Roaming Organization
+    CreateRoamer(OrgCreateRoamer),
 }
 
 #[derive(Debug, Subcommand)]
@@ -162,4 +159,28 @@ pub enum RouteCommands {
         #[arg(short, long)]
         commit: bool,
     },
+}
+
+#[derive(Debug, Args)]
+pub struct OrgCreateHelium {
+    #[arg(long)]
+    pub owner: String,
+    #[arg(long)]
+    pub payer: String,
+    #[arg(long)]
+    pub devaddr_count: u64,
+    #[arg(long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct OrgCreateRoamer {
+    #[arg(long)]
+    pub owner: String,
+    #[arg(long)]
+    pub payer: String,
+    #[arg(long)]
+    pub net_id: u64,
+    #[arg(long)]
+    pub commit: bool,
 }

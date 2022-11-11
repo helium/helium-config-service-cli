@@ -10,7 +10,7 @@ use std::path::Path;
 
 pub mod proto {
     pub use helium_proto::services::config::{
-        DevaddrRangeV1, EuiV1, OrgListResV1, OrgV1, RouteListResV1,
+        DevaddrRangeV1, EuiV1, OrgListResV1, OrgResV1, OrgV1, RouteListResV1,
     };
 }
 
@@ -25,6 +25,23 @@ impl<S: ?Sized + serde::Serialize> PrettyJson for S {
         let pretty = serde_json::to_string_pretty(&self)?;
         println!("{pretty}");
         Ok(())
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct OrgResponse {
+    org: Org,
+    net_id: u64,
+    devaddr_ranges: Vec<DevaddrRange>,
+}
+
+impl From<proto::OrgResV1> for OrgResponse {
+    fn from(res: proto::OrgResV1) -> Self {
+        Self {
+            org: res.org.expect("no org returned during creation").into(),
+            net_id: res.net_id,
+            devaddr_ranges: res.devaddr_ranges.into_iter().map(|d| d.into()).collect(),
+        }
     }
 }
 
