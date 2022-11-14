@@ -1,297 +1,347 @@
-use anyhow::Context;
 use clap::Parser;
+use dialoguer::Input;
 use helium_config_service_cli::{
     client,
-    cmds::{Cli as Main, Commands, OrgCommands, ProtocolType, RouteCommands},
+    cmds::{
+        AddCommands, AddDevaddr, AddEui, AddGwmpMapping, AddHttpSettings, AddProtocol, Cli,
+        Commands, CreateHelium, CreateRoaming, CreateRoute, GenerateKeypair, GenerateRoute, GetOrg,
+        GetRoute, PathBufKeypair, ProtocolType, UpdateRoute, ENV_CONFIG_HOST, ENV_KEYPAIR_BIN,
+        ENV_MAX_COPIES, ENV_NET_ID, ENV_OUI,
+    },
+    hex_field::{self},
     route::Route,
-    server::{GwmpMap, Http, Protocol, Server},
-    settings::Settings,
+    server::{Protocol, Server},
     DevaddrRange, Eui, PrettyJson, Result,
 };
-
-use serde_json::json;
-use std::fs;
-use std::path::Path;
+use rand::rngs::OsRng;
+use serde::Serialize;
+use std::{fmt::Display, fs};
 
 #[tokio::main]
 async fn main() -> Result {
-    let cli = Main::parse();
-    let settings = Settings::new(&cli.config).context("reading settings")?;
-    fs::create_dir_all(&settings.out_dir)?;
+    let cli = Cli::parse();
 
-    match cli.command {
-        Commands::Init => Settings::interactive_init(&cli.config)?,
-        Commands::Info => {
-            let output = json!({
-                "oui": settings.oui,
-                "host": settings.config_host,
-                "default_max_copies": settings.max_copies,
-                "net_id": settings.net_id,
-                "keypair_location": settings.keypair,
-                "keypair_pubkey": settings.keypair()?.public_key(),
-                "owner_pubkey": settings.owner
-            });
-            println!("{}", serde_json::to_string_pretty(&output)?);
-        }
-        Commands::Generate { commit } => settings.maybe_generate_keypair(commit)?,
-        Commands::Devaddr {
-            start_addr,
-            end_addr,
-            route,
-            commit,
-        } => {
-            let devaddr = DevaddrRange::new(start_addr, end_addr)?;
-            update_route_section(
-                &settings.out_dir,
-                route,
-                commit,
-                RouteUpdate::AddDevaddr(devaddr),
-                "devaddr_ranges",
-            )?;
-        }
-        Commands::Eui {
-            dev_eui,
-            app_eui,
-            route,
-            commit,
-        } => {
-            let eui = Eui::new(app_eui, dev_eui)?;
-            update_route_section(
-                &settings.out_dir,
-                route,
-                commit,
-                RouteUpdate::AddEui(eui),
-                "euis",
-            )?;
-        }
-        Commands::Protocol {
-            protocol: protocol_type,
-            host,
-            port,
-            route,
-            commit,
-        } => {
-            let protocol = match protocol_type {
-                ProtocolType::PacketRouter => Protocol::default_packet_router(),
-                ProtocolType::Gwmp => Protocol::default_gwmp(),
-                ProtocolType::Http => Protocol::default_http(),
-            };
-            let server = Server::new(host, port, protocol);
-            update_route_section(
-                &settings.out_dir,
-                route,
-                commit,
-                RouteUpdate::SetServer(server),
-                "server",
-            )?;
-        }
-        Commands::GwmpMapping {
-            region,
-            port,
-            route,
-            commit,
-        } => {
-            let mapping = Protocol::make_gwmp_mapping(region, port);
-            update_route_section(
-                &settings.out_dir,
-                route,
-                commit,
-                RouteUpdate::AddGwmpMapping(mapping),
-                "mapping",
-            )?;
-        }
-        Commands::Http {
-            flow_type,
-            dedupe_timeout,
-            path,
-            route,
-            commit,
-        } => {
-            let http = Protocol::make_http(flow_type, dedupe_timeout, path);
-            update_route_section(
-                &settings.out_dir,
-                route,
-                commit,
-                RouteUpdate::UpdateHttp(http),
-                "protocol",
-            )?;
-        }
-        Commands::Org { command } => {
-            let mut org_client = client::OrgClient::new(&settings.config_host).await?;
-            match command {
-                OrgCommands::List => org_client.list().await?.print_pretty_json()?,
-                OrgCommands::Get => org_client.get(settings.oui).await?.print_pretty_json()?,
-                OrgCommands::CreateHelium(args) => match args.commit {
-                    false => println!("==============: DRY RUN :=============="),
-                    true => {
-                        let response = org_client
-                            .create_helium(
-                                &args.owner,
-                                &args.payer,
-                                args.devaddr_count,
-                                settings.keypair()?,
-                            )
-                            .await?;
-                        println!("==============: CREATED :==============");
-                        response.print_pretty_json()?;
-                    }
-                },
-                OrgCommands::CreateRoamer(args) => match args.commit {
-                    false => println!("==============: DRY RUN :=============="),
-                    true => {
-                        let response = org_client
-                            .create_roamer(
-                                &args.owner,
-                                &args.payer,
-                                args.net_id,
-                                settings.keypair()?,
-                            )
-                            .await?;
-                        println!("==============: CREATED :==============");
-                        response.print_pretty_json()?;
-                    }
-                },
-            };
-        }
-        Commands::Route { command } => {
-            let mut route_client = client::RouteClient::new(&settings.config_host).await?;
-            match command {
-                RouteCommands::List { commit } => {
-                    let response = route_client
-                        .list(settings.oui, &settings.owner, settings.keypair()?)
-                        .await?;
-                    response.print_pretty_json()?;
-
-                    if commit {
-                        response.write_all(&settings.out_dir)?;
-                    }
-                }
-                RouteCommands::Get { id, commit } => {
-                    let response = route_client
-                        .get(&id, &settings.owner, &settings.keypair()?)
-                        .await?;
-                    response.print_pretty_json()?;
-
-                    if commit {
-                        response.write(&settings.out_dir)?;
-                    }
-                }
-                RouteCommands::Create { commit } => match commit {
-                    false => {
-                        println!("Doing nothing. Pass the --commit flag to create a route in the config service");
-                    }
-                    true => {
-                        let response = route_client
-                            .create(
-                                settings.net_id,
-                                settings.oui,
-                                settings.max_copies,
-                                &settings.owner,
-                                settings.keypair()?,
-                            )
-                            .await?;
-                        response.print_pretty_json()?;
-                        response.write(&settings.out_dir)?;
-                    }
-                },
-                RouteCommands::Delete { id, commit } => {
-                    let route = Route::from_id(&settings.out_dir, &id)?;
-                    match commit {
-                        false => {
-                            println!("==============: DRY RUN :==============");
-                            route.print_pretty_json()?;
-                        }
-                        true => {
-                            let removed = route_client
-                                .delete(&id, &settings.owner, settings.keypair()?)
-                                .await
-                                .and_then(|route| {
-                                    println!("==============: DELETED :==============");
-                                    route.remove(&settings.out_dir)?;
-                                    Ok(route)
-                                })?;
-                            removed.print_pretty_json()?;
-                        }
-                    }
-                }
-                RouteCommands::Push { id, commit } => {
-                    let route = Route::from_id(&settings.out_dir, &id)?;
-                    match commit {
-                        false => {
-                            println!("==============: DRY RUN :==============");
-                            route.print_pretty_json()?;
-                        }
-                        true => {
-                            let updated = route_client
-                                .push(route, &settings.owner, settings.keypair()?)
-                                .await
-                                .and_then(|updated_route| {
-                                    println!("==============: PUSHED :==============");
-                                    updated_route.write(&settings.out_dir)?;
-                                    Ok(updated_route)
-                                })?;
-                            updated.print_pretty_json()?;
-                        }
-                    }
-                }
-            }
-        }
-    };
+    handle_cli(cli).await?;
 
     Ok(())
 }
 
-fn update_route_section(
-    out_dir: &Path,
-    route: Option<String>,
-    commit: bool,
-    action: RouteUpdate,
-    section_name: &str,
-) -> Result {
-    match route {
-        Some(route_id) => {
-            let mut route = Route::from_id(out_dir, &route_id)?;
-            match action {
-                RouteUpdate::AddDevaddr(range) => route.add_devaddr(range),
-                RouteUpdate::AddEui(eui) => route.add_eui(eui),
-                RouteUpdate::SetServer(server) => route.set_server(server),
-                RouteUpdate::AddGwmpMapping(map) => route.gwmp_add_mapping(map)?,
-                RouteUpdate::UpdateHttp(http) => route.http_update(http)?,
-            };
+#[derive(Debug, Serialize)]
+enum Msg {
+    Success(String),
+    Error(String),
+}
 
-            if commit {
-                println!("{route_id} updated");
-                route.write(out_dir)?;
-            } else {
-                println!("Replace {route_id} with the following, or pass --commit:");
-                route.print_pretty_json()?;
-            }
-        }
-        None => {
-            println!("Put this into the '{section_name}' section of your file:");
-            action.print_pretty_json()?;
-        }
+impl Msg {
+    fn ok(msg: String) -> Result<Self> {
+        Ok(Self::Success(msg))
     }
-    Ok(())
+    fn err(msg: String) -> Result<Self> {
+        Ok(Self::Error(msg))
+    }
 }
 
-enum RouteUpdate {
-    AddDevaddr(DevaddrRange),
-    AddEui(Eui),
-    SetServer(Server),
-    AddGwmpMapping(GwmpMap),
-    UpdateHttp(Http),
-}
-
-impl RouteUpdate {
-    fn print_pretty_json(&self) -> Result {
+impl Display for Msg {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            RouteUpdate::AddDevaddr(d) => d.print_pretty_json()?,
-            RouteUpdate::AddEui(e) => e.print_pretty_json()?,
-            RouteUpdate::SetServer(s) => s.print_pretty_json()?,
-            RouteUpdate::AddGwmpMapping(map) => map.print_pretty_json()?,
-            RouteUpdate::UpdateHttp(http) => http.print_pretty_json()?,
+            Msg::Success(msg) => write!(f, "\u{2713} {}", msg),
+            Msg::Error(msg) => write!(f, "\u{2717} {}", msg),
         }
-        Ok(())
     }
+}
+
+async fn handle_cli(cli: Cli) -> Result {
+    let msg: Msg = match cli.command {
+        Commands::EnvInit => env_init().await,
+        // File Creation
+        Commands::GenerateKeypair(args) => generate_keypair(args),
+        Commands::GenerateRoute(args) => generate_route(args),
+        // API Commands
+        Commands::GetRoute(args) => get_route(args).await,
+        Commands::GetOrg(args) => get_org(args).await,
+        Commands::CreateRoute(args) => create_route(args).await,
+        Commands::CreateHelium(args) => create_helium_org(args).await,
+        Commands::CreateRoaming(args) => create_roaming_org(args).await,
+        Commands::UpdateRoute(args) => update_route(args).await,
+        // File updating commands
+        Commands::Add { command } => match command {
+            AddCommands::Devaddr(args) => add_devaddr(args).await,
+            AddCommands::Eui(args) => add_eui(args).await,
+            AddCommands::Protocol(args) => add_protocol(args).await,
+            AddCommands::GwmpMapping(args) => add_gwmp_mapping(args).await,
+            AddCommands::Http(args) => add_http_settings(args).await,
+        },
+    }?;
+
+    println!("{msg}");
+    Ok(())
+}
+
+async fn env_init() -> Result<Msg> {
+    println!("----- Leave blank to ignore...");
+    let config_host: String = Input::new()
+        .with_prompt("Config Service Host")
+        .allow_empty(true)
+        .interact()?;
+    let keypair_path: String = Input::<String>::new()
+        .with_prompt("Keypair Location")
+        .with_initial_text("./keypair.bin")
+        .allow_empty(true)
+        .interact()?
+        .into();
+    println!("----- Enter all zeros to ignore...");
+    let net_id = Input::<hex_field::HexNetID>::new()
+        .with_prompt("Net ID")
+        .with_initial_text("000000")
+        .interact()?;
+    println!("----- Enter zero to ignore...");
+    let oui: u64 = Input::new()
+        .with_prompt("Assigned OUI")
+        .with_initial_text("0")
+        .allow_empty(true)
+        .interact()?;
+    let max_copies: u32 = Input::new()
+        .with_prompt("Default Max Copies")
+        .allow_empty(true)
+        .with_initial_text("15")
+        .interact()?;
+
+    let mut report = vec![
+        "".to_string(),
+        "Put these in your environment".to_string(),
+        "------------------------------------".to_string(),
+    ];
+    if !config_host.is_empty() {
+        report.push(format!("{ENV_CONFIG_HOST}={config_host}"));
+    }
+    if !keypair_path.is_empty() {
+        report.push(format!("{ENV_KEYPAIR_BIN}={keypair_path}"))
+    }
+    if net_id != hex_field::net_id(0) {
+        report.push(format!("{ENV_NET_ID}={net_id}"));
+    }
+    if oui != 0 {
+        report.push(format!("{ENV_OUI}={oui}"));
+    }
+    if max_copies != 0 {
+        report.push(format!("{ENV_MAX_COPIES}={max_copies}"));
+    }
+
+    Msg::ok(report.join("\n"))
+}
+
+async fn add_devaddr(args: AddDevaddr) -> Result<Msg> {
+    let devaddr = DevaddrRange::new(args.start_addr, args.end_addr)?;
+    if !args.commit {
+        return Msg::ok(format!(
+            "valid range, inset into `devaddr_ranges` section\n{}",
+            devaddr.pretty_json()?
+        ));
+    }
+
+    let mut route = Route::from_file(&args.route_file)?;
+    route.add_devaddr(devaddr);
+    route.write(&args.route_file)?;
+    Msg::ok(format!("{} written", args.route_file.display()))
+}
+
+async fn add_eui(args: AddEui) -> Result<Msg> {
+    let eui = Eui::new(args.app_eui, args.dev_eui)?;
+    if !args.commit {
+        return Msg::ok(format!(
+            "valid eui, insert into `euis` section\n{}",
+            eui.pretty_json()?
+        ));
+    }
+
+    let mut route = Route::from_file(&args.route_file)?;
+    route.add_eui(eui);
+    route.write(&args.route_file)?;
+    Msg::ok(format!("{} written", args.route_file.display()))
+}
+
+async fn add_protocol(args: AddProtocol) -> Result<Msg> {
+    let protocol = match args.protocol {
+        ProtocolType::PacketRouter => Protocol::default_packet_router(),
+        ProtocolType::Gwmp => Protocol::default_gwmp(),
+        ProtocolType::Http => Protocol::default_http(),
+    };
+    let server = Server::new(args.host, args.port, protocol);
+    if !args.commit {
+        return Msg::ok(format!(
+            "valid protocol, insert into `server` section\n{}",
+            server.pretty_json()?
+        ));
+    }
+
+    let mut route = Route::from_file(&args.route_file)?;
+    route.set_server(server);
+    route.write(&args.route_file)?;
+    Msg::ok(format!("{} written", args.route_file.display()))
+}
+
+async fn add_gwmp_mapping(args: AddGwmpMapping) -> Result<Msg> {
+    let mapping = Protocol::make_gwmp_mapping(args.region, args.port);
+
+    if !args.commit {
+        return Msg::ok(format!(
+            "valid mapping, insert into `mapping` section\n{}",
+            mapping.pretty_json()?
+        ));
+    }
+
+    let mut route = Route::from_file(&args.route_file)?;
+    route.gwmp_add_mapping(mapping)?;
+    route.write(&args.route_file)?;
+    Msg::ok(format!("{} written", args.route_file.display()))
+}
+
+async fn add_http_settings(args: AddHttpSettings) -> Result<Msg> {
+    let http = Protocol::make_http(args.flow_type, args.dedupe_timeout, args.path);
+
+    if !args.commit {
+        return Msg::ok(format!("valid mapping\n{}", http.pretty_json()?));
+    }
+
+    let mut route = Route::from_file(&args.route_file)?;
+    route.http_update(http)?;
+    route.write(&args.route_file)?;
+    Msg::ok(format!("{} written", args.route_file.display()))
+}
+
+fn generate_keypair(args: GenerateKeypair) -> Result<Msg> {
+    let key = helium_crypto::Keypair::generate(
+        helium_crypto::KeyTag {
+            network: helium_crypto::Network::MainNet,
+            key_type: helium_crypto::KeyType::Ed25519,
+        },
+        &mut OsRng,
+    );
+    if let Some(parent) = args.out_file.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::write(&args.out_file, &key.to_vec())?;
+    Msg::ok(format!(
+        "New Keypair created and written to {:?}",
+        args.out_file.display()
+    ))
+}
+
+fn generate_route(args: GenerateRoute) -> Result<Msg> {
+    if args.out_file.exists() && !args.commit {
+        return Msg::err(format!(
+            "{} exists, pass `--commit` to override",
+            args.out_file.display()
+        ));
+    }
+
+    let route = Route::new(args.net_id, args.oui, args.max_copies);
+    route.write(&args.out_file)?;
+
+    Msg::ok(format!("{} created", args.out_file.display()))
+}
+
+async fn get_route(args: GetRoute) -> Result<Msg> {
+    let mut client = client::RouteClient::new(&args.config_host).await?;
+    let route = client
+        .get(&args.route_id, &args.owner, &args.keypair.to_keypair()?)
+        .await?;
+
+    if args.commit {
+        route.write(&args.route_out_dir)?;
+        return Msg::ok(format!(
+            "{}/{} written",
+            &args.route_out_dir.display(),
+            route.filename()
+        ));
+    }
+    Msg::ok(route.pretty_json()?)
+}
+
+async fn get_org(args: GetOrg) -> Result<Msg> {
+    let mut client = client::OrgClient::new(&args.config_host).await?;
+    let org = client.get(args.oui).await?;
+
+    Msg::ok(org.pretty_json()?)
+}
+
+async fn create_route(args: CreateRoute) -> Result<Msg> {
+    let route = Route::from_file(&args.route_file)?;
+    if args.commit {
+        let mut client = client::RouteClient::new(&args.config_host).await?;
+        let created_route = client
+            .create(
+                route.net_id,
+                route.oui,
+                route.max_copies,
+                &args.owner,
+                args.keypair.to_keypair()?,
+            )
+            .await?;
+        created_route.write(&args.route_out_dir)?;
+
+        return Msg::ok(format!(
+            "{}/{} written",
+            &args.route_out_dir.display(),
+            created_route.filename()
+        ));
+    }
+    Msg::ok(format!(
+        "{} is valid, pass `--commit` to create",
+        &args.route_file.display()
+    ))
+}
+
+async fn update_route(args: UpdateRoute) -> Result<Msg> {
+    let route = Route::from_file(&args.route_file)?;
+    if args.commit {
+        let mut client = client::RouteClient::new(&args.config_host).await?;
+        let updated_route = client
+            .push(route, &args.owner, args.keypair.to_keypair()?)
+            .await?;
+        updated_route.write(args.route_file.as_path())?;
+        return Msg::ok(format!("{} written", &args.route_file.display()));
+    }
+    Msg::ok(format!(
+        "{} is valid, pass `--commit` to update",
+        &args.route_file.display()
+    ))
+}
+
+async fn create_helium_org(args: CreateHelium) -> Result<Msg> {
+    if args.commit {
+        let mut client = client::OrgClient::new(&args.config_host).await?;
+        let org = client
+            .create_helium(
+                &args.owner,
+                &args.payer,
+                args.devaddr_count,
+                args.keypair.to_keypair()?,
+            )
+            .await?;
+        return Msg::ok(format!(
+            "Helium Organization Created: \n{}",
+            org.pretty_json()?
+        ));
+    }
+    Msg::ok("pass `--commit` to create Helium organization".to_string())
+}
+
+async fn create_roaming_org(args: CreateRoaming) -> Result<Msg> {
+    if args.commit {
+        let mut client = client::OrgClient::new(&args.config_host).await?;
+        let org = client
+            .create_roamer(
+                &args.owner,
+                &args.payer,
+                args.net_id.into(),
+                args.keypair.to_keypair()?,
+            )
+            .await?;
+        return Msg::ok(format!(
+            "Roaming Organization Created: \n{}",
+            org.pretty_json()?
+        ));
+    }
+    Msg::ok("pass `--commit` to create Roaming organization".to_string())
 }

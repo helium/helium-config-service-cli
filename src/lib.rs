@@ -1,6 +1,6 @@
 pub mod client;
 pub mod cmds;
-pub mod cmds_alt;
+pub mod cmds_fallback;
 pub mod hex_field;
 pub mod region;
 pub mod route;
