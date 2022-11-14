@@ -1,5 +1,5 @@
 use crate::{hex_field, route::Route, OrgList, OrgResponse, Result, RouteList};
-use helium_crypto::{Keypair, Sign};
+use helium_crypto::{Keypair, PublicKey, Sign};
 use helium_proto::{
     services::config::{
         org_client, route_client, OrgCreateHeliumReqV1, OrgCreateRoamerReqV1, OrgGetReqV1,
@@ -36,8 +36,8 @@ impl OrgClient {
 
     pub async fn create_helium(
         &mut self,
-        owner: &str,
-        payer: &str,
+        owner: &PublicKey,
+        payer: &PublicKey,
         devaddr_count: u64,
         keypair: Keypair,
     ) -> Result<OrgResponse> {
@@ -58,8 +58,8 @@ impl OrgClient {
 
     pub async fn create_roamer(
         &mut self,
-        owner: &str,
-        payer: &str,
+        owner: &PublicKey,
+        payer: &PublicKey,
         net_id: u64,
         keypair: Keypair,
     ) -> Result<OrgResponse> {
@@ -86,7 +86,12 @@ impl RouteClient {
         })
     }
 
-    pub async fn list(&mut self, oui: u64, owner: &str, keypair: Keypair) -> Result<RouteList> {
+    pub async fn list(
+        &mut self,
+        oui: u64,
+        owner: &PublicKey,
+        keypair: Keypair,
+    ) -> Result<RouteList> {
         let request = RouteListReqV1 {
             oui,
             owner: owner.into(),
@@ -101,7 +106,7 @@ impl RouteClient {
             .into())
     }
 
-    pub async fn get(&mut self, id: &str, owner: &str, keypair: &Keypair) -> Result<Route> {
+    pub async fn get(&mut self, id: &str, owner: &PublicKey, keypair: &Keypair) -> Result<Route> {
         let request = RouteGetReqV1 {
             id: id.into(),
             owner: owner.into(),
@@ -121,7 +126,7 @@ impl RouteClient {
         net_id: hex_field::HexNetID,
         oui: u64,
         max_copies: u32,
-        owner: &str,
+        owner: &PublicKey,
         keypair: Keypair,
     ) -> Result<Route> {
         let request = RouteCreateReqV1 {
@@ -139,7 +144,7 @@ impl RouteClient {
             .into())
     }
 
-    pub async fn delete(&mut self, id: &str, owner: &str, keypair: Keypair) -> Result<Route> {
+    pub async fn delete(&mut self, id: &str, owner: &PublicKey, keypair: Keypair) -> Result<Route> {
         let request = RouteDeleteReqV1 {
             id: id.into(),
             owner: owner.into(),
@@ -154,7 +159,12 @@ impl RouteClient {
             .into())
     }
 
-    pub async fn push(&mut self, route: Route, owner: &str, keypair: Keypair) -> Result<Route> {
+    pub async fn push(
+        &mut self,
+        route: Route,
+        owner: &PublicKey,
+        keypair: Keypair,
+    ) -> Result<Route> {
         let request = RouteUpdateReqV1 {
             route: Some(route.inc_nonce().into()),
             owner: owner.into(),

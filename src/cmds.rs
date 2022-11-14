@@ -5,6 +5,7 @@ use crate::{
     Result,
 };
 use clap::{Args, Parser, Subcommand, ValueEnum};
+use helium_crypto::PublicKey;
 use std::path::PathBuf;
 
 pub const ENV_CONFIG_HOST: &str = "HELIUM_CONFIG_HOST";
@@ -144,7 +145,7 @@ pub struct GetRoute {
     #[arg(short, long)]
     pub route_id: String,
     #[arg(short, long)]
-    pub owner: String,
+    pub owner: PublicKey,
     #[arg(from_global)]
     pub keypair: PathBuf,
     #[arg(long, default_value = "./routes")]
@@ -168,7 +169,7 @@ pub struct CreateRoute {
     #[arg(long)]
     pub route_file: PathBuf,
     #[arg(long)]
-    pub owner: String,
+    pub owner: PublicKey,
     #[arg(from_global)]
     pub keypair: PathBuf,
     #[arg(from_global)]
@@ -184,7 +185,7 @@ pub struct UpdateRoute {
     #[arg(long)]
     pub route_file: PathBuf,
     #[arg(long)]
-    pub owner: String,
+    pub owner: PublicKey,
     #[arg(from_global)]
     pub keypair: PathBuf,
     #[arg(from_global)]
@@ -196,10 +197,10 @@ pub struct UpdateRoute {
 #[derive(Debug, Args)]
 pub struct CreateHelium {
     #[arg(long)]
-    pub owner: String,
+    pub owner: PublicKey,
     #[arg(long)]
-    pub payer: String,
-    #[arg(long, value_parser= 0..=8)]
+    pub payer: PublicKey,
+    #[arg(long)]
     pub devaddr_count: u64,
     #[arg(from_global)]
     pub keypair: PathBuf,
@@ -212,9 +213,9 @@ pub struct CreateHelium {
 #[derive(Debug, Args)]
 pub struct CreateRoaming {
     #[arg(long)]
-    pub owner: String,
+    pub owner: PublicKey,
     #[arg(long)]
-    pub payer: String,
+    pub payer: PublicKey,
     #[arg(long)]
     pub net_id: HexNetID,
     #[arg(from_global)]

@@ -1,5 +1,6 @@
 use crate::{hex_field, region::Region, server::FlowType};
 use clap::{Args, Parser, Subcommand, ValueEnum};
+use helium_crypto::PublicKey;
 use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
@@ -164,9 +165,9 @@ pub enum RouteCommands {
 #[derive(Debug, Args)]
 pub struct OrgCreateHelium {
     #[arg(long)]
-    pub owner: String,
+    pub owner: PublicKey,
     #[arg(long)]
-    pub payer: String,
+    pub payer: PublicKey,
     #[arg(long)]
     pub devaddr_count: u64,
     #[arg(long)]
@@ -176,9 +177,9 @@ pub struct OrgCreateHelium {
 #[derive(Debug, Args)]
 pub struct OrgCreateRoamer {
     #[arg(long)]
-    pub owner: String,
+    pub owner: PublicKey,
     #[arg(long)]
-    pub payer: String,
+    pub payer: PublicKey,
     #[arg(long)]
     pub net_id: u64,
     #[arg(long)]
