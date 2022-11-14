@@ -122,29 +122,36 @@ async fn main() -> Result {
             match command {
                 OrgCommands::List => org_client.list().await?.print_pretty_json()?,
                 OrgCommands::Get => org_client.get(settings.oui).await?.print_pretty_json()?,
-                OrgCommands::Create { oui, commit } => {
-                    let new_settings = settings.set_oui(oui);
-                    let dir = cli.config.parent().unwrap_or_else(|| Path::new("./config"));
-
-                    match commit {
-                        false => {
-                            println!("==============: DRY RUN :==============");
-                            new_settings.maybe_write(new_settings.filename(dir).as_path())?
-                        }
-                        true => {
-                            let response = org_client
-                                .create(oui, &new_settings.owner, new_settings.keypair()?)
-                                .await?;
-                            println!("==============: CREATED :==============");
-                            response.print_pretty_json()?;
-                            new_settings.write(new_settings.filename(dir).as_path())?;
-                            println!(
-                                "pass arguments `--config {}` to operate the CLI as this OUI",
-                                new_settings.filename(dir).display()
+                OrgCommands::CreateHelium(args) => match args.commit {
+                    false => println!("==============: DRY RUN :=============="),
+                    true => {
+                        let response = org_client
+                            .create_helium(
+                                &args.owner,
+                                &args.payer,
+                                args.devaddr_count,
+                                settings.keypair()?,
                             )
-                        }
+                            .await?;
+                        println!("==============: CREATED :==============");
+                        response.print_pretty_json()?;
                     }
-                }
+                },
+                OrgCommands::CreateRoamer(args) => match args.commit {
+                    false => println!("==============: DRY RUN :=============="),
+                    true => {
+                        let response = org_client
+                            .create_roamer(
+                                &args.owner,
+                                &args.payer,
+                                args.net_id,
+                                settings.keypair()?,
+                            )
+                            .await?;
+                        println!("==============: CREATED :==============");
+                        response.print_pretty_json()?;
+                    }
+                },
             };
         }
         Commands::Route { command } => {
