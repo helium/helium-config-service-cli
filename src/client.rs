@@ -1,5 +1,5 @@
-use helium_config_service_cli::{hex_field, route::Route, OrgList, OrgResponse, Result, RouteList};
-use helium_crypto::{Keypair, Sign};
+use crate::{hex_field, route::Route, OrgList, OrgResponse, Result, RouteList};
+use helium_crypto::{Keypair, PublicKey, Sign};
 use helium_proto::{
     services::config::{
         org_client, route_client, OrgCreateHeliumReqV1, OrgCreateRoamerReqV1, OrgGetReqV1,
@@ -36,8 +36,8 @@ impl OrgClient {
 
     pub async fn create_helium(
         &mut self,
-        owner: &str,
-        payer: &str,
+        owner: &PublicKey,
+        payer: &PublicKey,
         devaddr_count: u64,
         keypair: Keypair,
     ) -> Result<OrgResponse> {
@@ -50,7 +50,7 @@ impl OrgClient {
         };
         Ok(self
             .client
-            .create_helium(request.sign(keypair)?)
+            .create_helium(request.sign(&keypair)?)
             .await?
             .into_inner()
             .into())
@@ -58,8 +58,8 @@ impl OrgClient {
 
     pub async fn create_roamer(
         &mut self,
-        owner: &str,
-        payer: &str,
+        owner: &PublicKey,
+        payer: &PublicKey,
         net_id: u64,
         keypair: Keypair,
     ) -> Result<OrgResponse> {
@@ -72,7 +72,7 @@ impl OrgClient {
         };
         Ok(self
             .client
-            .create_roamer(request.sign(keypair)?)
+            .create_roamer(request.sign(&keypair)?)
             .await?
             .into_inner()
             .into())
@@ -86,7 +86,12 @@ impl RouteClient {
         })
     }
 
-    pub async fn list(&mut self, oui: u64, owner: &str, keypair: Keypair) -> Result<RouteList> {
+    pub async fn list(
+        &mut self,
+        oui: u64,
+        owner: &PublicKey,
+        keypair: Keypair,
+    ) -> Result<RouteList> {
         let request = RouteListReqV1 {
             oui,
             owner: owner.into(),
@@ -95,13 +100,13 @@ impl RouteClient {
         };
         Ok(self
             .client
-            .list(request.sign(keypair)?)
+            .list(request.sign(&keypair)?)
             .await?
             .into_inner()
             .into())
     }
 
-    pub async fn get(&mut self, id: &str, owner: &str, keypair: Keypair) -> Result<Route> {
+    pub async fn get(&mut self, id: &str, owner: &PublicKey, keypair: &Keypair) -> Result<Route> {
         let request = RouteGetReqV1 {
             id: id.into(),
             owner: owner.into(),
@@ -121,7 +126,7 @@ impl RouteClient {
         net_id: hex_field::HexNetID,
         oui: u64,
         max_copies: u32,
-        owner: &str,
+        owner: &PublicKey,
         keypair: Keypair,
     ) -> Result<Route> {
         let request = RouteCreateReqV1 {
@@ -133,13 +138,13 @@ impl RouteClient {
         };
         Ok(self
             .client
-            .create(request.sign(keypair)?)
+            .create(request.sign(&keypair)?)
             .await?
             .into_inner()
             .into())
     }
 
-    pub async fn delete(&mut self, id: &str, owner: &str, keypair: Keypair) -> Result<Route> {
+    pub async fn delete(&mut self, id: &str, owner: &PublicKey, keypair: Keypair) -> Result<Route> {
         let request = RouteDeleteReqV1 {
             id: id.into(),
             owner: owner.into(),
@@ -148,13 +153,18 @@ impl RouteClient {
         };
         Ok(self
             .client
-            .delete(request.sign(keypair)?)
+            .delete(request.sign(&keypair)?)
             .await?
             .into_inner()
             .into())
     }
 
-    pub async fn push(&mut self, route: Route, owner: &str, keypair: Keypair) -> Result<Route> {
+    pub async fn push(
+        &mut self,
+        route: Route,
+        owner: &PublicKey,
+        keypair: Keypair,
+    ) -> Result<Route> {
         let request = RouteUpdateReqV1 {
             route: Some(route.inc_nonce().into()),
             owner: owner.into(),
@@ -163,7 +173,7 @@ impl RouteClient {
         };
         Ok(self
             .client
-            .update(request.sign(keypair)?)
+            .update(request.sign(&keypair)?)
             .await?
             .into_inner()
             .into())
@@ -175,7 +185,7 @@ fn current_timestamp() -> Result<u64> {
 }
 
 pub trait MsgSign: Message + std::clone::Clone {
-    fn sign(self, keypair: Keypair) -> Result<Self>
+    fn sign(self, keypair: &Keypair) -> Result<Self>
     where
         Self: std::marker::Sized;
 }
@@ -183,7 +193,7 @@ pub trait MsgSign: Message + std::clone::Clone {
 macro_rules! impl_sign {
     ($txn_type:ty, $( $sig: ident ),+ ) => {
         impl MsgSign for $txn_type {
-            fn sign(self, keypair: Keypair) -> Result<Self> {
+            fn sign(self, keypair: &Keypair) -> Result<Self> {
                 let mut txn = self.clone();
                 $(txn.$sig = vec![];)+
                 let buf = txn.encode_to_vec();

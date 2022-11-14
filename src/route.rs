@@ -6,17 +6,20 @@ use crate::{
 use anyhow::Context;
 use helium_proto::services::config::RouteV1 as ProtoRoute;
 use serde::{Deserialize, Serialize};
-use std::{fs, path::Path};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Route {
     id: String,
-    net_id: hex_field::HexNetID,
+    pub net_id: hex_field::HexNetID,
     pub devaddr_ranges: Vec<DevaddrRange>,
     pub euis: Vec<Eui>,
-    oui: u64,
+    pub oui: u64,
     pub server: Server,
-    max_copies: u32,
+    pub max_copies: u32,
     nonce: u32,
 }
 
@@ -33,27 +36,38 @@ impl Route {
             nonce: 1,
         }
     }
-    pub fn from_file<S>(dir: &Path, id: S) -> Result<Self>
+    pub fn from_file(path: &PathBuf) -> Result<Self> {
+        let data = fs::read_to_string(&path).context("reading route file")?;
+        let listing: Self = serde_json::from_str(&data)
+            .context(format!("parsing route file {}", path.display()))?;
+        Ok(listing)
+    }
+    pub fn from_id<S>(dir: &Path, id: S) -> Result<Self>
     where
         S: AsRef<Path>,
     {
         let filename = dir.join(id).with_extension("json");
-        let data = fs::read_to_string(&filename)
-            .context("reading route file")
-            .expect("Could not read file");
-        let listing: Self = serde_json::from_str(&data)
-            .context(format!("parsing route file {}", filename.display()))?;
-        Ok(listing)
+        Self::from_file(&filename)
     }
 
     pub fn filename(&self) -> String {
         format!("{}.json", self.id.clone())
     }
 
-    pub fn write(&self, out_dir: &Path) -> Result {
+    pub fn write(&self, out: &Path) -> Result {
+        // If a directory is passed in, append the filename before continuing
+        let out = if out.is_dir() {
+            out.join(self.filename())
+        } else {
+            out.into()
+        };
+
+        if let Some(parent) = out.parent() {
+            fs::create_dir_all(parent).context("ensuring parent dir exists")?;
+        }
+
         let data = serde_json::to_string_pretty(&self)?;
-        let filename = out_dir.join(self.filename());
-        fs::write(filename, data).expect("unable to write file");
+        fs::write(out, data).context("writing file")?;
         Ok(())
     }
 

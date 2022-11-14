@@ -1,8 +1,8 @@
+use crate::{hex_field, Result};
 use anyhow::anyhow;
 use config::{Config, File};
 use dialoguer::{Confirm, Input};
-use helium_config_service_cli::hex_field;
-use helium_config_service_cli::Result;
+use helium_crypto::PublicKey;
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -17,7 +17,7 @@ pub struct Settings {
     /// NetID assigned to the OUI, or the Helium NetID
     pub net_id: hex_field::HexNetID,
     /// Public Key of the OUI owner
-    pub owner: String,
+    pub owner: PublicKey,
     /// URI for the configuration service
     pub config_host: String,
     /// Destination for routing files

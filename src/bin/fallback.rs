@@ -1,16 +1,15 @@
-mod client;
-mod cmds;
-mod settings;
-
 use anyhow::Context;
 use clap::Parser;
-use cmds::{Cli, Commands, OrgCommands, ProtocolType, RouteCommands};
-use helium_config_service_cli::route::Route;
-use helium_config_service_cli::server::{GwmpMap, Http, Protocol, Server};
-use helium_config_service_cli::{DevaddrRange, Eui, PrettyJson, Result};
+use helium_config_service_cli::{
+    client,
+    cmds_fallback::{Cli, Commands, OrgCommands, ProtocolType, RouteCommands},
+    route::Route,
+    server::{GwmpMap, Http, Protocol, Server},
+    settings::Settings,
+    DevaddrRange, Eui, PrettyJson, Result,
+};
 
 use serde_json::json;
-use settings::Settings;
 use std::fs;
 use std::path::Path;
 
@@ -169,7 +168,7 @@ async fn main() -> Result {
                 }
                 RouteCommands::Get { id, commit } => {
                     let response = route_client
-                        .get(&id, &settings.owner, settings.keypair()?)
+                        .get(&id, &settings.owner, &settings.keypair()?)
                         .await?;
                     response.print_pretty_json()?;
 
@@ -196,7 +195,7 @@ async fn main() -> Result {
                     }
                 },
                 RouteCommands::Delete { id, commit } => {
-                    let route = Route::from_file(&settings.out_dir, &id)?;
+                    let route = Route::from_id(&settings.out_dir, &id)?;
                     match commit {
                         false => {
                             println!("==============: DRY RUN :==============");
@@ -216,7 +215,7 @@ async fn main() -> Result {
                     }
                 }
                 RouteCommands::Push { id, commit } => {
-                    let route = Route::from_file(&settings.out_dir, &id)?;
+                    let route = Route::from_id(&settings.out_dir, &id)?;
                     match commit {
                         false => {
                             println!("==============: DRY RUN :==============");
@@ -251,7 +250,7 @@ fn update_route_section(
 ) -> Result {
     match route {
         Some(route_id) => {
-            let mut route = Route::from_file(out_dir, &route_id)?;
+            let mut route = Route::from_id(out_dir, &route_id)?;
             match action {
                 RouteUpdate::AddDevaddr(range) => route.add_devaddr(range),
                 RouteUpdate::AddEui(eui) => route.add_eui(eui),

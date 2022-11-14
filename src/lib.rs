@@ -1,7 +1,11 @@
+pub mod client;
+pub mod cmds;
+pub mod cmds_fallback;
 pub mod hex_field;
 pub mod region;
 pub mod route;
 pub mod server;
+pub mod settings;
 
 use anyhow::Error;
 use route::Route;
@@ -18,13 +22,17 @@ pub type Result<T = (), E = Error> = anyhow::Result<T, E>;
 
 pub trait PrettyJson {
     fn print_pretty_json(&self) -> Result;
+    fn pretty_json(&self) -> Result<String>;
 }
 
 impl<S: ?Sized + serde::Serialize> PrettyJson for S {
     fn print_pretty_json(&self) -> Result {
-        let pretty = serde_json::to_string_pretty(&self)?;
-        println!("{pretty}");
+        println!("{}", self.pretty_json()?);
         Ok(())
+    }
+
+    fn pretty_json(&self) -> Result<String> {
+        serde_json::to_string_pretty(&self).map_err(|e| e.into())
     }
 }
 
