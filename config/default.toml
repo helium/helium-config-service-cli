@@ -1,6 +1,0 @@
-oui = 0
-net_id = "000000"
-owner = "pubkey"
-config_host = "http://xx.xx.xx.xx:50051"
-out_dir = "./routes"
-max_copies = 42

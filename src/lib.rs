@@ -1,11 +1,9 @@
 pub mod client;
 pub mod cmds;
-pub mod cmds_fallback;
 pub mod hex_field;
 pub mod region;
 pub mod route;
 pub mod server;
-pub mod settings;
 
 use anyhow::{anyhow, Context, Error};
 use helium_crypto::PublicKey;
@@ -82,7 +80,7 @@ impl RouteList {
         Ok(())
     }
 
-    pub fn len(&self) -> usize {
+    pub fn count(&self) -> usize {
         self.routes.len()
     }
 }

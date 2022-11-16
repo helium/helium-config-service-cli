@@ -4,7 +4,7 @@ use crate::{
     server::FlowType,
     Result,
 };
-use clap::{Args, Parser, Subcommand, ValueEnum};
+use clap::{Args, Parser, Subcommand};
 use helium_crypto::PublicKey;
 use std::path::PathBuf;
 
@@ -75,19 +75,32 @@ pub enum Commands {
 
 #[derive(Debug, Subcommand)]
 pub enum AddCommands {
+    /// Add Protocol to route file (default: ./new_route.json)
+    Protocol {
+        #[command(subcommand)]
+        command: ProtocolCommands,
+    },
     /// Add Devaddr Range to route file (default: ./new_route.json)
     Devaddr(AddDevaddr),
     /// Add EUI to route file (default: ./new_route.json)
     Eui(AddEui),
-    /// Add Protocol to route file (default: ./new_route.json)
-    Protocol(AddProtocol),
-
     // Protocol Specific commands
     //
-    /// Map a LoRa regiont to a Port
+    /// Map a LoRa region to a Port
     GwmpMapping(AddGwmpMapping),
-    /// Update the details of an Http Route
+}
+
+#[derive(Debug, Subcommand)]
+pub enum ProtocolCommands {
+    /// Add the Http Protocol to a Route
     Http(AddHttpSettings),
+    /// Add the Gwmp Protocol to a Route
+    ///
+    /// Optionally setting a single Region:Port mapping.
+    /// For additional port mapping, use the `add gwmp-maping` command.
+    Gwmp(AddGwmpSettings),
+    /// Add the Packet Router Protocol to a Route
+    PacketRouter(AddPacketRouterSettings),
 }
 
 #[derive(Debug, Args)]
@@ -104,7 +117,31 @@ pub struct AddGwmpMapping {
 }
 
 #[derive(Debug, Args)]
+pub struct AddGwmpSettings {
+    #[arg(long)]
+    pub host: String,
+    #[arg(long)]
+    pub port: u32,
+
+    #[arg(value_enum)]
+    pub region: Option<Region>,
+    pub region_port: Option<u32>,
+
+    /// Path of route to apply http settings to
+    #[arg(long, default_value = "./new_route.json")]
+    pub route_file: PathBuf,
+    /// Write the protocol into the route file
+    #[arg(long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
 pub struct AddHttpSettings {
+    #[arg(long)]
+    pub host: String,
+    #[arg(long)]
+    pub port: u32,
+
     #[arg(short, long, value_enum)]
     pub flow_type: FlowType,
     #[arg(short, long, default_value = "250")]
@@ -114,6 +151,21 @@ pub struct AddHttpSettings {
     /// The rest will be taken from the Server {host}:{port}
     #[arg(short, long)]
     pub path: String,
+    /// Path of route to apply http settings to
+    #[arg(long, default_value = "./new_route.json")]
+    pub route_file: PathBuf,
+    /// Write the protocol into the route file
+    #[arg(long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct AddPacketRouterSettings {
+    #[arg(long)]
+    pub host: String,
+    #[arg(long)]
+    pub port: u32,
+
     /// Path of route to apply http settings to
     #[arg(long, default_value = "./new_route.json")]
     pub route_file: PathBuf,
@@ -282,30 +334,6 @@ pub struct AddEui {
     /// Add the verified eui entry to the routes file
     #[arg(short, long)]
     pub commit: bool,
-}
-
-#[derive(Debug, Args)]
-pub struct AddProtocol {
-    /// Protocol to route packets over
-    #[arg(value_enum)]
-    pub protocol: ProtocolType,
-    #[arg(long, default_value = "localhost")]
-    pub host: String,
-    #[arg(long, default_value = "8080")]
-    pub port: u32,
-    /// Path of route to apply devaddr range to
-    #[arg(long, default_value = "./new_route.json")]
-    pub route_file: PathBuf,
-    /// Add the verified eui entry to the routes file
-    #[arg(short, long)]
-    pub commit: bool,
-}
-
-#[derive(ValueEnum, Clone, Debug)]
-pub enum ProtocolType {
-    PacketRouter,
-    Gwmp,
-    Http,
 }
 
 pub trait PathBufKeypair {

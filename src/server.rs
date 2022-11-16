@@ -45,7 +45,7 @@ impl Server {
     }
 }
 
-#[derive(Serialize, Debug, Deserialize, PartialEq, Eq)]
+#[derive(Serialize, Debug, Deserialize, Clone, PartialEq, Eq)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Protocol {
     Gwmp(Gwmp),
@@ -54,15 +54,15 @@ pub enum Protocol {
 }
 
 impl Protocol {
-    pub fn default_gwmp() -> Protocol {
+    pub fn default_gwmp() -> Self {
         Protocol::Gwmp(Gwmp::default())
     }
 
-    pub fn default_http() -> Protocol {
+    pub fn default_http() -> Self {
         Protocol::Http(Http::default())
     }
 
-    pub fn default_packet_router() -> Protocol {
+    pub fn default_packet_router() -> Self {
         Protocol::PacketRouter
     }
 
@@ -70,12 +70,18 @@ impl Protocol {
         BTreeMap::from([(region, port)])
     }
 
-    pub fn make_http(flow_type: FlowType, dedupe_timeout: u32, path: String) -> Http {
-        Http {
+    pub fn make_http(flow_type: FlowType, dedupe_timeout: u32, path: String) -> Self {
+        Self::Http(Http {
             flow_type,
             dedupe_timeout,
             path,
-        }
+        })
+    }
+
+    pub fn make_gwmp(region: Region, port: Port) -> Result<Self> {
+        let mut gwmp = Self::default_gwmp();
+        gwmp.gwmp_add_mapping(Self::make_gwmp_mapping(region, port))?;
+        Ok(gwmp)
     }
 
     fn gwmp_add_mapping(&mut self, map: GwmpMap) -> Result {
@@ -101,12 +107,12 @@ impl Protocol {
     }
 }
 
-#[derive(Serialize, Debug, Deserialize, PartialEq, Eq, Default)]
+#[derive(Serialize, Debug, Deserialize, Clone, PartialEq, Eq, Default)]
 pub struct Gwmp {
     pub mapping: GwmpMap,
 }
 
-#[derive(Serialize, Debug, Deserialize, PartialEq, Eq, Default)]
+#[derive(Serialize, Debug, Deserialize, Clone, PartialEq, Eq, Default)]
 pub struct Http {
     flow_type: FlowType,
     dedupe_timeout: u32,
