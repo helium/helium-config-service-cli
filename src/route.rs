@@ -56,7 +56,7 @@ impl Route {
 
     pub fn write(&self, out: &Path) -> Result {
         // If a directory is passed in, append the filename before continuing
-        let out = if out.is_dir() {
+        let out = if out.extension().is_none() {
             out.join(self.filename())
         } else {
             out.into()
