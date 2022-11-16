@@ -42,11 +42,15 @@ pub struct Cli {
 pub enum Commands {
     /// Make Environment variables to ease repeated use
     EnvInit,
+    /// View information about your environment
+    EnvInfo,
     /// Make a new keypair
     GenerateKeypair(GenerateKeypair),
     /// Make an empty route file edit
     GenerateRoute(GenerateRoute),
 
+    /// Get all Routes for an OUI
+    GetRoutes(GetRoutes),
     /// Get a Route by ID and write to file
     GetRoute(GetRoute),
     /// Get an Organization you own
@@ -92,7 +96,7 @@ pub struct AddGwmpMapping {
     pub region: Region,
     pub port: u32,
     /// Path of route to apply gwmp mapping to
-    #[arg(default_value = "./new_route.json")]
+    #[arg(long, default_value = "./new_route.json")]
     pub route_file: PathBuf,
     /// Write the protocol into the route file
     #[arg(long)]
@@ -103,12 +107,15 @@ pub struct AddGwmpMapping {
 pub struct AddHttpSettings {
     #[arg(short, long, value_enum)]
     pub flow_type: FlowType,
-    #[arg(short, long)]
+    #[arg(short, long, default_value = "250")]
     pub dedupe_timeout: u32,
+    /// Just the path part of the Server URL
+    ///
+    /// The rest will be taken from the Server {host}:{port}
     #[arg(short, long)]
     pub path: String,
     /// Path of route to apply http settings to
-    #[arg(default_value = "./new_route.json")]
+    #[arg(long, default_value = "./new_route.json")]
     pub route_file: PathBuf,
     /// Write the protocol into the route file
     #[arg(long)]
@@ -134,8 +141,29 @@ pub struct GenerateRoute {
     #[arg(long, env = ENV_MAX_COPIES, default_value = "5")]
     pub max_copies: u32,
 
-    #[arg(default_value = "./new_route.json")]
+    #[arg(long, default_value = "./new_route.json")]
     pub out_file: PathBuf,
+    #[arg(long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct GetRoutes {
+    #[arg(long, env = ENV_OUI)]
+    pub oui: u64,
+    #[arg(short, long)]
+    pub owner: PublicKey,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    // #[arg(long, default_value = "./routes")]
+    // pub route_out_dir: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(long, default_value = "./routes")]
+    pub route_out_dir: PathBuf,
+    /// Write all routes --route_out_dir
+    ///
+    /// WARNING!!! This will overwrite unupdated routes
     #[arg(long)]
     pub commit: bool,
 }
@@ -166,7 +194,7 @@ pub struct GetOrg {
 
 #[derive(Debug, Args)]
 pub struct CreateRoute {
-    #[arg(long)]
+    #[arg(long, default_value = "./new_route.json")]
     pub route_file: PathBuf,
     #[arg(long)]
     pub owner: PublicKey,
@@ -234,7 +262,7 @@ pub struct AddDevaddr {
     pub end_addr: hex_field::HexDevAddr,
 
     /// Path of route to apply devaddr range to
-    #[arg(default_value = "./new_route.json")]
+    #[arg(long, default_value = "./new_route.json")]
     pub route_file: PathBuf,
 
     /// Add the verified devaddr entry to the routes file
@@ -249,7 +277,7 @@ pub struct AddEui {
     #[arg(short, long, value_parser = hex_field::validate_eui)]
     pub app_eui: hex_field::HexEui,
     /// Path of route to apply devaddr range to
-    #[arg(default_value = "./new_route.json")]
+    #[arg(long, default_value = "./new_route.json")]
     pub route_file: PathBuf,
     /// Add the verified eui entry to the routes file
     #[arg(short, long)]
@@ -266,7 +294,7 @@ pub struct AddProtocol {
     #[arg(long, default_value = "8080")]
     pub port: u32,
     /// Path of route to apply devaddr range to
-    #[arg(default_value = "./new_route.json")]
+    #[arg(long, default_value = "./new_route.json")]
     pub route_file: PathBuf,
     /// Add the verified eui entry to the routes file
     #[arg(short, long)]
