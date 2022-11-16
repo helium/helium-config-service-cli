@@ -7,10 +7,12 @@ pub mod route;
 pub mod server;
 pub mod settings;
 
-use anyhow::Error;
+use anyhow::{anyhow, Context, Error};
+use helium_crypto::PublicKey;
+use hex_field::HexNetID;
 use route::Route;
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::{fs, path::Path};
 
 pub mod proto {
     pub use helium_proto::services::config::{
@@ -38,16 +40,16 @@ impl<S: ?Sized + serde::Serialize> PrettyJson for S {
 
 #[derive(Debug, Serialize)]
 pub struct OrgResponse {
-    org: Org,
-    net_id: u64,
-    devaddr_ranges: Vec<DevaddrRange>,
+    pub org: Org,
+    pub net_id: HexNetID,
+    pub devaddr_ranges: Vec<DevaddrRange>,
 }
 
 impl From<proto::OrgResV1> for OrgResponse {
     fn from(res: proto::OrgResV1) -> Self {
         Self {
             org: res.org.expect("no org returned during creation").into(),
-            net_id: res.net_id,
+            net_id: hex_field::net_id(res.net_id),
             devaddr_ranges: res.devaddr_ranges.into_iter().map(|d| d.into()).collect(),
         }
     }
@@ -60,21 +62,10 @@ pub struct OrgList {
 
 #[derive(Debug, Serialize)]
 pub struct Org {
-    oui: u64,
-    owner: String,
-    payer: String,
-    nonce: u32,
-}
-
-impl Org {
-    pub fn new(oui: u64, owner: &str) -> Self {
-        Self {
-            oui,
-            owner: owner.into(),
-            payer: owner.into(),
-            nonce: 0,
-        }
-    }
+    pub oui: u64,
+    pub owner: PublicKey,
+    pub payer: PublicKey,
+    pub nonce: u32,
 }
 
 #[derive(Debug, Serialize)]
@@ -84,10 +75,15 @@ pub struct RouteList {
 
 impl RouteList {
     pub fn write_all(&self, out_dir: &Path) -> Result {
+        fs::create_dir_all(out_dir).context("route list creating parent directory")?;
         for route in &self.routes {
             route.write(out_dir)?;
         }
         Ok(())
+    }
+
+    pub fn len(&self) -> usize {
+        self.routes.len()
     }
 }
 
@@ -99,6 +95,10 @@ pub struct DevaddrRange {
 
 impl DevaddrRange {
     pub fn new(start_addr: hex_field::HexDevAddr, end_addr: hex_field::HexDevAddr) -> Result<Self> {
+        if end_addr < start_addr {
+            return Err(anyhow!("start_addr cannot be greater than end_addr"));
+        }
+
         Ok(Self {
             start_addr,
             end_addr,
@@ -130,8 +130,8 @@ impl From<proto::OrgV1> for Org {
     fn from(org: proto::OrgV1) -> Self {
         Self {
             oui: org.oui,
-            owner: String::from_utf8(org.owner).unwrap(),
-            payer: String::from_utf8(org.payer).unwrap(),
+            owner: PublicKey::try_from(org.owner).unwrap(),
+            payer: PublicKey::try_from(org.payer).unwrap(),
             nonce: org.nonce,
         }
     }

@@ -1,3 +1,4 @@
+use anyhow::Context;
 use clap::Parser;
 use dialoguer::Input;
 use helium_config_service_cli::{
@@ -5,17 +6,19 @@ use helium_config_service_cli::{
     cmds::{
         AddCommands, AddDevaddr, AddEui, AddGwmpMapping, AddHttpSettings, AddProtocol, Cli,
         Commands, CreateHelium, CreateRoaming, CreateRoute, GenerateKeypair, GenerateRoute, GetOrg,
-        GetRoute, PathBufKeypair, ProtocolType, UpdateRoute, ENV_CONFIG_HOST, ENV_KEYPAIR_BIN,
-        ENV_MAX_COPIES, ENV_NET_ID, ENV_OUI,
+        GetRoute, GetRoutes, PathBufKeypair, ProtocolType, UpdateRoute, ENV_CONFIG_HOST,
+        ENV_KEYPAIR_BIN, ENV_MAX_COPIES, ENV_NET_ID, ENV_OUI,
     },
-    hex_field::{self},
+    hex_field,
     route::Route,
     server::{Protocol, Server},
     DevaddrRange, Eui, PrettyJson, Result,
 };
+use helium_crypto::Keypair;
 use rand::rngs::OsRng;
 use serde::Serialize;
-use std::{fmt::Display, fs};
+use serde_json::json;
+use std::{env, fmt::Display, fs};
 
 #[tokio::main]
 async fn main() -> Result {
@@ -53,10 +56,12 @@ impl Display for Msg {
 async fn handle_cli(cli: Cli) -> Result {
     let msg: Msg = match cli.command {
         Commands::EnvInit => env_init().await,
+        Commands::EnvInfo => env_info(),
         // File Creation
         Commands::GenerateKeypair(args) => generate_keypair(args),
         Commands::GenerateRoute(args) => generate_route(args),
         // API Commands
+        Commands::GetRoutes(args) => get_routes(args).await,
         Commands::GetRoute(args) => get_route(args).await,
         Commands::GetOrg(args) => get_org(args).await,
         Commands::CreateRoute(args) => create_route(args).await,
@@ -130,11 +135,37 @@ async fn env_init() -> Result<Msg> {
     Msg::ok(report.join("\n"))
 }
 
+fn env_info() -> Result<Msg> {
+    let (keypair_location, public_key) = match env::var(ENV_KEYPAIR_BIN) {
+        Ok(path) => {
+            let data = fs::read(&path).context(format!("reading keypair binary from {path}"))?;
+            let pubkey = Keypair::try_from(&data[..])
+                .context(format!("constructing keypair from {path}"))?
+                .public_key()
+                .to_string();
+            (path, pubkey)
+        }
+        Err(_) => ("unset".to_string(), "unset".to_string()),
+    };
+
+    let output = json!({
+        "environment": {
+            ENV_CONFIG_HOST: env::var(ENV_CONFIG_HOST).unwrap_or("unset".into()),
+            ENV_KEYPAIR_BIN:  keypair_location,
+            ENV_NET_ID:  env::var(ENV_NET_ID).unwrap_or("unset".into()),
+            ENV_OUI:  env::var(ENV_OUI).unwrap_or("unset".into()),
+            ENV_MAX_COPIES: env::var(ENV_MAX_COPIES).unwrap_or("unset".into())
+        },
+        "public_key": public_key
+    });
+    Msg::ok(output.pretty_json()?)
+}
+
 async fn add_devaddr(args: AddDevaddr) -> Result<Msg> {
     let devaddr = DevaddrRange::new(args.start_addr, args.end_addr)?;
     if !args.commit {
         return Msg::ok(format!(
-            "valid range, inset into `devaddr_ranges` section\n{}",
+            "valid range, insert into `devaddr_ranges` section\n{}",
             devaddr.pretty_json()?
         ));
     }
@@ -200,7 +231,7 @@ async fn add_http_settings(args: AddHttpSettings) -> Result<Msg> {
     let http = Protocol::make_http(args.flow_type, args.dedupe_timeout, args.path);
 
     if !args.commit {
-        return Msg::ok(format!("valid mapping\n{}", http.pretty_json()?));
+        return Msg::ok(format!("valid http settings\n{}", http.pretty_json()?));
     }
 
     let mut route = Route::from_file(&args.route_file)?;
@@ -241,6 +272,20 @@ fn generate_route(args: GenerateRoute) -> Result<Msg> {
     Msg::ok(format!("{} created", args.out_file.display()))
 }
 
+async fn get_routes(args: GetRoutes) -> Result<Msg> {
+    let mut client = client::RouteClient::new(&args.config_host).await?;
+    let route_list = client
+        .list(args.oui, &args.owner, args.keypair.to_keypair()?)
+        .await?;
+
+    if args.commit {
+        route_list.write_all(&args.route_out_dir)?;
+        return Msg::ok(format!("{} routes written", route_list.len()));
+    }
+
+    Msg::ok(route_list.pretty_json()?)
+}
+
 async fn get_route(args: GetRoute) -> Result<Msg> {
     let mut client = client::RouteClient::new(&args.config_host).await?;
     let route = client
@@ -267,24 +312,34 @@ async fn get_org(args: GetOrg) -> Result<Msg> {
 
 async fn create_route(args: CreateRoute) -> Result<Msg> {
     let route = Route::from_file(&args.route_file)?;
+
+    if !route.id.is_empty() {
+        return Msg::err(format!("Route already has an ID, cannot be created"));
+    }
+
     if args.commit {
         let mut client = client::RouteClient::new(&args.config_host).await?;
-        let created_route = client
-            .create(
-                route.net_id,
-                route.oui,
-                route.max_copies,
-                &args.owner,
-                args.keypair.to_keypair()?,
-            )
-            .await?;
-        created_route.write(&args.route_out_dir)?;
+        match client
+            .create_route(route, &args.owner, args.keypair.to_keypair()?)
+            .await
+        {
+            Ok(created_route) => {
+                // Write to both locations to prevent re-creation of route after
+                // ID is assigned.
+                created_route.write(&args.route_out_dir)?;
+                created_route.write(&args.route_file)?;
 
-        return Msg::ok(format!(
-            "{}/{} written",
-            &args.route_out_dir.display(),
-            created_route.filename()
-        ));
+                return Msg::ok(format!(
+                    "{}/{} written",
+                    &args.route_out_dir.display(),
+                    created_route.filename()
+                ));
+            }
+            Err(err) => {
+                // TODO: print this prettier
+                return Msg::err(format!("route not created: {err}"));
+            }
+        }
     }
     Msg::ok(format!(
         "{} is valid, pass `--commit` to create",
@@ -330,7 +385,7 @@ async fn create_helium_org(args: CreateHelium) -> Result<Msg> {
 async fn create_roaming_org(args: CreateRoaming) -> Result<Msg> {
     if args.commit {
         let mut client = client::OrgClient::new(&args.config_host).await?;
-        let org = client
+        let created_org = client
             .create_roamer(
                 &args.owner,
                 &args.payer,
@@ -338,10 +393,16 @@ async fn create_roaming_org(args: CreateRoaming) -> Result<Msg> {
                 args.keypair.to_keypair()?,
             )
             .await?;
-        return Msg::ok(format!(
-            "Roaming Organization Created: \n{}",
-            org.pretty_json()?
-        ));
+        return Msg::ok(
+            [
+                "== Roaming Organization Created ==".to_string(),
+                created_org.pretty_json()?,
+                "== Environment Variables ==".to_string(),
+                format!("{ENV_NET_ID}={}", created_org.net_id),
+                format!("{ENV_OUI}={}", created_org.org.oui),
+            ]
+            .join("\n"),
+        );
     }
     Msg::ok("pass `--commit` to create Roaming organization".to_string())
 }

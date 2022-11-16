@@ -144,6 +144,27 @@ impl RouteClient {
             .into())
     }
 
+    pub async fn create_route(
+        &mut self,
+        route: Route,
+        owner: &PublicKey,
+        keypair: Keypair,
+    ) -> Result<Route> {
+        let request = RouteCreateReqV1 {
+            oui: route.oui,
+            route: Some(route.into()),
+            owner: owner.into(),
+            timestamp: current_timestamp()?,
+            signature: vec![],
+        };
+        Ok(self
+            .client
+            .create(request.sign(&keypair)?)
+            .await?
+            .into_inner()
+            .into())
+    }
+
     pub async fn delete(&mut self, id: &str, owner: &PublicKey, keypair: Keypair) -> Result<Route> {
         let request = RouteDeleteReqV1 {
             id: id.into(),

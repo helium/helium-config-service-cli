@@ -10,6 +10,12 @@ pub type HexNetID = HexField<6>;
 pub type HexDevAddr = HexField<8>;
 pub type HexEui = HexField<16>;
 
+impl<const WIDTH: usize> PartialOrd for HexField<WIDTH> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.0.partial_cmp(&other.0)
+    }
+}
+
 impl<const WIDTH: usize> From<HexField<WIDTH>> for u64 {
     fn from(field: HexField<WIDTH>) -> Self {
         field.0

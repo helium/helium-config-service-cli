@@ -13,7 +13,7 @@ use std::{
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Route {
-    id: String,
+    pub id: String,
     pub net_id: hex_field::HexNetID,
     pub devaddr_ranges: Vec<DevaddrRange>,
     pub euis: Vec<Eui>,
