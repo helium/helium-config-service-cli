@@ -134,7 +134,7 @@ async fn add_devaddr(args: AddDevaddr) -> Result<Msg> {
     let devaddr = DevaddrRange::new(args.start_addr, args.end_addr)?;
     if !args.commit {
         return Msg::ok(format!(
-            "valid range, inset into `devaddr_ranges` section\n{}",
+            "valid range, insert into `devaddr_ranges` section\n{}",
             devaddr.pretty_json()?
         ));
     }
@@ -200,7 +200,7 @@ async fn add_http_settings(args: AddHttpSettings) -> Result<Msg> {
     let http = Protocol::make_http(args.flow_type, args.dedupe_timeout, args.path);
 
     if !args.commit {
-        return Msg::ok(format!("valid mapping\n{}", http.pretty_json()?));
+        return Msg::ok(format!("valid http settings\n{}", http.pretty_json()?));
     }
 
     let mut route = Route::from_file(&args.route_file)?;
