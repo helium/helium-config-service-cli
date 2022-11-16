@@ -92,8 +92,7 @@ async fn env_init() -> Result<Msg> {
         .with_prompt("Keypair Location")
         .with_initial_text("./keypair.bin")
         .allow_empty(true)
-        .interact()?
-        .into();
+        .interact()?;
     println!("----- Enter all zeros to ignore...");
     let net_id = Input::<hex_field::HexNetID>::new()
         .with_prompt("Net ID")
@@ -150,11 +149,11 @@ fn env_info() -> Result<Msg> {
 
     let output = json!({
         "environment": {
-            ENV_CONFIG_HOST: env::var(ENV_CONFIG_HOST).unwrap_or("unset".into()),
+            ENV_CONFIG_HOST: env::var(ENV_CONFIG_HOST).unwrap_or_else(|_| "unset".into()),
             ENV_KEYPAIR_BIN:  keypair_location,
-            ENV_NET_ID:  env::var(ENV_NET_ID).unwrap_or("unset".into()),
-            ENV_OUI:  env::var(ENV_OUI).unwrap_or("unset".into()),
-            ENV_MAX_COPIES: env::var(ENV_MAX_COPIES).unwrap_or("unset".into())
+            ENV_NET_ID:  env::var(ENV_NET_ID).unwrap_or_else(|_| "unset".into()),
+            ENV_OUI:  env::var(ENV_OUI).unwrap_or_else(|_| "unset".into()),
+            ENV_MAX_COPIES: env::var(ENV_MAX_COPIES).unwrap_or_else(|_| "unset".into())
         },
         "public_key": public_key
     });
@@ -280,7 +279,7 @@ async fn get_routes(args: GetRoutes) -> Result<Msg> {
 
     if args.commit {
         route_list.write_all(&args.route_out_dir)?;
-        return Msg::ok(format!("{} routes written", route_list.len()));
+        return Msg::ok(format!("{} routes written", route_list.count()));
     }
 
     Msg::ok(route_list.pretty_json()?)
@@ -314,7 +313,7 @@ async fn create_route(args: CreateRoute) -> Result<Msg> {
     let route = Route::from_file(&args.route_file)?;
 
     if !route.id.is_empty() {
-        return Msg::err(format!("Route already has an ID, cannot be created"));
+        return Msg::err("Route already has an ID, cannot be created".to_string());
     }
 
     if args.commit {
