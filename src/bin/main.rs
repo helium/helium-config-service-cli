@@ -4,10 +4,11 @@ use dialoguer::Input;
 use helium_config_service_cli::{
     client,
     cmds::{
-        AddCommands, AddDevaddr, AddEui, AddGwmpMapping, AddHttpSettings, AddProtocol, Cli,
-        Commands, CreateHelium, CreateRoaming, CreateRoute, GenerateKeypair, GenerateRoute, GetOrg,
-        GetRoute, GetRoutes, PathBufKeypair, ProtocolType, UpdateRoute, ENV_CONFIG_HOST,
-        ENV_KEYPAIR_BIN, ENV_MAX_COPIES, ENV_NET_ID, ENV_OUI,
+        AddCommands, AddDevaddr, AddEui, AddGwmpMapping, AddGwmpSettings, AddHttpSettings,
+        AddPacketRouterSettings, Cli, Commands, CreateHelium, CreateRoaming, CreateRoute,
+        GenerateKeypair, GenerateRoute, GetOrg, GetRoute, GetRoutes, PathBufKeypair,
+        ProtocolCommands, UpdateRoute, ENV_CONFIG_HOST, ENV_KEYPAIR_BIN, ENV_MAX_COPIES,
+        ENV_NET_ID, ENV_OUI,
     },
     hex_field,
     route::Route,
@@ -72,9 +73,12 @@ async fn handle_cli(cli: Cli) -> Result {
         Commands::Add { command } => match command {
             AddCommands::Devaddr(args) => add_devaddr(args).await,
             AddCommands::Eui(args) => add_eui(args).await,
-            AddCommands::Protocol(args) => add_protocol(args).await,
             AddCommands::GwmpMapping(args) => add_gwmp_mapping(args).await,
-            AddCommands::Http(args) => add_http_settings(args).await,
+            AddCommands::Protocol { command } => match command {
+                ProtocolCommands::Http(args) => add_http_protocol(args).await,
+                ProtocolCommands::Gwmp(args) => add_gwmp_protocol(args).await,
+                ProtocolCommands::PacketRouter(args) => add_packet_router_protocol(args).await,
+            },
         },
     }?;
 
@@ -190,26 +194,6 @@ async fn add_eui(args: AddEui) -> Result<Msg> {
     Msg::ok(format!("{} written", args.route_file.display()))
 }
 
-async fn add_protocol(args: AddProtocol) -> Result<Msg> {
-    let protocol = match args.protocol {
-        ProtocolType::PacketRouter => Protocol::default_packet_router(),
-        ProtocolType::Gwmp => Protocol::default_gwmp(),
-        ProtocolType::Http => Protocol::default_http(),
-    };
-    let server = Server::new(args.host, args.port, protocol);
-    if !args.commit {
-        return Msg::ok(format!(
-            "valid protocol, insert into `server` section\n{}",
-            server.pretty_json()?
-        ));
-    }
-
-    let mut route = Route::from_file(&args.route_file)?;
-    route.set_server(server);
-    route.write(&args.route_file)?;
-    Msg::ok(format!("{} written", args.route_file.display()))
-}
-
 async fn add_gwmp_mapping(args: AddGwmpMapping) -> Result<Msg> {
     let mapping = Protocol::make_gwmp_mapping(args.region, args.port);
 
@@ -226,16 +210,61 @@ async fn add_gwmp_mapping(args: AddGwmpMapping) -> Result<Msg> {
     Msg::ok(format!("{} written", args.route_file.display()))
 }
 
-async fn add_http_settings(args: AddHttpSettings) -> Result<Msg> {
+async fn add_http_protocol(args: AddHttpSettings) -> Result<Msg> {
     let http = Protocol::make_http(args.flow_type, args.dedupe_timeout, args.path);
+    let server = Server::new(args.host, args.port, http);
 
     if !args.commit {
-        return Msg::ok(format!("valid http settings\n{}", http.pretty_json()?));
+        return Msg::ok(format!("valid http settings\n{}", server.pretty_json()?));
     }
 
     let mut route = Route::from_file(&args.route_file)?;
-    route.http_update(http)?;
+    route.set_server(server);
     route.write(&args.route_file)?;
+
+    Msg::ok(format!("{} written", args.route_file.display()))
+}
+
+async fn add_gwmp_protocol(args: AddGwmpSettings) -> Result<Msg> {
+    let gwmp = match (args.region, args.region_port) {
+        (Some(region), Some(region_port)) => Protocol::make_gwmp(region, region_port)?,
+        (None, None) => Protocol::default_gwmp(),
+        _ => return Msg::err("Must provide both `region` and `region_port`".to_string()),
+    };
+    let server = Server::new(args.host, args.port, gwmp);
+
+    if !args.commit {
+        return Msg::ok(format!("valid gwmp settings\n{}", server.pretty_json()?));
+    }
+
+    let mut route = Route::from_file(&args.route_file)?;
+    route.set_server(server);
+    route.write(&args.route_file)?;
+
+    Msg::ok(
+        [
+            format!("{} written", args.route_file.display()),
+            "To add more region mapping, use the command `add gwmp-mapping`".to_string(),
+        ]
+        .join("\n"),
+    )
+}
+
+async fn add_packet_router_protocol(args: AddPacketRouterSettings) -> Result<Msg> {
+    let packet_router = Protocol::default_packet_router();
+    let server = Server::new(args.host, args.port, packet_router);
+
+    if !args.commit {
+        return Msg::ok(format!(
+            "valid packet router settings\n{}",
+            server.pretty_json()?,
+        ));
+    }
+
+    let mut route = Route::from_file(&args.route_file)?;
+    route.set_server(server);
+    route.write(&args.route_file)?;
+
     Msg::ok(format!("{} written", args.route_file.display()))
 }
 
