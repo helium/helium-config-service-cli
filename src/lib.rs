@@ -7,12 +7,12 @@ pub mod route;
 pub mod server;
 pub mod settings;
 
-use anyhow::{anyhow, Error};
+use anyhow::{anyhow, Context, Error};
 use helium_crypto::PublicKey;
 use hex_field::HexNetID;
 use route::Route;
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::{fs, path::Path};
 
 pub mod proto {
     pub use helium_proto::services::config::{
@@ -75,6 +75,7 @@ pub struct RouteList {
 
 impl RouteList {
     pub fn write_all(&self, out_dir: &Path) -> Result {
+        fs::create_dir_all(out_dir).context("route list creating parent directory")?;
         for route in &self.routes {
             route.write(out_dir)?;
         }
