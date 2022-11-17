@@ -5,10 +5,10 @@ use helium_config_service_cli::{
     client,
     cmds::{
         AddCommands, AddDevaddr, AddEui, AddGwmpMapping, AddGwmpSettings, AddHttpSettings,
-        AddPacketRouterSettings, Cli, Commands, CreateHelium, CreateRoaming, CreateRoute,
+        AddPacketRouterSettings, Cli, Commands, CreateHelium, CreateRoaming, CreateRoute, EnvInfo,
         GenerateKeypair, GenerateRoute, GetOrg, GetRoute, GetRoutes, PathBufKeypair,
-        ProtocolCommands, UpdateRoute, ENV_CONFIG_HOST, ENV_KEYPAIR_BIN, ENV_MAX_COPIES,
-        ENV_NET_ID, ENV_OUI,
+        ProtocolCommands, SubnetMask, UpdateRoute, ENV_CONFIG_HOST, ENV_KEYPAIR_BIN,
+        ENV_MAX_COPIES, ENV_NET_ID, ENV_OUI,
     },
     hex_field,
     route::Route,
@@ -19,13 +19,14 @@ use helium_crypto::Keypair;
 use rand::rngs::OsRng;
 use serde::Serialize;
 use serde_json::json;
-use std::{env, fmt::Display, fs};
+use std::{env, fmt::Display, fs, path::PathBuf};
 
 #[tokio::main]
 async fn main() -> Result {
     let cli = Cli::parse();
 
-    handle_cli(cli).await?;
+    let msg = handle_cli(cli).await?;
+    println!("{msg}");
 
     Ok(())
 }
@@ -54,10 +55,10 @@ impl Display for Msg {
     }
 }
 
-async fn handle_cli(cli: Cli) -> Result {
-    let msg: Msg = match cli.command {
+async fn handle_cli(cli: Cli) -> Result<Msg> {
+    match cli.command {
         Commands::EnvInit => env_init().await,
-        Commands::EnvInfo => env_info(),
+        Commands::EnvInfo(args) => env_info(args),
         // File Creation
         Commands::GenerateKeypair(args) => generate_keypair(args),
         Commands::GenerateRoute(args) => generate_route(args),
@@ -80,10 +81,13 @@ async fn handle_cli(cli: Cli) -> Result {
                 ProtocolCommands::PacketRouter(args) => add_packet_router_protocol(args).await,
             },
         },
-    }?;
+        // Helpers
+        Commands::SubnetMask(args) => subnet_mask(args),
+    }
+}
 
-    println!("{msg}");
-    Ok(())
+fn subnet_mask(args: SubnetMask) -> Result<Msg> {
+    Msg::ok(args.start_addr.subnet_mask(args.end_addr)?)
 }
 
 async fn env_init() -> Result<Msg> {
@@ -138,28 +142,28 @@ async fn env_init() -> Result<Msg> {
     Msg::ok(report.join("\n"))
 }
 
-fn env_info() -> Result<Msg> {
-    let (keypair_location, public_key) = match env::var(ENV_KEYPAIR_BIN) {
-        Ok(path) => {
-            let data = fs::read(&path).context(format!("reading keypair binary from {path}"))?;
-            let pubkey = Keypair::try_from(&data[..])
-                .context(format!("constructing keypair from {path}"))?
-                .public_key()
-                .to_string();
-            (path, pubkey)
-        }
-        Err(_) => ("unset".to_string(), "unset".to_string()),
-    };
+fn env_info(args: EnvInfo) -> Result<Msg> {
+    let env_keypair = env::var(ENV_KEYPAIR_BIN).ok().map(|i| i.into());
+    let (env_keypair_location, env_public_key) = get_keypair(env_keypair);
+    let (arg_keypair_location, arg_public_key) = get_keypair(args.keypair);
 
     let output = json!({
         "environment": {
             ENV_CONFIG_HOST: env::var(ENV_CONFIG_HOST).unwrap_or_else(|_| "unset".into()),
-            ENV_KEYPAIR_BIN:  keypair_location,
             ENV_NET_ID:  env::var(ENV_NET_ID).unwrap_or_else(|_| "unset".into()),
             ENV_OUI:  env::var(ENV_OUI).unwrap_or_else(|_| "unset".into()),
-            ENV_MAX_COPIES: env::var(ENV_MAX_COPIES).unwrap_or_else(|_| "unset".into())
+            ENV_MAX_COPIES: env::var(ENV_MAX_COPIES).unwrap_or_else(|_| "unset".into()),
+            ENV_KEYPAIR_BIN:  env_keypair_location,
+            "public_key_from_keypair": env_public_key,
         },
-        "public_key": public_key
+        "arguments": {
+            "config_host": args.config_host,
+            "net_id": args.net_id,
+            "oui": args.oui,
+            "max_copies": args.max_copies,
+            "keypair": arg_keypair_location,
+            "public_key_from_keypair": arg_public_key
+        }
     });
     Msg::ok(output.pretty_json()?)
 }
@@ -433,4 +437,128 @@ async fn create_roaming_org(args: CreateRoaming) -> Result<Msg> {
         );
     }
     Msg::ok("pass `--commit` to create Roaming organization".to_string())
+}
+
+fn get_keypair(path: Option<PathBuf>) -> (String, String) {
+    match path {
+        None => ("unset".to_string(), "unset".to_string()),
+        Some(path) => {
+            let display_path = path.as_path().display().to_string();
+            match fs::read(path).with_context(|| format!("path does not exist: {display_path}")) {
+                Err(e) => (e.to_string(), "".to_string()),
+                Ok(data) => match Keypair::try_from(&data[..]) {
+                    Err(e) => (display_path, e.to_string()),
+                    Ok(keypair) => (display_path, keypair.public_key().to_string()),
+                },
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{env_info, generate_keypair, get_keypair, Msg};
+    use helium_config_service_cli::{
+        cmds::{self, EnvInfo, GenerateKeypair},
+        hex_field,
+    };
+    use std::{env, fs};
+    use temp_dir::TempDir;
+
+    // Allow tests to get inside the container
+    impl Msg {
+        fn into_inner(self) -> String {
+            match self {
+                Msg::Success(s) => s,
+                Msg::Error(s) => s,
+            }
+        }
+    }
+
+    #[test]
+    fn env_info_test() {
+        // Make the keypairs to be referenced
+        let dir = TempDir::new().unwrap();
+        let env_keypair = dir.child("env-keypair.bin");
+        let arg_keypair = dir.child("arg-keypair.bin");
+        generate_keypair(GenerateKeypair {
+            out_file: env_keypair.clone(),
+            commit: true,
+        })
+        .unwrap();
+        generate_keypair(GenerateKeypair {
+            out_file: arg_keypair.clone(),
+            commit: true,
+        })
+        .unwrap();
+
+        // Set the environment and arguments
+        env::set_var(cmds::ENV_CONFIG_HOST, "env-localhost:1337");
+        env::set_var(cmds::ENV_NET_ID, "C0053");
+        env::set_var(cmds::ENV_OUI, "42");
+        env::set_var(cmds::ENV_MAX_COPIES, "42");
+        env::set_var(cmds::ENV_KEYPAIR_BIN, env_keypair.clone());
+
+        let env_args = EnvInfo {
+            config_host: Some("arg-localhost:1337".to_string()),
+            keypair: Some(arg_keypair.clone()),
+            net_id: Some(hex_field::net_id(42)),
+            oui: Some(4),
+            max_copies: Some(1337),
+        };
+
+        // =======
+        let output = env_info(env_args).unwrap().into_inner();
+        let s: serde_json::Value = serde_json::from_str(&output.to_string()).unwrap();
+
+        let env = &s["environment"];
+        let arg = &s["arguments"];
+
+        let string_not_empty =
+            |val: &serde_json::Value| !val.as_str().unwrap().to_string().is_empty();
+
+        assert_eq!(env[cmds::ENV_CONFIG_HOST], "env-localhost:1337");
+        assert_eq!(env[cmds::ENV_NET_ID], "C0053");
+        assert_eq!(env[cmds::ENV_OUI], "42");
+        assert_eq!(env[cmds::ENV_MAX_COPIES], "42");
+        assert_eq!(
+            env[cmds::ENV_KEYPAIR_BIN],
+            env_keypair.display().to_string()
+        );
+        assert!(string_not_empty(&env["public_key_from_keypair"]));
+
+        assert_eq!(arg["config_host"], "arg-localhost:1337");
+        assert_eq!(arg["keypair"], arg_keypair.display().to_string());
+        assert!(string_not_empty(&arg["public_key_from_keypair"]));
+        assert_eq!(arg["net_id"], "00002A");
+        assert_eq!(arg["oui"], 4);
+        assert_eq!(arg["max_copies"], 1337);
+    }
+
+    #[test]
+    fn get_keypair_does_not_exist() {
+        let (location, pubkey) = get_keypair(Some("./nowhere.bin".into()));
+        assert_eq!(location, "path does not exist: ./nowhere.bin");
+        assert!(pubkey.is_empty());
+    }
+
+    #[test]
+    fn get_keypair_invalid() {
+        // Write an invalid keypair
+        let dir = TempDir::new().unwrap();
+        let arg_keypair = dir.child("arg-keypair.bin");
+        fs::write(arg_keypair.clone(), "invalid key").unwrap();
+
+        // =======
+        let (location, pubkey) = get_keypair(Some(arg_keypair.clone()));
+        assert_eq!(location, arg_keypair.display().to_string());
+        assert_eq!(pubkey, "decode error");
+    }
+
+    #[test]
+    fn get_keypair_not_provided() {
+        let (location, pubkey) = get_keypair(None);
+        assert_eq!(location, "unset");
+        assert_eq!(pubkey, "unset");
+    }
 }

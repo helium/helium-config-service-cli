@@ -22,3 +22,7 @@ toml = "0.5.9"
 anyhow = "1.0.66"
 serde_test = "1.0.147"
 rand = "0.8.5"
+ipnet = "2.5.1"
+
+[dev-dependencies]
+temp-dir = "0.1.11"

@@ -80,6 +80,20 @@ impl<'de, const WIDTH: usize> Deserialize<'de> for HexField<WIDTH> {
     }
 }
 
+impl From<HexDevAddr> for std::net::Ipv4Addr {
+    fn from(devaddr: HexDevAddr) -> Self {
+        Self::from(devaddr.0 as u32)
+    }
+}
+
+impl HexDevAddr {
+    pub fn subnet_mask(self, end: Self) -> Result<String> {
+        let mut subnet = ipnet::Ipv4Subnets::new(self.into(), end.into(), 0);
+        let net = subnet.next().expect("end cannot be before start");
+        Ok(format!("{self}/{}", net.prefix_len()))
+    }
+}
+
 pub fn validate_net_id(s: &str) -> Result<HexNetID> {
     HexNetID::from_str(s).map_err(|e| anyhow!("could not parse {s} into net_id, {e}"))
 }
@@ -113,7 +127,10 @@ fn verify_len(input: &str, expected_len: usize) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use crate::hex_field::{devaddr, eui, net_id};
+    use crate::{
+        hex_field::{devaddr, eui, net_id},
+        Result,
+    };
 
     #[test]
     fn hex_net_id_field() {
@@ -140,5 +157,14 @@ mod tests {
         // value includes quotes
         assert_eq!(16 + 2, val.len());
         assert_eq!(r#""0ABD68FDE91EE0DB""#.to_string(), val)
+    }
+
+    #[test]
+    fn subnet_prefix() -> Result {
+        assert_eq!(
+            "48000800/29",
+            devaddr(0x48_00_08_00).subnet_mask(devaddr(0x48_00_08_07))?
+        );
+        Ok(())
     }
 }
