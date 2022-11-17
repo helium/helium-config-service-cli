@@ -71,6 +71,17 @@ pub enum Commands {
         #[command(subcommand)]
         command: AddCommands,
     },
+
+    /// Print out subnet mask for Devaddr Range
+    SubnetMask(SubnetMask),
+}
+
+#[derive(Debug, Args)]
+pub struct SubnetMask {
+    #[arg(value_parser = hex_field::validate_devaddr)]
+    pub start_addr: hex_field::HexDevAddr,
+    #[arg(value_parser = hex_field::validate_devaddr)]
+    pub end_addr: hex_field::HexDevAddr,
 }
 
 #[derive(Debug, Args)]

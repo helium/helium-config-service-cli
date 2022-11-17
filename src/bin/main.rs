@@ -7,8 +7,8 @@ use helium_config_service_cli::{
         AddCommands, AddDevaddr, AddEui, AddGwmpMapping, AddGwmpSettings, AddHttpSettings,
         AddPacketRouterSettings, Cli, Commands, CreateHelium, CreateRoaming, CreateRoute, EnvInfo,
         GenerateKeypair, GenerateRoute, GetOrg, GetRoute, GetRoutes, PathBufKeypair,
-        ProtocolCommands, UpdateRoute, ENV_CONFIG_HOST, ENV_KEYPAIR_BIN, ENV_MAX_COPIES,
-        ENV_NET_ID, ENV_OUI,
+        ProtocolCommands, SubnetMask, UpdateRoute, ENV_CONFIG_HOST, ENV_KEYPAIR_BIN,
+        ENV_MAX_COPIES, ENV_NET_ID, ENV_OUI,
     },
     hex_field,
     route::Route,
@@ -81,7 +81,13 @@ async fn handle_cli(cli: Cli) -> Result<Msg> {
                 ProtocolCommands::PacketRouter(args) => add_packet_router_protocol(args).await,
             },
         },
+        // Helpers
+        Commands::SubnetMask(args) => subnet_mask(args),
     }
+}
+
+fn subnet_mask(args: SubnetMask) -> Result<Msg> {
+    Msg::ok(args.start_addr.subnet_mask(args.end_addr)?)
 }
 
 async fn env_init() -> Result<Msg> {
