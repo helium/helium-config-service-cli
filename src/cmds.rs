@@ -43,7 +43,7 @@ pub enum Commands {
     /// Make Environment variables to ease repeated use
     EnvInit,
     /// View information about your environment
-    EnvInfo,
+    EnvInfo(EnvInfo),
     /// Make a new keypair
     GenerateKeypair(GenerateKeypair),
     /// Make an empty route file edit
@@ -71,6 +71,20 @@ pub enum Commands {
         #[command(subcommand)]
         command: AddCommands,
     },
+}
+
+#[derive(Debug, Args)]
+pub struct EnvInfo {
+    #[arg(long, env = ENV_CONFIG_HOST, default_value="unset")]
+    pub config_host: Option<String>,
+    #[arg(long, env = ENV_KEYPAIR_BIN, default_value="unset")]
+    pub keypair: Option<PathBuf>,
+    #[arg(long, env = ENV_NET_ID)]
+    pub net_id: Option<HexNetID>,
+    #[arg(long, env = ENV_OUI)]
+    pub oui: Option<u64>,
+    #[arg(long, env = ENV_MAX_COPIES)]
+    pub max_copies: Option<u32>,
 }
 
 #[derive(Debug, Subcommand)]
