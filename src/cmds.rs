@@ -79,9 +79,15 @@ pub enum Commands {
 #[derive(Debug, Args)]
 pub struct SubnetMask {
     #[arg(value_parser = hex_field::validate_devaddr)]
-    pub start_addr: hex_field::HexDevAddr,
+    pub start_addr: Option<hex_field::HexDevAddr>,
     #[arg(value_parser = hex_field::validate_devaddr)]
-    pub end_addr: hex_field::HexDevAddr,
+    pub end_addr: Option<hex_field::HexDevAddr>,
+
+    /// Print all Devaddr subnets for route.
+    ///
+    /// Optionally pass in a directory to print all Devaddr subnets for all routes.
+    #[arg(long)]
+    pub route_file: Option<PathBuf>,
 }
 
 #[derive(Debug, Args)]

@@ -13,6 +13,7 @@ use helium_config_service_cli::{
     hex_field,
     route::Route,
     server::{Protocol, Server},
+    subnet::RouteSubnets,
     DevaddrRange, Eui, PrettyJson, Result,
 };
 use helium_crypto::Keypair;
@@ -87,7 +88,26 @@ async fn handle_cli(cli: Cli) -> Result<Msg> {
 }
 
 fn subnet_mask(args: SubnetMask) -> Result<Msg> {
-    Msg::ok(args.start_addr.subnet_mask(args.end_addr)?)
+    if let (Some(start), Some(end)) = (args.start_addr, args.end_addr) {
+        let devaddr_range = DevaddrRange::new(start, end)?;
+        return Msg::ok(devaddr_range.to_subnet().pretty_json()?);
+    }
+
+    if let Some(path) = args.route_file {
+        let routes = if path.is_file() {
+            vec![Route::from_file(&path)?]
+        } else {
+            Route::from_dir(&path)?
+        };
+
+        let mut output = vec![];
+        for route in routes {
+            output.push(RouteSubnets::from_route(route))
+        }
+        return Msg::ok(output.pretty_json()?);
+    }
+
+    Msg::err("not enough arguments, run again with `--help`".to_string())
 }
 
 async fn env_init() -> Result<Msg> {

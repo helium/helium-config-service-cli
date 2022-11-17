@@ -4,6 +4,7 @@ pub mod hex_field;
 pub mod region;
 pub mod route;
 pub mod server;
+pub mod subnet;
 
 use anyhow::{anyhow, Context, Error};
 use helium_crypto::PublicKey;
@@ -85,7 +86,7 @@ impl RouteList {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct DevaddrRange {
     start_addr: hex_field::HexDevAddr,
     end_addr: hex_field::HexDevAddr,
