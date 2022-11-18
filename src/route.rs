@@ -42,6 +42,18 @@ impl Route {
             .context(format!("parsing route file {}", path.display()))?;
         Ok(listing)
     }
+
+    pub fn from_dir(dir: &Path) -> Result<Vec<Self>> {
+        let mut routes = vec![];
+
+        for entry_result in fs::read_dir(dir)? {
+            let route = Self::from_file(&entry_result?.path())?;
+            routes.push(route);
+        }
+
+        Ok(routes)
+    }
+
     pub fn from_id<S>(dir: &Path, id: S) -> Result<Self>
     where
         S: AsRef<Path>,
