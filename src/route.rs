@@ -37,7 +37,7 @@ impl Route {
         }
     }
     pub fn from_file(path: &PathBuf) -> Result<Self> {
-        let data = fs::read_to_string(&path).context("reading route file")?;
+        let data = fs::read_to_string(path).context("reading route file")?;
         let listing: Self = serde_json::from_str(&data)
             .context(format!("parsing route file {}", path.display()))?;
         Ok(listing)

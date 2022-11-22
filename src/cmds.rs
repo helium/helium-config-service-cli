@@ -373,7 +373,7 @@ pub trait PathBufKeypair {
 
 impl PathBufKeypair for PathBuf {
     fn to_keypair(&self) -> Result<helium_crypto::Keypair> {
-        let data = std::fs::read(&self)?;
+        let data = std::fs::read(self)?;
         Ok(helium_crypto::Keypair::try_from(&data[..])?)
     }
 }
