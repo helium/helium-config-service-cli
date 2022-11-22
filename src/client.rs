@@ -41,16 +41,17 @@ impl OrgClient {
         devaddr_count: u64,
         keypair: Keypair,
     ) -> Result<OrgResponse> {
-        let request = OrgCreateHeliumReqV1 {
+        let mut request = OrgCreateHeliumReqV1 {
             owner: owner.into(),
             payer: payer.into(),
             devaddrs: devaddr_count,
             timestamp: current_timestamp()?,
             signature: vec![],
         };
+        request.signature = request.sign(&keypair)?;
         Ok(self
             .client
-            .create_helium(request.sign(&keypair)?)
+            .create_helium(request)
             .await?
             .into_inner()
             .into())
@@ -63,16 +64,17 @@ impl OrgClient {
         net_id: u64,
         keypair: Keypair,
     ) -> Result<OrgResponse> {
-        let request = OrgCreateRoamerReqV1 {
+        let mut request = OrgCreateRoamerReqV1 {
             owner: owner.into(),
             payer: payer.into(),
             net_id,
             timestamp: current_timestamp()?,
             signature: vec![],
         };
+        request.signature = request.sign(&keypair)?;
         Ok(self
             .client
-            .create_roamer(request.sign(&keypair)?)
+            .create_roamer(request)
             .await?
             .into_inner()
             .into())
@@ -90,35 +92,27 @@ impl RouteClient {
         &mut self,
         oui: u64,
         owner: &PublicKey,
-        keypair: Keypair,
+        keypair: &Keypair,
     ) -> Result<RouteList> {
-        let request = RouteListReqV1 {
+        let mut request = RouteListReqV1 {
             oui,
             owner: owner.into(),
             timestamp: current_timestamp()?,
             signature: vec![],
         };
-        Ok(self
-            .client
-            .list(request.sign(&keypair)?)
-            .await?
-            .into_inner()
-            .into())
+        request.signature = request.sign(keypair)?;
+        Ok(self.client.list(request).await?.into_inner().into())
     }
 
     pub async fn get(&mut self, id: &str, owner: &PublicKey, keypair: &Keypair) -> Result<Route> {
-        let request = RouteGetReqV1 {
+        let mut request = RouteGetReqV1 {
             id: id.into(),
             owner: owner.into(),
             signature: vec![],
             timestamp: current_timestamp()?,
         };
-        Ok(self
-            .client
-            .get(request.sign(keypair)?)
-            .await?
-            .into_inner()
-            .into())
+        request.signature = request.sign(keypair)?;
+        Ok(self.client.get(request).await?.into_inner().into())
     }
 
     pub async fn create(
@@ -127,77 +121,66 @@ impl RouteClient {
         oui: u64,
         max_copies: u32,
         owner: &PublicKey,
-        keypair: Keypair,
+        keypair: &Keypair,
     ) -> Result<Route> {
-        let request = RouteCreateReqV1 {
+        let mut request = RouteCreateReqV1 {
             oui,
             route: Some(Route::new(net_id, oui, max_copies).into()),
             owner: owner.into(),
             timestamp: current_timestamp()?,
             signature: vec![],
         };
-        Ok(self
-            .client
-            .create(request.sign(&keypair)?)
-            .await?
-            .into_inner()
-            .into())
+        request.signature = request.sign(keypair)?;
+        Ok(self.client.create(request).await?.into_inner().into())
     }
 
     pub async fn create_route(
         &mut self,
         route: Route,
         owner: &PublicKey,
-        keypair: Keypair,
+        keypair: &Keypair,
     ) -> Result<Route> {
-        let request = RouteCreateReqV1 {
+        let mut request = RouteCreateReqV1 {
             oui: route.oui,
             route: Some(route.into()),
             owner: owner.into(),
             timestamp: current_timestamp()?,
             signature: vec![],
         };
-        Ok(self
-            .client
-            .create(request.sign(&keypair)?)
-            .await?
-            .into_inner()
-            .into())
+        request.signature = request.sign(keypair)?;
+        Ok(self.client.create(request).await?.into_inner().into())
     }
 
-    pub async fn delete(&mut self, id: &str, owner: &PublicKey, keypair: Keypair) -> Result<Route> {
-        let request = RouteDeleteReqV1 {
+    pub async fn delete(
+        &mut self,
+        id: &str,
+        owner: &PublicKey,
+        keypair: &Keypair,
+    ) -> Result<Route> {
+        let mut request = RouteDeleteReqV1 {
             id: id.into(),
             owner: owner.into(),
             timestamp: current_timestamp()?,
             signature: vec![],
         };
-        Ok(self
-            .client
-            .delete(request.sign(&keypair)?)
-            .await?
-            .into_inner()
-            .into())
+        request.signature = request.sign(keypair)?;
+        Ok(self.client.delete(request).await?.into_inner().into())
     }
 
     pub async fn push(
         &mut self,
         route: Route,
         owner: &PublicKey,
-        keypair: Keypair,
+        keypair: &Keypair,
     ) -> Result<Route> {
-        let request = RouteUpdateReqV1 {
+        let mut request = RouteUpdateReqV1 {
             route: Some(route.inc_nonce().into()),
             owner: owner.into(),
             timestamp: current_timestamp()?,
             signature: vec![],
         };
-        Ok(self
-            .client
-            .update(request.sign(&keypair)?)
-            .await?
-            .into_inner()
-            .into())
+        request.signature = request.sign(keypair)?;
+        Ok(self.client.update(request).await?.into_inner().into())
     }
 }
 
@@ -206,7 +189,7 @@ fn current_timestamp() -> Result<u64> {
 }
 
 pub trait MsgSign: Message + std::clone::Clone {
-    fn sign(self, keypair: &Keypair) -> Result<Self>
+    fn sign(&self, keypair: &Keypair) -> Result<Vec<u8>>
     where
         Self: std::marker::Sized;
 }
@@ -214,13 +197,10 @@ pub trait MsgSign: Message + std::clone::Clone {
 macro_rules! impl_sign {
     ($txn_type:ty, $( $sig: ident ),+ ) => {
         impl MsgSign for $txn_type {
-            fn sign(self, keypair: &Keypair) -> Result<Self> {
+            fn sign(&self, keypair: &Keypair) -> Result<Vec<u8>> {
                 let mut txn = self.clone();
                 $(txn.$sig = vec![];)+
-                let buf = txn.encode_to_vec();
-                let sig = keypair.sign(&buf)?;
-                $(txn.$sig = sig)+;
-                Ok(txn)
+                Ok(keypair.sign(&txn.encode_to_vec())?)
             }
         }
     }
