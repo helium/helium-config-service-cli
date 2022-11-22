@@ -6,7 +6,7 @@ use helium_config_service_cli::{
     cmds::{
         AddCommands, AddDevaddr, AddEui, AddGwmpMapping, AddGwmpSettings, AddHttpSettings,
         AddPacketRouterSettings, Cli, Commands, CreateHelium, CreateRoaming, CreateRoute, EnvInfo,
-        GenerateKeypair, GenerateRoute, GetOrg, GetRoute, GetRoutes, PathBufKeypair,
+        GenerateKeypair, GenerateRoute, GetOrg, GetOrgs, GetRoute, GetRoutes, PathBufKeypair,
         ProtocolCommands, SubnetMask, UpdateRoute, ENV_CONFIG_HOST, ENV_KEYPAIR_BIN,
         ENV_MAX_COPIES, ENV_NET_ID, ENV_OUI,
     },
@@ -66,6 +66,7 @@ async fn handle_cli(cli: Cli) -> Result<Msg> {
         // API Commands
         Commands::GetRoutes(args) => get_routes(args).await,
         Commands::GetRoute(args) => get_route(args).await,
+        Commands::GetOrgs(args) => get_orgs(args).await,
         Commands::GetOrg(args) => get_org(args).await,
         Commands::CreateRoute(args) => create_route(args).await,
         Commands::CreateHelium(args) => create_helium_org(args).await,
@@ -353,6 +354,13 @@ async fn get_route(args: GetRoute) -> Result<Msg> {
         ));
     }
     Msg::ok(route.pretty_json()?)
+}
+
+async fn get_orgs(args: GetOrgs) -> Result<Msg> {
+    let mut client = client::OrgClient::new(&args.config_host).await?;
+    let org = client.list().await?;
+
+    Msg::ok(org.pretty_json()?)
 }
 
 async fn get_org(args: GetOrg) -> Result<Msg> {

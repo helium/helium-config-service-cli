@@ -53,6 +53,8 @@ pub enum Commands {
     GetRoutes(GetRoutes),
     /// Get a Route by ID and write to file
     GetRoute(GetRoute),
+    /// Get all Orgs
+    GetOrgs(GetOrgs),
     /// Get an Organization you own
     GetOrg(GetOrg),
 
@@ -265,6 +267,12 @@ pub struct GetRoute {
     pub config_host: String,
     #[arg(long)]
     pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct GetOrgs {
+    #[arg(from_global)]
+    pub config_host: String,
 }
 
 #[derive(Debug, Args)]
