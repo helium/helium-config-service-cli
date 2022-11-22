@@ -59,7 +59,7 @@ pub struct OrgList {
     orgs: Vec<Org>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Org {
     pub oui: u64,
     pub owner: PublicKey,
