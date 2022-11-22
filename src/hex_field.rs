@@ -3,7 +3,7 @@ use anyhow::anyhow;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{fmt::Display, str::FromStr};
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
 pub struct HexField<const WIDTH: usize>(pub u64);
 
 pub type HexNetID = HexField<6>;
@@ -116,15 +116,13 @@ impl HexNetID {
         const BIT_WIDTH: usize = 24;
         const TYPE_LEN: usize = 3;
         let net_id = self.0 as u32;
-        let type_bits = net_id >> (BIT_WIDTH - TYPE_LEN);
-
-        type_bits
+        net_id >> (BIT_WIDTH - TYPE_LEN)
     }
 
     fn nwk_id(&self) -> u32 {
         let prefix_length = self.netid_type() + 1;
 
-        let mut temp = self.0.clone() as u32;
+        let mut temp = self.0 as u32;
         const BIT32PAD: u32 = 8;
 
         // clear prefix

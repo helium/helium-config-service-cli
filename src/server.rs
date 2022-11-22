@@ -13,7 +13,7 @@ pub mod proto {
 pub type Port = u32;
 pub type GwmpMap = BTreeMap<Region, Port>;
 
-#[derive(Serialize, Debug, Deserialize, PartialEq, Eq, Default)]
+#[derive(Serialize, Clone, Debug, Deserialize, PartialEq, Eq, Default)]
 pub struct Server {
     pub host: String,
     pub port: Port,

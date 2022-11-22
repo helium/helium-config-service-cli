@@ -1,7 +1,4 @@
-use std::{
-    collections::HashMap,
-    sync::{Arc, Mutex, RwLock},
-};
+use std::sync::Arc;
 
 use async_trait::async_trait;
 use helium_config_service_cli::{
@@ -16,43 +13,16 @@ use helium_proto::services::config::{
 use tonic::{Request, Response, Status};
 use tracing::info;
 
-type OrgMap = Arc<RwLock<HashMap<u64, Org>>>;
+use crate::storage::{OrgStorage, Storage};
 
 #[derive(Debug, Default)]
 pub struct OrgService {
-    orgs: OrgMap,
-    next_oui: Arc<Mutex<u64>>,
+    storage: Arc<Storage>,
 }
 
 impl OrgService {
-    pub fn new(orgs: OrgMap) -> Self {
-        Self {
-            orgs,
-            next_oui: Arc::new(Mutex::new(0)),
-        }
-    }
-
-    fn next_oui(&self) -> u64 {
-        let mut oui = self.next_oui.lock().expect("could not lock mutex");
-        *oui += 1;
-        info!(oui = oui.clone(), "next oui");
-        oui.clone()
-    }
-
-    fn create_org(&self, org: Org) {
-        info!(oui = org.oui, "saving org");
-        let key = org.oui;
-        self.orgs.write().unwrap().insert(key, org);
-    }
-
-    fn print_orgs(&self) {
-        let a = self.orgs.read().unwrap();
-        println!("{a:#?}");
-    }
-
-    fn get_orgs(&self) -> Vec<Org> {
-        info!("getting all orgs");
-        self.orgs.read().unwrap().clone().into_values().collect()
+    pub fn new(storage: Arc<Storage>) -> Self {
+        Self { storage }
     }
 }
 
@@ -62,9 +32,12 @@ impl OrgServer for OrgService {
         &self,
         _request: Request<OrgListReqV1>,
     ) -> Result<Response<OrgListResV1>, Status> {
-        self.print_orgs();
-
-        let orgs = self.get_orgs().into_iter().map(|i| i.into()).collect();
+        let orgs = self
+            .storage
+            .get_orgs()
+            .into_iter()
+            .map(|o| o.into())
+            .collect();
 
         Ok(Response::new(OrgListResV1 { orgs }))
     }
@@ -72,12 +45,12 @@ impl OrgServer for OrgService {
     async fn get(&self, request: Request<OrgGetReqV1>) -> Result<Response<OrgResV1>, Status> {
         let req = request.into_inner();
         info!(oui = req.oui, "getting org");
-        let org = { self.orgs.read().unwrap().get(&req.oui).map(|i| i.clone()) };
-        match org {
+
+        match self.storage.get_org(req.oui) {
             Some(org) => {
                 info!(oui = req.oui, "found");
                 Ok(Response::new(OrgResV1 {
-                    org: Some(OrgV1::from(org)),
+                    org: Some(org.into()),
                     net_id: 0,
                     devaddr_ranges: vec![],
                 }))
@@ -89,7 +62,6 @@ impl OrgServer for OrgService {
         }
     }
 
-    // #[instrument]
     async fn create_helium(
         &self,
         request: tonic::Request<OrgCreateHeliumReqV1>,
@@ -98,18 +70,21 @@ impl OrgServer for OrgService {
         let req = request.into_inner();
 
         let org = Org {
-            oui: self.next_oui(),
+            oui: self.storage.next_oui(),
             owner: PublicKey::try_from(req.owner).unwrap(),
             payer: PublicKey::try_from(req.payer).unwrap(),
             nonce: 0,
         };
-        self.create_org(org.clone());
+
         let net_id = hex_field::net_id(0xC00053);
+        let devaddr_constraint = net_id.range_start().to_range(8);
+        self.storage
+            .create_helium_org(org.clone(), devaddr_constraint.clone());
 
         Ok(Response::new(OrgResV1 {
             org: Some(OrgV1::from(org)),
-            net_id: 0,
-            devaddr_ranges: vec![net_id.range_start().to_range(8).into()],
+            net_id: net_id.into(),
+            devaddr_ranges: vec![devaddr_constraint.into()],
         }))
     }
 
@@ -121,18 +96,21 @@ impl OrgServer for OrgService {
         let req = request.into_inner();
 
         let org = Org {
-            oui: self.next_oui(),
+            oui: self.storage.next_oui(),
             owner: PublicKey::try_from(req.owner).unwrap(),
             payer: PublicKey::try_from(req.payer).unwrap(),
             nonce: 0,
         };
-        self.create_org(org.clone());
+
         let net_id: HexNetID = req.net_id.into();
+        let devaddr_constraint = net_id.full_range();
+        self.storage
+            .create_roamer_org(org.clone(), devaddr_constraint.clone());
 
         Ok(Response::new(OrgResV1 {
             org: Some(OrgV1::from(org)),
-            net_id: 0,
-            devaddr_ranges: vec![net_id.full_range().into()],
+            net_id: net_id.into(),
+            devaddr_ranges: vec![devaddr_constraint.into()],
         }))
     }
 }

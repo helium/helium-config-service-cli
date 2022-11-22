@@ -8,7 +8,7 @@ pub mod subnet;
 
 use anyhow::{anyhow, Context, Error};
 use helium_crypto::PublicKey;
-use hex_field::HexNetID;
+use hex_field::{HexDevAddr, HexNetID};
 use route::Route;
 use serde::{Deserialize, Serialize};
 use std::{fs, path::Path};
@@ -103,9 +103,18 @@ impl DevaddrRange {
             end_addr,
         })
     }
+
+    pub fn next_start(&self) -> Result<HexDevAddr> {
+        let end: u64 = self.end_addr.into();
+        Ok(hex_field::devaddr(end + 1))
+    }
+
+    pub fn contains(&self, range: &Self) -> bool {
+        self.start_addr <= range.start_addr && self.end_addr >= range.end_addr
+    }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Eui {
     app_eui: hex_field::HexEui,
     dev_eui: hex_field::HexEui,
