@@ -1,4 +1,4 @@
-use crate::Result;
+use crate::{DevaddrRange, Result};
 use anyhow::anyhow;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{fmt::Display, str::FromStr};
@@ -111,9 +111,163 @@ fn verify_len(input: &str, expected_len: usize) -> Result<()> {
     }
 }
 
+impl HexNetID {
+    fn netid_type(&self) -> u32 {
+        const BIT_WIDTH: usize = 24;
+        const TYPE_LEN: usize = 3;
+        let net_id = self.0 as u32;
+        let type_bits = net_id >> (BIT_WIDTH - TYPE_LEN);
+
+        type_bits
+    }
+
+    fn nwk_id(&self) -> u32 {
+        let prefix_length = self.netid_type() + 1;
+
+        let mut temp = self.0.clone() as u32;
+        const BIT32PAD: u32 = 8;
+
+        // clear prefix
+        temp <<= prefix_length + BIT32PAD;
+
+        // shift to start
+        temp >>= prefix_length + BIT32PAD;
+
+        temp
+    }
+
+    fn devaddr_type_bits(id_type: u32) -> u32 {
+        match id_type {
+            0 => 0,
+            1 => 2 << (32 - 2),
+            2 => 6 << (32 - 3),
+            3 => 14 << (32 - 4),
+            4 => 30 << (32 - 5),
+            5 => 62 << (32 - 6),
+            6 => 126 << (32 - 7),
+            7 => 254 << (32 - 8),
+            _ => panic!("bad type"),
+        }
+    }
+
+    fn nwk_id_bits(id_type: u32, nwk_id: u32) -> u32 {
+        match id_type {
+            0 => nwk_id << 25,
+            1 => nwk_id << 24,
+            2 => nwk_id << 20,
+            3 => nwk_id << 17,
+            4 => nwk_id << 15,
+            5 => nwk_id << 13,
+            6 => nwk_id << 10,
+            7 => nwk_id << 7,
+            _ => panic!("bad type"),
+        }
+    }
+
+    fn max_nwk_addr_bit(id_type: u32) -> u32 {
+        match id_type {
+            0 => 2u32.pow(25) - 1,
+            1 => 2u32.pow(24) - 1,
+            2 => 2u32.pow(20) - 1,
+            3 => 2u32.pow(17) - 1,
+            4 => 2u32.pow(15) - 1,
+            5 => 2u32.pow(13) - 1,
+            6 => 2u32.pow(10) - 1,
+            7 => 2u32.pow(7) - 1,
+            _ => panic!("bad type"),
+        }
+    }
+
+    pub fn range_start(&self) -> HexDevAddr {
+        let id_type = self.netid_type();
+        let nwk_id = self.nwk_id();
+
+        let left = Self::devaddr_type_bits(id_type);
+        let middle = Self::nwk_id_bits(id_type, nwk_id);
+
+        let min_devaddr = left | middle;
+        devaddr(min_devaddr as u64)
+    }
+
+    fn range_end(&self) -> HexDevAddr {
+        let id_type = self.netid_type();
+        let nwk_id = self.nwk_id();
+
+        let left = Self::devaddr_type_bits(id_type);
+        let middle = Self::nwk_id_bits(id_type, nwk_id);
+        let right = Self::max_nwk_addr_bit(id_type);
+
+        let max_devaddr = left | middle | right;
+        devaddr(max_devaddr as u64)
+    }
+
+    pub fn full_range(&self) -> DevaddrRange {
+        DevaddrRange {
+            start_addr: self.range_start(),
+            end_addr: self.range_end(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::hex_field::{devaddr, eui, net_id};
+
+    use crate::{
+        hex_field::{devaddr, eui, net_id},
+        DevaddrRange,
+    };
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn range_from_net_id() {
+        struct Test {
+            net_id: u64,
+            start_addr: u64,
+            end_addr: u64,
+            netid_type: u32,
+            nwk_id: u32,
+        }
+        let tests = vec![
+            Test {
+                net_id: 0xC00053,
+                start_addr: 0xFC01_4C00,
+                end_addr: 0xFC01_4FFF,
+                netid_type: 6,
+                nwk_id: 83,
+            },
+            Test {
+                net_id: 0x00001D,
+                start_addr: 0x3A00_0000,
+                end_addr: 0x3BFF_FFFF,
+                netid_type: 0,
+                nwk_id: 29,
+            },
+            Test {
+                net_id: 0x600020,
+                start_addr: 0xE040_0000,
+                end_addr: 0xE041_FFFF,
+                netid_type: 3,
+                nwk_id: 32,
+            },
+            Test {
+                net_id: 0xE00040,
+                start_addr: 0xFE00_2000,
+                end_addr: 0xFE00_207F,
+                netid_type: 7,
+                nwk_id: 64,
+            },
+        ];
+
+        for test in tests {
+            let net_id = net_id(test.net_id);
+            assert_eq!(test.netid_type, net_id.netid_type());
+            assert_eq!(test.nwk_id, net_id.nwk_id());
+            assert_eq!(
+                DevaddrRange::new(devaddr(test.start_addr), devaddr(test.end_addr)).unwrap(),
+                net_id.full_range()
+            );
+        }
+    }
 
     #[test]
     fn hex_net_id_field() {
