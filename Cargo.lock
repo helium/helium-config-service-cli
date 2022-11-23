@@ -569,6 +569,7 @@ dependencies = [
  "ipnet",
  "pretty_assertions",
  "prost",
+ "prost-types",
  "rand",
  "serde",
  "serde-hex",
@@ -576,8 +577,10 @@ dependencies = [
  "serde_test",
  "temp-dir",
  "tokio",
+ "tokio-stream",
  "toml",
  "tonic",
+ "tonic-build",
  "tracing",
  "tracing-subscriber",
  "uuid",
@@ -1081,9 +1084,9 @@ dependencies = [
 
 [[package]]
 name = "prost-types"
-version = "0.11.1"
+version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4dfaa718ad76a44b3415e6c4d53b17c8f99160dcb3a99b10470fce8ad43f6e3e"
+checksum = "747761bc3dc48f9a34553bf65605cf6cb6288ba219f3450b4275dbd81539551a"
 dependencies = [
  "bytes",
  "prost",
