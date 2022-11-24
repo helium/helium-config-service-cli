@@ -4,6 +4,7 @@ use crate::{
     server::FlowType,
     Result,
 };
+use anyhow::Context;
 use clap::{Args, Parser, Subcommand};
 use helium_crypto::PublicKey;
 use std::path::PathBuf;
