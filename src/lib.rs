@@ -64,7 +64,8 @@ pub struct Org {
     pub oui: u64,
     pub owner: PublicKey,
     pub payer: PublicKey,
-    pub nonce: u32,
+    pub nonce: u64,
+    pub delegate_keys: Vec<PublicKey>,
 }
 
 #[derive(Debug, Serialize)]
@@ -136,11 +137,17 @@ impl From<proto::OrgListResV1> for OrgList {
 
 impl From<proto::OrgV1> for Org {
     fn from(org: proto::OrgV1) -> Self {
+        let d = org
+            .delegate_keys
+            .into_iter()
+            .map(|key| PublicKey::try_from(key))
+            .flatten();
         Self {
             oui: org.oui,
             owner: PublicKey::try_from(org.owner).unwrap(),
             payer: PublicKey::try_from(org.payer).unwrap(),
             nonce: org.nonce,
+            delegate_keys: d.collect(),
         }
     }
 }
@@ -152,6 +159,7 @@ impl From<Org> for proto::OrgV1 {
             owner: org.owner.into(),
             payer: org.payer.into(),
             nonce: org.nonce,
+            delegate_keys: org.delegate_keys.iter().map(|key| key.into()).collect(),
         }
     }
 }
@@ -176,14 +184,23 @@ impl From<proto::DevaddrRangeV1> for DevaddrRange {
 impl From<DevaddrRange> for proto::DevaddrRangeV1 {
     fn from(range: DevaddrRange) -> Self {
         Self {
-            start_addr: range.start_addr.0,
-            end_addr: range.end_addr.0,
+            start_addr: range.start_addr.into(),
+            end_addr: range.end_addr.into(),
         }
     }
 }
 
 impl From<proto::EuiV1> for Eui {
     fn from(range: proto::EuiV1) -> Self {
+        Self {
+            app_eui: range.app_eui.into(),
+            dev_eui: range.dev_eui.into(),
+        }
+    }
+}
+
+impl From<&proto::EuiV1> for Eui {
+    fn from(range: &proto::EuiV1) -> Self {
         Self {
             app_eui: range.app_eui.into(),
             dev_eui: range.dev_eui.into(),

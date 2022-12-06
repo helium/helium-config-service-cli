@@ -15,7 +15,7 @@ use tracing::info;
 
 use crate::storage::{OrgStorage, Storage};
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct OrgService {
     storage: Arc<Storage>,
 }
@@ -74,6 +74,7 @@ impl OrgServer for OrgService {
             owner: PublicKey::try_from(req.owner).unwrap(),
             payer: PublicKey::try_from(req.payer).unwrap(),
             nonce: 0,
+            delegate_keys: vec![],
         };
 
         let net_id = hex_field::net_id(0xC00053);
@@ -100,6 +101,7 @@ impl OrgServer for OrgService {
             owner: PublicKey::try_from(req.owner).unwrap(),
             payer: PublicKey::try_from(req.payer).unwrap(),
             nonce: 0,
+            delegate_keys: vec![],
         };
 
         let net_id: HexNetID = req.net_id.into();

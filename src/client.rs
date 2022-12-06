@@ -46,6 +46,7 @@ impl OrgClient {
             payer: payer.into(),
             devaddrs: devaddr_count,
             timestamp: current_timestamp()?,
+            signer: owner.into(),
             signature: vec![],
         };
         request.signature = request.sign(&keypair)?;
@@ -69,6 +70,7 @@ impl OrgClient {
             payer: payer.into(),
             net_id,
             timestamp: current_timestamp()?,
+            signer: owner.into(),
             signature: vec![],
         };
         request.signature = request.sign(&keypair)?;
@@ -96,7 +98,7 @@ impl RouteClient {
     ) -> Result<RouteList> {
         let mut request = RouteListReqV1 {
             oui,
-            owner: owner.into(),
+            signer: owner.into(),
             timestamp: current_timestamp()?,
             signature: vec![],
         };
@@ -107,7 +109,7 @@ impl RouteClient {
     pub async fn get(&mut self, id: &str, owner: &PublicKey, keypair: &Keypair) -> Result<Route> {
         let mut request = RouteGetReqV1 {
             id: id.into(),
-            owner: owner.into(),
+            signer: owner.into(),
             signature: vec![],
             timestamp: current_timestamp()?,
         };
@@ -126,7 +128,7 @@ impl RouteClient {
         let mut request = RouteCreateReqV1 {
             oui,
             route: Some(Route::new(net_id, oui, max_copies).into()),
-            owner: owner.into(),
+            signer: owner.into(),
             timestamp: current_timestamp()?,
             signature: vec![],
         };
@@ -143,7 +145,7 @@ impl RouteClient {
         let mut request = RouteCreateReqV1 {
             oui: route.oui,
             route: Some(route.into()),
-            owner: owner.into(),
+            signer: owner.into(),
             timestamp: current_timestamp()?,
             signature: vec![],
         };
@@ -159,7 +161,7 @@ impl RouteClient {
     ) -> Result<Route> {
         let mut request = RouteDeleteReqV1 {
             id: id.into(),
-            owner: owner.into(),
+            signer: owner.into(),
             timestamp: current_timestamp()?,
             signature: vec![],
         };
@@ -175,7 +177,7 @@ impl RouteClient {
     ) -> Result<Route> {
         let mut request = RouteUpdateReqV1 {
             route: Some(route.inc_nonce().into()),
-            owner: owner.into(),
+            signer: owner.into(),
             timestamp: current_timestamp()?,
             signature: vec![],
         };

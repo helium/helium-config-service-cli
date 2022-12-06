@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    sync::{Mutex, RwLock},
+    sync::{Arc, Mutex, RwLock},
 };
 
 use anyhow::anyhow;
@@ -10,17 +10,21 @@ use helium_config_service_cli::{
     route::Route,
     DevaddrRange, Org, Result,
 };
+use helium_proto::services::config::ActionV1;
+use helium_proto::services::config::RouteStreamResV1;
+use tokio::sync::broadcast::{Receiver, Sender};
 use tracing::info;
 
 pub type OrgMap = RwLock<HashMap<u64, DbOrg>>;
 pub type RouteMap = RwLock<HashMap<u64, Vec<Route>>>;
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Storage {
     orgs: OrgMap,
     routes: RouteMap,
     next_oui: Mutex<u64>,
     next_helium_devaddr: Mutex<HexDevAddr>,
+    route_update_channel: Arc<Sender<RouteStreamResV1>>,
 }
 
 pub trait OrgStorage {
@@ -33,14 +37,15 @@ pub trait OrgStorage {
 
 pub trait RouteStorage {
     fn get_routes(&self, oui: u64) -> Result<Vec<Route>>;
-    fn get_route(&self, route_id: Vec<u8>) -> Option<Route>;
+    fn get_route(&self, route_id: String) -> Option<Route>;
     fn create_route(&self, oui: u64, route: Route) -> Result<Route>;
     fn update_route(&self, route: Route) -> Result<Route>;
-    fn delete_route(&self, route_id: Vec<u8>) -> Option<Route>;
+    fn delete_route(&self, route_id: String) -> Option<Route>;
+    fn subscribe(&self) -> Receiver<RouteStreamResV1>;
 }
 
 impl Storage {
-    pub fn new() -> Self {
+    pub fn new(route_updates: Arc<Sender<RouteStreamResV1>>) -> Self {
         let helium_net_id = hex_field::net_id(0xC00053);
 
         Self {
@@ -48,6 +53,7 @@ impl Storage {
             routes: RwLock::new(HashMap::new()),
             next_oui: Mutex::new(0),
             next_helium_devaddr: Mutex::new(helium_net_id.range_start()),
+            route_update_channel: route_updates,
         }
     }
     fn create_org(&self, org: Org, devaddr_constraints: DevaddrRange) {
@@ -131,17 +137,14 @@ impl RouteStorage for Storage {
         }
     }
 
-    fn get_route(&self, route_id: Vec<u8>) -> Option<Route> {
+    fn get_route(&self, route_id: String) -> Option<Route> {
         self.routes
             .read()
             .expect("route store lock")
             .clone()
             .into_values()
             .flatten()
-            .find(|route| {
-                let id: Vec<u8> = route.id.clone().into();
-                route_id == id
-            })
+            .find(|route| route_id == route.id)
     }
 
     fn create_route(&self, oui: u64, route: Route) -> Result<Route> {
@@ -150,7 +153,13 @@ impl RouteStorage for Storage {
         route.id = format!("{}", uuid::Uuid::new_v4());
         let mut store = self.routes.write().expect("route store lock");
         if let Some(routes) = store.get_mut(&oui) {
-            routes.push(route.clone());
+            let _ = routes.push(route.clone());
+
+            self.route_update_channel.send(RouteStreamResV1 {
+                action: ActionV1::Create.into(),
+                route: Some(route.clone().into()),
+            })?;
+
             return Ok(route);
         }
         Err(anyhow!("oui does not exist"))
@@ -163,6 +172,12 @@ impl RouteStorage for Storage {
             for old_route in routes {
                 if old_route.id == route.id {
                     *old_route = route.clone();
+
+                    self.route_update_channel.send(RouteStreamResV1 {
+                        action: ActionV1::Update.into(),
+                        route: Some(route.clone().into()),
+                    })?;
+
                     return Ok(route);
                 }
             }
@@ -170,8 +185,9 @@ impl RouteStorage for Storage {
         Err(anyhow!("could not find route to update"))
     }
 
-    fn delete_route(&self, route_id: Vec<u8>) -> Option<Route> {
-        let id_to_remove = String::from_utf8(route_id).expect("valid route id");
+    fn delete_route(&self, route_id: String) -> Option<Route> {
+        let id_to_remove = route_id;
+        // let id_to_remove = String::from_utf8(route_id).expect("valid route id");
         let mut store = self.routes.write().expect("route store lock");
         let removed = store
             .clone()
@@ -183,9 +199,19 @@ impl RouteStorage for Storage {
             if let Some(oui_routes) = store.get_mut(&inner_route.oui) {
                 oui_routes.retain(|route| route.id != id_to_remove)
             }
+            self.route_update_channel
+                .send(RouteStreamResV1 {
+                    action: ActionV1::Delete.into(),
+                    route: Some(inner_route.clone().into()),
+                })
+                .expect("sent delete update");
         }
 
         removed
+    }
+
+    fn subscribe(&self) -> Receiver<RouteStreamResV1> {
+        self.route_update_channel.subscribe()
     }
 }
 

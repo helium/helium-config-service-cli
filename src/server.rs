@@ -156,7 +156,7 @@ impl From<FlowType> for proto::FlowTypeV1 {
 impl From<Server> for proto::ServerV1 {
     fn from(server: Server) -> Self {
         proto::ServerV1 {
-            host: server.host.into(),
+            host: server.host,
             port: server.port,
             protocol: server.protocol.map(|p| p.into()),
         }
@@ -166,7 +166,7 @@ impl From<Server> for proto::ServerV1 {
 impl From<proto::ServerV1> for Server {
     fn from(server: proto::ServerV1) -> Self {
         Server {
-            host: String::from_utf8(server.host).unwrap(),
+            host: server.host,
             port: server.port,
             protocol: server.protocol.map(|p| p.into()),
         }

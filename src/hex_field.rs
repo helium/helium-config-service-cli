@@ -22,9 +22,21 @@ impl<const WIDTH: usize> From<HexField<WIDTH>> for u64 {
     }
 }
 
+impl<const WIDTH: usize> From<HexField<WIDTH>> for u32 {
+    fn from(field: HexField<WIDTH>) -> Self {
+        field.0 as u32
+    }
+}
+
 impl<const WIDTH: usize> From<u64> for HexField<WIDTH> {
     fn from(val: u64) -> Self {
         HexField(val)
+    }
+}
+
+impl<const WIDTH: usize> From<u32> for HexField<WIDTH> {
+    fn from(val: u32) -> Self {
+        HexField(val as u64)
     }
 }
 

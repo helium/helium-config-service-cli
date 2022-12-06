@@ -10,7 +10,9 @@ mod storage;
 
 #[tokio::main]
 async fn main() -> Result {
-    let store = Arc::new(Storage::new());
+    let (tx, _) = tokio::sync::broadcast::channel(128);
+    let route_updates = Arc::new(tx);
+    let store = Arc::new(Storage::new(route_updates.clone()));
 
     tracing_subscriber::fmt::init();
 

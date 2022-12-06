@@ -1,16 +1,17 @@
-use std::{pin::Pin, sync::Arc};
-
 use helium_config_service_cli::{route::Route, Result};
 use helium_proto::services::config::{
-    route_server, RouteCreateReqV1, RouteDeleteReqV1, RouteGetReqV1, RouteListReqV1,
-    RouteListResV1, RouteStreamReqV1, RouteStreamResV1, RouteUpdateReqV1, RouteV1,
+    route_server, RouteCreateReqV1, RouteDeleteReqV1, RouteEuisActionV1, RouteEuisReqV1,
+    RouteEuisResV1, RouteGetReqV1, RouteListReqV1, RouteListResV1, RouteStreamReqV1,
+    RouteStreamResV1, RouteUpdateReqV1, RouteV1,
 };
-use tonic::{codegen::futures_core::Stream, Response, Status};
+use std::sync::Arc;
+use tokio_stream::wrappers::ReceiverStream;
+use tonic::{Response, Status};
 use tracing::info;
 
 use crate::storage::{RouteStorage, Storage};
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct RouteService {
     storage: Arc<Storage>,
 }
@@ -91,15 +92,58 @@ impl route_server::Route for RouteService {
             None => Err(Status::not_found("no route")),
         }
     }
+
     ///Server streaming response type for the stream method.
-    type streamStream = Pin<Box<dyn Stream<Item = Result<RouteStreamResV1, Status>> + Send>>;
+    type streamStream = ReceiverStream<Result<RouteStreamResV1, Status>>;
     async fn stream(
         &self,
         _request: tonic::Request<RouteStreamReqV1>,
     ) -> Result<tonic::Response<Self::streamStream>, tonic::Status> {
-        Err(tonic::Status::new(
-            tonic::Code::Unimplemented,
-            "Stream not implemented",
-        ))
+        let (tx, rx) = tokio::sync::mpsc::channel(1);
+        let mut updates = self.storage.subscribe();
+
+        println!("Connected: {_request:?}");
+
+        tokio::spawn(async move {
+            while let Ok(update) = updates.recv().await {
+                println!("route updated");
+                if let Err(_) = tx.send(Ok(update)).await {
+                    break;
+                }
+            }
+            println!("Disconnected");
+        });
+
+        Ok(Response::new(ReceiverStream::new(rx)))
+    }
+
+    async fn euis(
+        &self,
+        request: tonic::Request<RouteEuisReqV1>,
+    ) -> Result<tonic::Response<RouteEuisResV1>, tonic::Status> {
+        let req = request.into_inner();
+
+        match self.storage.get_route(req.id.clone()) {
+            None => Err(tonic::Status::not_found("Route not found")),
+            Some(mut route) => {
+                match req.action() {
+                    RouteEuisActionV1::Add => {
+                        for eui in req.euis.iter() {
+                            route.add_eui(eui.into())
+                        }
+                    }
+                    RouteEuisActionV1::Remove => {
+                        for eui in req.euis.iter() {
+                            route.remove_eui(eui.into())
+                        }
+                    }
+                }
+                Ok(Response::new(RouteEuisResV1 {
+                    id: req.id,
+                    action: req.action,
+                    euis: req.euis,
+                }))
+            }
+        }
     }
 }
