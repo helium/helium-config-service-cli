@@ -10,21 +10,26 @@ use helium_config_service_cli::{
     route::Route,
     DevaddrRange, Org, Result,
 };
-use helium_proto::services::config::ActionV1;
-use helium_proto::services::config::RouteStreamResV1;
+use helium_crypto::PublicKey;
+use helium_proto::services::config::{ActionV1, SessionKeyFilterV1};
+use helium_proto::services::config::{RouteStreamResV1, SessionKeyFilterStreamResV1};
 use tokio::sync::broadcast::{Receiver, Sender};
 use tracing::info;
 
-pub type OrgMap = RwLock<HashMap<u64, DbOrg>>;
-pub type RouteMap = RwLock<HashMap<u64, Vec<Route>>>;
+pub type OUI = u64;
+pub type OrgMap = RwLock<HashMap<OUI, DbOrg>>;
+pub type RouteMap = RwLock<HashMap<OUI, Vec<Route>>>;
+pub type FilterMap = RwLock<HashMap<OUI, SessionKeyFilter>>;
 
 #[derive(Debug)]
 pub struct Storage {
     orgs: OrgMap,
     routes: RouteMap,
+    filters: FilterMap,
     next_oui: Mutex<u64>,
     next_helium_devaddr: Mutex<HexDevAddr>,
     route_update_channel: Arc<Sender<RouteStreamResV1>>,
+    filter_update_channel: Arc<Sender<SessionKeyFilterStreamResV1>>,
 }
 
 pub trait OrgStorage {
@@ -41,19 +46,116 @@ pub trait RouteStorage {
     fn create_route(&self, oui: u64, route: Route) -> Result<Route>;
     fn update_route(&self, route: Route) -> Result<Route>;
     fn delete_route(&self, route_id: String) -> Option<Route>;
-    fn subscribe(&self) -> Receiver<RouteStreamResV1>;
+    fn subscribe_to_routes(&self) -> Receiver<RouteStreamResV1>;
+}
+
+pub trait SkfStorage {
+    fn get_filters(&self, oui: OUI) -> Result<Vec<SessionKeyFilter>>;
+    fn get_filter(&self, oui: OUI) -> Result<SessionKeyFilter>;
+    fn create_filter(&self, oui: OUI, filter: SessionKeyFilter) -> Result<SessionKeyFilter>;
+    fn update_filter(&self, oui: OUI, filter: SessionKeyFilter) -> Result<SessionKeyFilter>;
+    fn delete_filter(&self, oui: OUI) -> Result<SessionKeyFilter>;
+    fn subscribe_to_filters(&self) -> Receiver<SessionKeyFilterStreamResV1>;
+}
+
+#[derive(Debug, Clone)]
+pub struct SessionKeyFilter {
+    devaddr: HexDevAddr,
+    session_keys: Vec<PublicKey>,
+}
+
+impl From<SessionKeyFilterV1> for SessionKeyFilter {
+    fn from(filter: SessionKeyFilterV1) -> Self {
+        Self {
+            devaddr: (filter.devaddr as u64).into(),
+            session_keys: filter
+                .session_keys
+                .into_iter()
+                .map(|sk| PublicKey::try_from(sk))
+                .flatten()
+                .collect(),
+        }
+    }
+}
+
+impl From<SessionKeyFilter> for SessionKeyFilterV1 {
+    fn from(filter: SessionKeyFilter) -> Self {
+        Self {
+            devaddr: filter.devaddr.0 as i64,
+            session_keys: filter
+                .session_keys
+                .into_iter()
+                .map(|pk| pk.into())
+                .collect(),
+        }
+    }
+}
+
+impl SkfStorage for Storage {
+    fn get_filters(&self, _oui: OUI) -> Result<Vec<SessionKeyFilter>> {
+        Ok(self
+            .filters
+            .read()
+            .expect("filter store lock")
+            .clone()
+            .into_values()
+            .collect())
+    }
+
+    fn get_filter(&self, oui: OUI) -> Result<SessionKeyFilter> {
+        self.filters
+            .read()
+            .expect("filter store lock")
+            .get(&oui)
+            .clone()
+            .map(|x| x.to_owned())
+            .ok_or(anyhow!("filter not found"))
+    }
+
+    fn create_filter(&self, oui: OUI, filter: SessionKeyFilter) -> Result<SessionKeyFilter> {
+        self.filters
+            .write()
+            .expect("filter write lock")
+            .insert(oui, filter.clone());
+        Ok(filter)
+    }
+
+    fn update_filter(&self, oui: OUI, filter: SessionKeyFilter) -> Result<SessionKeyFilter> {
+        self.filters
+            .write()
+            .expect("filter write lock")
+            .insert(oui, filter.clone());
+        Ok(filter)
+    }
+
+    fn delete_filter(&self, oui: OUI) -> Result<SessionKeyFilter> {
+        self.filters
+            .write()
+            .expect("filter write lock")
+            .remove(&oui)
+            .ok_or(anyhow!("could not delete filter"))
+    }
+
+    fn subscribe_to_filters(&self) -> Receiver<SessionKeyFilterStreamResV1> {
+        self.filter_update_channel.subscribe()
+    }
 }
 
 impl Storage {
-    pub fn new(route_updates: Arc<Sender<RouteStreamResV1>>) -> Self {
+    pub fn new(
+        route_updates: Arc<Sender<RouteStreamResV1>>,
+        filter_updates: Arc<Sender<SessionKeyFilterStreamResV1>>,
+    ) -> Self {
         let helium_net_id = hex_field::net_id(0xC00053);
 
         Self {
             orgs: RwLock::new(HashMap::new()),
             routes: RwLock::new(HashMap::new()),
+            filters: RwLock::new(HashMap::new()),
             next_oui: Mutex::new(0),
             next_helium_devaddr: Mutex::new(helium_net_id.range_start()),
             route_update_channel: route_updates,
+            filter_update_channel: filter_updates,
         }
     }
     fn create_org(&self, org: Org, devaddr_constraints: DevaddrRange) {
@@ -210,7 +312,7 @@ impl RouteStorage for Storage {
         removed
     }
 
-    fn subscribe(&self) -> Receiver<RouteStreamResV1> {
+    fn subscribe_to_routes(&self) -> Receiver<RouteStreamResV1> {
         self.route_update_channel.subscribe()
     }
 }

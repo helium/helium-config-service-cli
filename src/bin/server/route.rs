@@ -100,18 +100,18 @@ impl route_server::Route for RouteService {
         _request: tonic::Request<RouteStreamReqV1>,
     ) -> Result<tonic::Response<Self::streamStream>, tonic::Status> {
         let (tx, rx) = tokio::sync::mpsc::channel(1);
-        let mut updates = self.storage.subscribe();
+        let mut updates = self.storage.subscribe_to_routes();
 
-        println!("Connected: {_request:?}");
+        info!("Connected");
 
         tokio::spawn(async move {
             while let Ok(update) = updates.recv().await {
-                println!("route updated");
+                info!("route updated");
                 if let Err(_) = tx.send(Ok(update)).await {
                     break;
                 }
             }
-            println!("Disconnected");
+            info!("Disconnected");
         });
 
         Ok(Response::new(ReceiverStream::new(rx)))
