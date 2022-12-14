@@ -1,10 +1,10 @@
-use crate::{hex_field, route::Route, OrgList, OrgResponse, Result, RouteList};
+use crate::{hex_field, route::Route, Eui, OrgList, OrgResponse, Result, RouteList};
 use helium_crypto::{Keypair, PublicKey, Sign};
 use helium_proto::{
     services::config::{
         org_client, route_client, OrgCreateHeliumReqV1, OrgCreateRoamerReqV1, OrgGetReqV1,
-        OrgListReqV1, RouteCreateReqV1, RouteDeleteReqV1, RouteGetReqV1, RouteListReqV1,
-        RouteUpdateReqV1,
+        OrgListReqV1, RouteCreateReqV1, RouteDeleteReqV1, RouteEuisActionV1, RouteEuisReqV1,
+        RouteEuisResV1, RouteGetReqV1, RouteListReqV1, RouteUpdateReqV1,
     },
     Message,
 };
@@ -184,6 +184,24 @@ impl RouteClient {
         request.signature = request.sign(keypair)?;
         Ok(self.client.update(request).await?.into_inner().into())
     }
+
+    pub async fn euis(
+        &mut self,
+        route_id: String,
+        euis: Vec<Eui>,
+        keypair: &Keypair,
+    ) -> Result<RouteEuisResV1> {
+        let mut request = RouteEuisReqV1 {
+            action: RouteEuisActionV1::Add.into(),
+            euis: euis.into_iter().map(|e| e.into()).collect(),
+            id: route_id,
+            timestamp: current_timestamp()?,
+            signer: keypair.public_key().into(),
+            signature: vec![],
+        };
+        request.signature = request.sign(keypair)?;
+        Ok(self.client.euis(request).await?.into_inner().into())
+    }
 }
 
 fn current_timestamp() -> Result<u64> {
@@ -213,5 +231,6 @@ impl_sign!(RouteGetReqV1, signature);
 impl_sign!(RouteCreateReqV1, signature);
 impl_sign!(RouteDeleteReqV1, signature);
 impl_sign!(RouteUpdateReqV1, signature);
+impl_sign!(RouteEuisReqV1, signature);
 impl_sign!(OrgCreateHeliumReqV1, signature);
 impl_sign!(OrgCreateRoamerReqV1, signature);
