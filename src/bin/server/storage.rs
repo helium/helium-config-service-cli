@@ -81,7 +81,7 @@ impl From<SessionKeyFilterV1> for SessionKeyFilter {
 impl From<SessionKeyFilter> for SessionKeyFilterV1 {
     fn from(filter: SessionKeyFilter) -> Self {
         Self {
-            devaddr: filter.devaddr.0 as i64,
+            devaddr: filter.devaddr.0 as u32,
             session_keys: filter
                 .session_keys
                 .into_iter()

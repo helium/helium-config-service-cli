@@ -31,9 +31,12 @@ impl route_server::Route for RouteService {
         let req = request.into_inner();
         info!(oui = req.oui, "getting routes");
         match self.storage.get_routes(req.oui) {
-            Ok(routes) => Ok(Response::new(RouteListResV1 {
-                routes: routes.iter().map(|r| r.to_owned().into()).collect(),
-            })),
+            Ok(routes) => {
+                info!("routes: {routes:?}");
+                Ok(Response::new(RouteListResV1 {
+                    routes: routes.iter().map(|r| r.to_owned().into()).collect(),
+                }))
+            }
             Err(e) => Err(Status::not_found(format!("no routes: {e}"))),
         }
     }
@@ -122,6 +125,11 @@ impl route_server::Route for RouteService {
         request: tonic::Request<RouteEuisReqV1>,
     ) -> Result<tonic::Response<RouteEuisResV1>, tonic::Status> {
         let req = request.into_inner();
+        info!(
+            route_id = req.id,
+            euis_cnt = req.euis.len(),
+            "adding euis to route"
+        );
 
         match self.storage.get_route(req.id.clone()) {
             None => Err(tonic::Status::not_found("Route not found")),
@@ -129,20 +137,25 @@ impl route_server::Route for RouteService {
                 match req.action() {
                     RouteEuisActionV1::Add => {
                         for eui in req.euis.iter() {
+                            info!(" . adding {eui:?}");
                             route.add_eui(eui.into())
                         }
                     }
                     RouteEuisActionV1::Remove => {
                         for eui in req.euis.iter() {
+                            info!(" . removing {eui:?}");
                             route.remove_eui(eui.into())
                         }
                     }
                 }
-                Ok(Response::new(RouteEuisResV1 {
-                    id: req.id,
-                    action: req.action,
-                    euis: req.euis,
-                }))
+                match self.storage.update_route(route) {
+                    Ok(_) => Ok(Response::new(RouteEuisResV1 {
+                        id: req.id,
+                        action: req.action,
+                        euis: req.euis,
+                    })),
+                    Err(err) => Err(Status::internal(format!("something went wrong: {err:?}"))),
+                }
             }
         }
     }

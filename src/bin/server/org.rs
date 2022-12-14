@@ -7,8 +7,8 @@ use helium_config_service_cli::{
 };
 use helium_crypto::PublicKey;
 use helium_proto::services::config::{
-    org_server::Org as OrgServer, OrgCreateHeliumReqV1, OrgCreateRoamerReqV1, OrgGetReqV1,
-    OrgListReqV1, OrgListResV1, OrgResV1, OrgV1,
+    org_server::Org as OrgServer, OrgCreateHeliumReqV1, OrgCreateRoamerReqV1, OrgDisableReqV1,
+    OrgDisableResV1, OrgGetReqV1, OrgListReqV1, OrgListResV1, OrgResV1, OrgV1,
 };
 use tonic::{Request, Response, Status};
 use tracing::info;
@@ -28,6 +28,13 @@ impl OrgService {
 
 #[async_trait]
 impl OrgServer for OrgService {
+    async fn disable(
+        &self,
+        _request: Request<OrgDisableReqV1>,
+    ) -> Result<Response<OrgDisableResV1>, Status> {
+        Err(Status::unimplemented("cannot disable yet"))
+    }
+
     async fn list(
         &self,
         _request: Request<OrgListReqV1>,
