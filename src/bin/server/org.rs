@@ -6,7 +6,7 @@ use helium_config_service_cli::{
     Org,
 };
 use helium_crypto::PublicKey;
-use helium_proto::services::config::{
+use helium_proto::services::iot_config::{
     org_server::Org as OrgServer, OrgCreateHeliumReqV1, OrgCreateRoamerReqV1, OrgDisableReqV1,
     OrgDisableResV1, OrgGetReqV1, OrgListReqV1, OrgListResV1, OrgResV1, OrgV1,
 };

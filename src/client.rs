@@ -1,7 +1,7 @@
 use crate::{hex_field, route::Route, Eui, OrgList, OrgResponse, Result, RouteList};
 use helium_crypto::{Keypair, PublicKey, Sign};
 use helium_proto::{
-    services::config::{
+    services::iot_config::{
         org_client, route_client, OrgCreateHeliumReqV1, OrgCreateRoamerReqV1, OrgGetReqV1,
         OrgListReqV1, RouteCreateReqV1, RouteDeleteReqV1, RouteEuisActionV1, RouteEuisReqV1,
         RouteEuisResV1, RouteGetReqV1, RouteListReqV1, RouteUpdateReqV1,
@@ -185,14 +185,14 @@ impl RouteClient {
         Ok(self.client.update(request).await?.into_inner().into())
     }
 
-    pub async fn euis(
+    pub async fn add_euis(
         &mut self,
         route_id: String,
         euis: Vec<Eui>,
         keypair: &Keypair,
     ) -> Result<RouteEuisResV1> {
         let mut request = RouteEuisReqV1 {
-            action: RouteEuisActionV1::Add.into(),
+            action: RouteEuisActionV1::AddEuis.into(),
             euis: euis.into_iter().map(|e| e.into()).collect(),
             id: route_id,
             timestamp: current_timestamp()?,
@@ -200,7 +200,7 @@ impl RouteClient {
             signature: vec![],
         };
         request.signature = request.sign(keypair)?;
-        Ok(self.client.euis(request).await?.into_inner().into())
+        Ok(self.client.euis(request).await?.into_inner())
     }
 }
 

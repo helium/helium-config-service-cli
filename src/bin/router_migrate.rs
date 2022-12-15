@@ -50,7 +50,7 @@ fn main() -> Result<()> {
             args.route_id
         );
 
-        let res = runtime.block_on(grpc_client.euis(args.route_id, euis, &keypair))?;
+        let res = runtime.block_on(grpc_client.add_euis(args.route_id, euis, &keypair))?;
         println!("res: {res:?}");
     } else {
         println!(

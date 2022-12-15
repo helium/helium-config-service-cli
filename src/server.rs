@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 pub mod proto {
-    pub use helium_proto::services::config::{
+    pub use helium_proto::services::iot_config::{
         protocol_http_roaming_v1::FlowTypeV1, server_v1::Protocol, ProtocolGwmpMappingV1,
         ProtocolGwmpV1, ProtocolHttpRoamingV1, ProtocolPacketRouterV1, ServerV1,
     };

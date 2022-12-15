@@ -1,5 +1,5 @@
 use helium_config_service_cli::Result;
-use helium_proto::services::config::{
+use helium_proto::services::iot_config::{
     org_server::OrgServer, route_server::RouteServer,
     session_key_filter_server::SessionKeyFilterServer,
 };
