@@ -16,7 +16,7 @@
 /// [{token, {<ENDPOINT>, downlink_endpoint, <TOKEN>}}]
 /// ```
 ///
-/// cargo run --bin migrate -- \
+/// cargo run --bin router_migrate -- \
 ///   --console-endpoint <ENDPOINT> \
 ///   --console-token <TOKEN> \
 ///   --config-host http://localhost:50051 \

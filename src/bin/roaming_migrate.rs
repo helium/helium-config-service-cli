@@ -20,11 +20,13 @@
 ///
 /// Usage:
 /// ```
-/// cargo run --bin roaming -- \
+/// cargo run --bin roaming_migrate -- \
 ///     --endpoint <ENDPOINT> \
 ///     --secret <SECRET> \
 ///     --net-id-oui-file mappings.json
 /// ```
+///
+/// This util does not send anything to the config service __yet__.
 use anyhow::Result;
 use clap::Parser;
 use helium_config_service_cli::{
