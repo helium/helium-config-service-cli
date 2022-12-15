@@ -104,7 +104,7 @@ impl session_key_filter_server::SessionKeyFilter for SKFService {
         tokio::spawn(async move {
             while let Ok(update) = updates.recv().await {
                 info!("filter updated");
-                if let Err(_) = tx.send(Ok(update)).await {
+                if (tx.send(Ok(update)).await).is_err() {
                     break;
                 }
             }

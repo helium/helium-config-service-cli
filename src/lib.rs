@@ -142,8 +142,7 @@ impl From<proto::OrgV1> for Org {
         let d = org
             .delegate_keys
             .into_iter()
-            .map(|key| PublicKey::try_from(key))
-            .flatten();
+            .flat_map(PublicKey::try_from);
         Self {
             oui: org.oui,
             owner: PublicKey::try_from(org.owner).unwrap(),

@@ -200,7 +200,7 @@ impl RouteClient {
             signature: vec![],
         };
         request.signature = request.sign(keypair)?;
-        Ok(self.client.euis(request).await?.into_inner().into())
+        Ok(self.client.euis(request).await?.into_inner())
     }
 }
 

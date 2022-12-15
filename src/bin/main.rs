@@ -558,7 +558,7 @@ mod tests {
 
         // =======
         let output = env_info(env_args).unwrap().into_inner();
-        let s: serde_json::Value = serde_json::from_str(&output.to_string()).unwrap();
+        let s: serde_json::Value = serde_json::from_str(&output).unwrap();
 
         let env = &s["environment"];
         let arg = &s["arguments"];

@@ -110,7 +110,7 @@ impl route_server::Route for RouteService {
         tokio::spawn(async move {
             while let Ok(update) = updates.recv().await {
                 info!("route updated");
-                if let Err(_) = tx.send(Ok(update)).await {
+                if (tx.send(Ok(update)).await).is_err() {
                     break;
                 }
             }

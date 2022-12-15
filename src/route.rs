@@ -143,7 +143,7 @@ impl From<ProtoRoute> for Route {
 impl From<Route> for ProtoRoute {
     fn from(route: Route) -> Self {
         Self {
-            id: route.id.into(),
+            id: route.id,
             net_id: route.net_id.into(),
             devaddr_ranges: route.devaddr_ranges.into_iter().map(|r| r.into()).collect(),
             euis: route.euis.into_iter().map(|e| e.into()).collect(),
