@@ -89,7 +89,9 @@ impl RouteList {
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct DevaddrRange {
+    #[serde(alias = "lower")]
     start_addr: hex_field::HexDevAddr,
+    #[serde(alias = "upper")]
     end_addr: hex_field::HexDevAddr,
 }
 
