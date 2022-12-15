@@ -50,6 +50,9 @@ impl<const WIDTH: usize> Display for HexField<WIDTH> {
 impl<const WIDTH: usize> FromStr for HexField<WIDTH> {
     type Err = anyhow::Error;
     fn from_str(s: &str) -> Result<HexField<WIDTH>> {
+        if "*" == s {
+            return Ok(HexField::<WIDTH>(0));
+        }
         verify_len(s, WIDTH)?;
         Ok(HexField::<WIDTH>(u64::from_str_radix(s, 16)?))
     }
@@ -86,9 +89,16 @@ impl<'de, const WIDTH: usize> Deserialize<'de> for HexField<WIDTH> {
                     .map_err(|_| serde::de::Error::invalid_length(value.len(), &self))?;
                 Ok(field)
             }
+
+            fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(HexField::<IN_WIDTH>(v))
+            }
         }
 
-        deserializer.deserialize_str(HexFieldVisitor::<WIDTH>)
+        deserializer.deserialize_any(HexFieldVisitor::<WIDTH>)
     }
 }
 
@@ -222,11 +232,15 @@ impl HexNetID {
 #[cfg(test)]
 mod tests {
 
+    use std::str::FromStr;
+
     use crate::{
         hex_field::{devaddr, eui, net_id},
         DevaddrRange,
     };
     use pretty_assertions::assert_eq;
+
+    use super::HexEui;
 
     #[test]
     fn range_from_net_id() {
@@ -304,5 +318,13 @@ mod tests {
         // value includes quotes
         assert_eq!(16 + 2, val.len());
         assert_eq!(r#""0ABD68FDE91EE0DB""#.to_string(), val)
+    }
+
+    #[test]
+    fn wildcard_eui_field() {
+        let val = HexEui::from_str("*").expect("direct from str");
+        assert_eq!(0, val.0);
+        let val: HexEui = serde_json::from_str(r#""*""#).expect("serde_json from_str");
+        assert_eq!(0, val.0);
     }
 }
