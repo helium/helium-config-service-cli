@@ -1,6 +1,6 @@
 use crate::storage::{SessionKeyFilter, SkfStorage, Storage};
 use helium_config_service_cli::Result;
-use helium_proto::services::config::{
+use helium_proto::services::iot_config::{
     session_key_filter_server, SessionKeyFilterCreateReqV1, SessionKeyFilterDeleteReqV1,
     SessionKeyFilterGetReqV1, SessionKeyFilterListReqV1, SessionKeyFilterListResV1,
     SessionKeyFilterStreamReqV1, SessionKeyFilterStreamResV1, SessionKeyFilterUpdateReqV1,

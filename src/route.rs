@@ -4,7 +4,7 @@ use crate::{
     DevaddrRange, Eui, Result,
 };
 use anyhow::Context;
-use helium_proto::services::config::RouteV1 as ProtoRoute;
+use helium_proto::services::iot_config::RouteV1 as ProtoRoute;
 use serde::{Deserialize, Serialize};
 use std::{
     fs,
@@ -108,6 +108,10 @@ impl Route {
         self.devaddr_ranges.push(range);
     }
 
+    pub fn remove_devaddr(&mut self, range: DevaddrRange) {
+        self.devaddr_ranges.retain(|d| d != &range);
+    }
+
     pub fn set_server(&mut self, server: Server) {
         self.server = server;
     }
@@ -154,7 +158,7 @@ impl From<Route> for ProtoRoute {
 #[cfg(test)]
 mod tests {
     use crate::{hex_field, server::Server, DevaddrRange, Eui, Route};
-    use helium_proto::services::config::{DevaddrRangeV1, EuiV1, RouteV1, ServerV1};
+    use helium_proto::services::iot_config::{DevaddrRangeV1, EuiV1, RouteV1, ServerV1};
 
     #[test]
     fn route_to_route_v1_conversion() {

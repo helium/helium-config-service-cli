@@ -11,8 +11,9 @@ use helium_config_service_cli::{
     DevaddrRange, Org, Result,
 };
 use helium_crypto::PublicKey;
-use helium_proto::services::config::{ActionV1, SessionKeyFilterV1};
-use helium_proto::services::config::{RouteStreamResV1, SessionKeyFilterStreamResV1};
+use helium_proto::services::iot_config::{
+    ActionV1, RouteStreamResV1, SessionKeyFilterStreamResV1, SessionKeyFilterV1,
+};
 use tokio::sync::broadcast::{Receiver, Sender};
 use tracing::info;
 

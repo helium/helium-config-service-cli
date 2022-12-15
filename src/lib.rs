@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use std::{fs, path::Path};
 
 pub mod proto {
-    pub use helium_proto::services::config::{
+    pub use helium_proto::services::iot_config::{
         DevaddrRangeV1, EuiV1, OrgListResV1, OrgResV1, OrgV1, RouteListResV1,
     };
 }
@@ -176,6 +176,15 @@ impl From<proto::RouteListResV1> for RouteList {
 
 impl From<proto::DevaddrRangeV1> for DevaddrRange {
     fn from(range: proto::DevaddrRangeV1) -> Self {
+        Self {
+            start_addr: range.start_addr.into(),
+            end_addr: range.end_addr.into(),
+        }
+    }
+}
+
+impl From<&proto::DevaddrRangeV1> for DevaddrRange {
+    fn from(range: &proto::DevaddrRangeV1) -> Self {
         Self {
             start_addr: range.start_addr.into(),
             end_addr: range.end_addr.into(),
