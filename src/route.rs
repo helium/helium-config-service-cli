@@ -20,7 +20,7 @@ pub struct Route {
     pub oui: u64,
     pub server: Server,
     pub max_copies: u32,
-    nonce: u64,
+    pub nonce: u64,
 }
 
 impl Route {
