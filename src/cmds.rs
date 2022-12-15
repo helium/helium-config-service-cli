@@ -54,6 +54,8 @@ pub enum Commands {
     GetRoutes(GetRoutes),
     /// Get a Route by ID and write to file
     GetRoute(GetRoute),
+    /// Get all Orgs
+    GetOrgs(GetOrgs),
     /// Get an Organization you own
     GetOrg(GetOrg),
 
@@ -66,6 +68,8 @@ pub enum Commands {
 
     /// Update a Route
     UpdateRoute(UpdateRoute),
+    /// Remove a Route
+    RemoveRoute(RemoveRoute),
 
     /// Updating sections in Routes
     Add {
@@ -269,6 +273,12 @@ pub struct GetRoute {
 }
 
 #[derive(Debug, Args)]
+pub struct GetOrgs {
+    #[arg(from_global)]
+    pub config_host: String,
+}
+
+#[derive(Debug, Args)]
 pub struct GetOrg {
     #[arg(long, env = "HELIUM_OUI")]
     pub oui: u64,
@@ -294,6 +304,20 @@ pub struct CreateRoute {
 
 #[derive(Debug, Args)]
 pub struct UpdateRoute {
+    #[arg(long)]
+    pub route_file: PathBuf,
+    #[arg(long)]
+    pub owner: PublicKey,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct RemoveRoute {
     #[arg(long)]
     pub route_file: PathBuf,
     #[arg(long)]

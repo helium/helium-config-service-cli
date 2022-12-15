@@ -6,8 +6,8 @@ use helium_config_service_cli::{
     cmds::{
         AddCommands, AddDevaddr, AddEui, AddGwmpMapping, AddGwmpSettings, AddHttpSettings,
         AddPacketRouterSettings, Cli, Commands, CreateHelium, CreateRoaming, CreateRoute, EnvInfo,
-        GenerateKeypair, GenerateRoute, GetOrg, GetRoute, GetRoutes, PathBufKeypair,
-        ProtocolCommands, SubnetMask, UpdateRoute, ENV_CONFIG_HOST, ENV_KEYPAIR_BIN,
+        GenerateKeypair, GenerateRoute, GetOrg, GetOrgs, GetRoute, GetRoutes, PathBufKeypair,
+        ProtocolCommands, RemoveRoute, SubnetMask, UpdateRoute, ENV_CONFIG_HOST, ENV_KEYPAIR_BIN,
         ENV_MAX_COPIES, ENV_NET_ID, ENV_OUI,
     },
     hex_field,
@@ -66,11 +66,13 @@ async fn handle_cli(cli: Cli) -> Result<Msg> {
         // API Commands
         Commands::GetRoutes(args) => get_routes(args).await,
         Commands::GetRoute(args) => get_route(args).await,
+        Commands::GetOrgs(args) => get_orgs(args).await,
         Commands::GetOrg(args) => get_org(args).await,
         Commands::CreateRoute(args) => create_route(args).await,
         Commands::CreateHelium(args) => create_helium_org(args).await,
         Commands::CreateRoaming(args) => create_roaming_org(args).await,
         Commands::UpdateRoute(args) => update_route(args).await,
+        Commands::RemoveRoute(args) => remove_route(args).await,
         // File updating commands
         Commands::Add { command } => match command {
             AddCommands::Devaddr(args) => add_devaddr(args).await,
@@ -355,6 +357,13 @@ async fn get_route(args: GetRoute) -> Result<Msg> {
     Msg::ok(route.pretty_json()?)
 }
 
+async fn get_orgs(args: GetOrgs) -> Result<Msg> {
+    let mut client = client::OrgClient::new(&args.config_host).await?;
+    let org = client.list().await?;
+
+    Msg::ok(org.pretty_json()?)
+}
+
 async fn get_org(args: GetOrg) -> Result<Msg> {
     let mut client = client::OrgClient::new(&args.config_host).await?;
     let org = client.get(args.oui).await?;
@@ -411,6 +420,26 @@ async fn update_route(args: UpdateRoute) -> Result<Msg> {
     }
     Msg::ok(format!(
         "{} is valid, pass `--commit` to update",
+        &args.route_file.display()
+    ))
+}
+
+async fn remove_route(args: RemoveRoute) -> Result<Msg> {
+    let route = Route::from_file(&args.route_file)?;
+    if args.commit {
+        let mut client = client::RouteClient::new(&args.config_host).await?;
+        let removed_route = client
+            .delete(&route.id, &args.owner, &args.keypair.to_keypair()?)
+            .await?;
+        removed_route.remove(
+            args.route_file
+                .parent()
+                .expect("filename is in a directory"),
+        )?;
+        return Msg::ok(format!("{} deleted", &args.route_file.display()));
+    }
+    Msg::ok(format!(
+        "{} ready for deletion, pass `--commit` to remove",
         &args.route_file.display()
     ))
 }

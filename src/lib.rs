@@ -8,7 +8,7 @@ pub mod subnet;
 
 use anyhow::{anyhow, Context, Error};
 use helium_crypto::PublicKey;
-use hex_field::HexNetID;
+use hex_field::{HexDevAddr, HexNetID};
 use route::Route;
 use serde::{Deserialize, Serialize};
 use std::{fs, path::Path};
@@ -59,12 +59,13 @@ pub struct OrgList {
     orgs: Vec<Org>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Org {
     pub oui: u64,
     pub owner: PublicKey,
     pub payer: PublicKey,
-    pub nonce: u32,
+    pub nonce: u64,
+    pub delegate_keys: Vec<PublicKey>,
 }
 
 #[derive(Debug, Serialize)]
@@ -88,7 +89,9 @@ impl RouteList {
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct DevaddrRange {
+    #[serde(alias = "lower")]
     start_addr: hex_field::HexDevAddr,
+    #[serde(alias = "upper")]
     end_addr: hex_field::HexDevAddr,
 }
 
@@ -103,9 +106,18 @@ impl DevaddrRange {
             end_addr,
         })
     }
+
+    pub fn next_start(&self) -> Result<HexDevAddr> {
+        let end: u64 = self.end_addr.into();
+        Ok(hex_field::devaddr(end + 1))
+    }
+
+    pub fn contains(&self, range: &Self) -> bool {
+        self.start_addr <= range.start_addr && self.end_addr >= range.end_addr
+    }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Eui {
     app_eui: hex_field::HexEui,
     dev_eui: hex_field::HexEui,
@@ -127,11 +139,17 @@ impl From<proto::OrgListResV1> for OrgList {
 
 impl From<proto::OrgV1> for Org {
     fn from(org: proto::OrgV1) -> Self {
+        let d = org
+            .delegate_keys
+            .into_iter()
+            .map(|key| PublicKey::try_from(key))
+            .flatten();
         Self {
             oui: org.oui,
             owner: PublicKey::try_from(org.owner).unwrap(),
             payer: PublicKey::try_from(org.payer).unwrap(),
             nonce: org.nonce,
+            delegate_keys: d.collect(),
         }
     }
 }
@@ -143,6 +161,7 @@ impl From<Org> for proto::OrgV1 {
             owner: org.owner.into(),
             payer: org.payer.into(),
             nonce: org.nonce,
+            delegate_keys: org.delegate_keys.iter().map(|key| key.into()).collect(),
         }
     }
 }
@@ -167,14 +186,23 @@ impl From<proto::DevaddrRangeV1> for DevaddrRange {
 impl From<DevaddrRange> for proto::DevaddrRangeV1 {
     fn from(range: DevaddrRange) -> Self {
         Self {
-            start_addr: range.start_addr.0,
-            end_addr: range.end_addr.0,
+            start_addr: range.start_addr.into(),
+            end_addr: range.end_addr.into(),
         }
     }
 }
 
 impl From<proto::EuiV1> for Eui {
     fn from(range: proto::EuiV1) -> Self {
+        Self {
+            app_eui: range.app_eui.into(),
+            dev_eui: range.dev_eui.into(),
+        }
+    }
+}
+
+impl From<&proto::EuiV1> for Eui {
+    fn from(range: &proto::EuiV1) -> Self {
         Self {
             app_eui: range.app_eui.into(),
             dev_eui: range.dev_eui.into(),

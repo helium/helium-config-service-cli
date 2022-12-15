@@ -11,7 +11,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Route {
     pub id: String,
     pub net_id: hex_field::HexNetID,
@@ -20,7 +20,7 @@ pub struct Route {
     pub oui: u64,
     pub server: Server,
     pub max_copies: u32,
-    nonce: u32,
+    pub nonce: u64,
 }
 
 impl Route {
@@ -100,6 +100,10 @@ impl Route {
         self.euis.push(eui);
     }
 
+    pub fn remove_eui(&mut self, eui: Eui) {
+        self.euis.retain(|e| e != &eui);
+    }
+
     pub fn add_devaddr(&mut self, range: DevaddrRange) {
         self.devaddr_ranges.push(range);
     }
@@ -120,7 +124,7 @@ impl Route {
 impl From<ProtoRoute> for Route {
     fn from(route: ProtoRoute) -> Self {
         Self {
-            id: String::from_utf8(route.id).unwrap(),
+            id: route.id,
             net_id: route.net_id.into(),
             devaddr_ranges: route.devaddr_ranges.into_iter().map(|r| r.into()).collect(),
             euis: route.euis.into_iter().map(|e| e.into()).collect(),
@@ -171,7 +175,7 @@ mod tests {
             nonce: 1337,
         };
         let v1 = RouteV1 {
-            id: vec![114, 111, 117, 116, 101, 95, 105, 100],
+            id: "route_id".into(),
             net_id: 1,
             devaddr_ranges: vec![DevaddrRangeV1 {
                 start_addr: 287454020,
