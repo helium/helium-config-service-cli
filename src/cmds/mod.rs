@@ -9,6 +9,11 @@ use clap::{Args, Parser, Subcommand};
 use helium_crypto::PublicKey;
 use std::path::PathBuf;
 
+pub mod env;
+pub mod org;
+pub mod protocol;
+pub mod route;
+
 pub const ENV_CONFIG_HOST: &str = "HELIUM_CONFIG_HOST";
 pub const ENV_KEYPAIR_BIN: &str = "HELIUM_KEYPAIR_BIN";
 pub const ENV_NET_ID: &str = "HELIUM_NET_ID";
@@ -41,44 +46,68 @@ pub struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub enum Commands {
+    /// Environment
+    Env {
+        #[command(subcommand)]
+        command: EnvCommands,
+    },
+
+    /// Route
+    Route {
+        #[command(subcommand)]
+        command: RouteCommands,
+    },
+
+    /// Org
+    Org {
+        #[command(subcommand)]
+        command: OrgCommands,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+pub enum EnvCommands {
     /// Make Environment variables to ease repeated use
-    EnvInit,
+    Init,
     /// View information about your environment
-    EnvInfo(EnvInfo),
+    Info(EnvInfo),
     /// Make a new keypair
     GenerateKeypair(GenerateKeypair),
+}
+
+#[derive(Debug, Subcommand)]
+pub enum RouteCommands {
     /// Make an empty route file edit
-    GenerateRoute(GenerateRoute),
-
+    Generate(GenerateRoute),
     /// Get all Routes for an OUI
-    GetRoutes(GetRoutes),
+    List(GetRoutes),
     /// Get a Route by ID and write to file
-    GetRoute(GetRoute),
-    /// Get all Orgs
-    GetOrgs(GetOrgs),
-    /// Get an Organization you own
-    GetOrg(GetOrg),
-
+    Get(GetRoute),
     /// Create a Route from a file
-    CreateRoute(CreateRoute),
-    /// Create a new Helium Organization
-    CreateHelium(CreateHelium),
-    /// Create a new Roaming Organization (admin only)
-    CreateRoaming(CreateRoaming),
-
+    Create(CreateRoute),
     /// Update a Route
-    UpdateRoute(UpdateRoute),
+    Update(UpdateRoute),
     /// Remove a Route
-    RemoveRoute(RemoveRoute),
-
+    Remove(RemoveRoute),
+    /// Print out subnet mask for Devaddr Range
+    SubnetMask(SubnetMask),
     /// Updating sections in Routes
     Add {
         #[command(subcommand)]
         command: AddCommands,
     },
+}
 
-    /// Print out subnet mask for Devaddr Range
-    SubnetMask(SubnetMask),
+#[derive(Debug, Subcommand)]
+pub enum OrgCommands {
+    /// Get all Orgs
+    List(GetOrgs),
+    /// Get an Organization you own
+    Get(GetOrg),
+    /// Create a new Helium Organization
+    CreateHelium(CreateHelium),
+    /// Create a new Roaming Organization (admin only)
+    CreateRoaming(CreateRoaming),
 }
 
 #[derive(Debug, Args)]

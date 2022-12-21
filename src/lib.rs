@@ -11,7 +11,7 @@ use helium_crypto::PublicKey;
 use hex_field::{HexDevAddr, HexNetID};
 use route::Route;
 use serde::{Deserialize, Serialize};
-use std::{fs, path::Path};
+use std::{fmt::Display, fs, path::Path};
 
 pub mod proto {
     pub use helium_proto::services::iot_config::{
@@ -20,6 +20,36 @@ pub mod proto {
 }
 
 pub type Result<T = (), E = Error> = anyhow::Result<T, E>;
+
+#[derive(Debug, Serialize)]
+pub enum Msg {
+    Success(String),
+    Error(String),
+}
+
+impl Msg {
+    pub fn ok(msg: String) -> Result<Self> {
+        Ok(Self::Success(msg))
+    }
+    pub fn err(msg: String) -> Result<Self> {
+        Ok(Self::Error(msg))
+    }
+    pub fn into_inner(self) -> String {
+        match self {
+            Msg::Success(s) => s,
+            Msg::Error(s) => s,
+        }
+    }
+}
+
+impl Display for Msg {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Msg::Success(msg) => write!(f, "\u{2713} {}", msg),
+            Msg::Error(msg) => write!(f, "\u{2717} {}", msg),
+        }
+    }
+}
 
 pub trait PrettyJson {
     fn print_pretty_json(&self) -> Result;
