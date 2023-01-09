@@ -334,7 +334,7 @@ fn generate_route(args: GenerateRoute) -> Result<Msg> {
 async fn get_routes(args: GetRoutes) -> Result<Msg> {
     let mut client = client::RouteClient::new(&args.config_host).await?;
     let route_list = client
-        .list(args.oui, &args.owner, &args.keypair.to_keypair()?)
+        .list(args.oui, &args.keypair.to_keypair()?)
         .await?;
 
     if args.commit {
@@ -348,7 +348,7 @@ async fn get_routes(args: GetRoutes) -> Result<Msg> {
 async fn get_route(args: GetRoute) -> Result<Msg> {
     let mut client = client::RouteClient::new(&args.config_host).await?;
     let route = client
-        .get(&args.route_id, &args.owner, &args.keypair.to_keypair()?)
+        .get(&args.route_id, &args.keypair.to_keypair()?)
         .await?;
 
     if args.commit {
@@ -386,7 +386,7 @@ async fn create_route(args: CreateRoute) -> Result<Msg> {
     if args.commit {
         let mut client = client::RouteClient::new(&args.config_host).await?;
         match client
-            .create_route(route, &args.owner, &args.keypair.to_keypair()?)
+            .create_route(route, &args.keypair.to_keypair()?)
             .await
         {
             Ok(created_route) => {
@@ -418,7 +418,7 @@ async fn update_route(args: UpdateRoute) -> Result<Msg> {
     if args.commit {
         let mut client = client::RouteClient::new(&args.config_host).await?;
         let updated_route = client
-            .push(route, &args.owner, &args.keypair.to_keypair()?)
+            .push(route, &args.keypair.to_keypair()?)
             .await?;
         updated_route.write(args.route_file.as_path())?;
         return Msg::ok(format!("{} written", &args.route_file.display()));
@@ -434,7 +434,7 @@ async fn remove_route(args: RemoveRoute) -> Result<Msg> {
     if args.commit {
         let mut client = client::RouteClient::new(&args.config_host).await?;
         let removed_route = client
-            .delete(&route.id, &args.owner, &args.keypair.to_keypair()?)
+            .delete(&route.id, &args.keypair.to_keypair()?)
             .await?;
         removed_route.remove(
             args.route_file
