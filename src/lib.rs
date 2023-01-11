@@ -64,7 +64,6 @@ pub struct Org {
     pub oui: u64,
     pub owner: PublicKey,
     pub payer: PublicKey,
-    pub nonce: u64,
     pub delegate_keys: Vec<PublicKey>,
 }
 
@@ -139,15 +138,11 @@ impl From<proto::OrgListResV1> for OrgList {
 
 impl From<proto::OrgV1> for Org {
     fn from(org: proto::OrgV1) -> Self {
-        let d = org
-            .delegate_keys
-            .into_iter()
-            .flat_map(PublicKey::try_from);
+        let d = org.delegate_keys.into_iter().flat_map(PublicKey::try_from);
         Self {
             oui: org.oui,
             owner: PublicKey::try_from(org.owner).unwrap(),
             payer: PublicKey::try_from(org.payer).unwrap(),
-            nonce: org.nonce,
             delegate_keys: d.collect(),
         }
     }
@@ -155,12 +150,14 @@ impl From<proto::OrgV1> for Org {
 
 impl From<Org> for proto::OrgV1 {
     fn from(org: Org) -> Self {
+        #[allow(deprecated)]
         Self {
             oui: org.oui,
             owner: org.owner.into(),
             payer: org.payer.into(),
-            nonce: org.nonce,
             delegate_keys: org.delegate_keys.iter().map(|key| key.into()).collect(),
+            // Deprecated proto field; flagged above to avoid compiler warning
+            nonce: 0,
         }
     }
 }

@@ -70,11 +70,17 @@ impl Protocol {
         BTreeMap::from([(region, port)])
     }
 
-    pub fn make_http(flow_type: FlowType, dedupe_timeout: u32, path: String) -> Self {
+    pub fn make_http(
+        flow_type: FlowType,
+        dedupe_timeout: u32,
+        path: String,
+        auth_header: Option<String>,
+    ) -> Self {
         Self::Http(Http {
             flow_type,
             dedupe_timeout,
             path,
+            auth_header: auth_header.unwrap_or_default(),
         })
     }
 
@@ -117,6 +123,7 @@ pub struct Http {
     flow_type: FlowType,
     dedupe_timeout: u32,
     path: String,
+    auth_header: String,
 }
 
 #[derive(clap::ValueEnum, Clone, Serialize, Debug, Deserialize, PartialEq, Eq, Default)]
@@ -190,6 +197,7 @@ impl From<Protocol> for proto::Protocol {
                 flow_type: proto::FlowTypeV1::from(http.flow_type) as i32,
                 dedupe_timeout: http.dedupe_timeout,
                 path: http.path,
+                auth_header: http.auth_header,
             }),
             Protocol::PacketRouter => {
                 proto::Protocol::PacketRouter(proto::ProtocolPacketRouterV1 {})
@@ -213,6 +221,7 @@ impl From<proto::Protocol> for Protocol {
                 flow_type: FlowType::from_i32(http.flow_type).unwrap(),
                 dedupe_timeout: http.dedupe_timeout,
                 path: http.path,
+                auth_header: http.auth_header,
             }),
             proto::Protocol::PacketRouter(_args) => Protocol::PacketRouter,
         }
@@ -292,13 +301,14 @@ mod tests {
             flow_type: FlowType::Async,
             dedupe_timeout: 777,
             path: "/fns".into(),
+            auth_header: "auth-header".to_string(),
         });
         assert_ser_tokens(
             &http,
             &[
                 Token::Struct {
                     name: "Http",
-                    len: 4,
+                    len: 5,
                 },
                 Token::Str("type"),
                 Token::Str("http"),
@@ -311,6 +321,8 @@ mod tests {
                 Token::U32(777),
                 Token::Str("path"),
                 Token::Str("/fns"),
+                Token::Str("auth_header"),
+                Token::Str("auth-header"),
                 Token::StructEnd,
             ],
         );

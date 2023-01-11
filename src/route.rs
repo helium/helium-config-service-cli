@@ -20,7 +20,6 @@ pub struct Route {
     pub oui: u64,
     pub server: Server,
     pub max_copies: u32,
-    pub nonce: u64,
 }
 
 impl Route {
@@ -33,7 +32,6 @@ impl Route {
             oui,
             server: Server::default(),
             max_copies,
-            nonce: 1,
         }
     }
     pub fn from_file(path: &PathBuf) -> Result<Self> {
@@ -89,13 +87,6 @@ impl Route {
         Ok(())
     }
 
-    pub fn inc_nonce(self) -> Self {
-        Self {
-            nonce: self.nonce + 1,
-            ..self
-        }
-    }
-
     pub fn add_eui(&mut self, eui: Eui) {
         self.euis.push(eui);
     }
@@ -135,11 +126,11 @@ impl From<ProtoRoute> for Route {
             oui: route.oui,
             server: route.server.map_or_else(Server::default, |s| s.into()),
             max_copies: route.max_copies,
-            nonce: route.nonce,
         }
     }
 }
 
+#[allow(deprecated)]
 impl From<Route> for ProtoRoute {
     fn from(route: Route) -> Self {
         Self {
@@ -150,7 +141,8 @@ impl From<Route> for ProtoRoute {
             oui: route.oui,
             server: Some(route.server.into()),
             max_copies: route.max_copies,
-            nonce: route.nonce,
+            // Deprecated proto field; flagged above to avoid compiler warning
+            nonce: 0,
         }
     }
 }
@@ -176,8 +168,8 @@ mod tests {
             oui: 66,
             server: Server::default(),
             max_copies: 999,
-            nonce: 1337,
         };
+        #[allow(deprecated)]
         let v1 = RouteV1 {
             id: "route_id".into(),
             net_id: 1,
@@ -196,7 +188,8 @@ mod tests {
                 protocol: None,
             }),
             max_copies: 999,
-            nonce: 1337,
+            // Deprecated proto field; flagged above to avoid compiler warning
+            nonce: 0,
         };
         assert_eq!(route, Route::from(v1.clone()));
         assert_eq!(v1, RouteV1::from(route));

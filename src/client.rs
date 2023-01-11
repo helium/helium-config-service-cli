@@ -176,7 +176,7 @@ impl RouteClient {
         keypair: &Keypair,
     ) -> Result<Route> {
         let mut request = RouteUpdateReqV1 {
-            route: Some(route.inc_nonce().into()),
+            route: Some(route.into()),
             signer: owner.into(),
             timestamp: current_timestamp()?,
             signature: vec![],

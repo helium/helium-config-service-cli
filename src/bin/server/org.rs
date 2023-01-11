@@ -80,7 +80,6 @@ impl OrgServer for OrgService {
             oui: self.storage.next_oui(),
             owner: PublicKey::try_from(req.owner).unwrap(),
             payer: PublicKey::try_from(req.payer).unwrap(),
-            nonce: 0,
             delegate_keys: vec![],
         };
 
@@ -107,7 +106,6 @@ impl OrgServer for OrgService {
             oui: self.storage.next_oui(),
             owner: PublicKey::try_from(req.owner).unwrap(),
             payer: PublicKey::try_from(req.payer).unwrap(),
-            nonce: 0,
             delegate_keys: vec![],
         };
 

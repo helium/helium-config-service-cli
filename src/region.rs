@@ -21,6 +21,20 @@ pub enum Region {
     Kr920,
     In865,
     Cd900_1a,
+    Ru864,
+    Eu868A,
+    Eu868B,
+    Eu868C,
+    Eu868D,
+    Eu868E,
+    Eu868F,
+    Au915Sb1,
+    Au915Sb2,
+    As9231a,
+    As9231c,
+    As9231d,
+    As9231e,
+    As9231f,
 }
 
 impl Region {
@@ -92,6 +106,20 @@ impl From<&Region> for ProtoRegion {
             Region::Kr920 => ProtoRegion::Kr920,
             Region::In865 => ProtoRegion::In865,
             Region::Cd900_1a => ProtoRegion::Cd9001a,
+            Region::Ru864 => ProtoRegion::Ru864,
+            Region::Eu868A => ProtoRegion::Eu868A,
+            Region::Eu868B => ProtoRegion::Eu868B,
+            Region::Eu868C => ProtoRegion::Eu868C,
+            Region::Eu868D => ProtoRegion::Eu868D,
+            Region::Eu868E => ProtoRegion::Eu868E,
+            Region::Eu868F => ProtoRegion::Eu868F,
+            Region::Au915Sb1 => ProtoRegion::Au915Sb1,
+            Region::Au915Sb2 => ProtoRegion::Au915Sb2,
+            Region::As9231a => ProtoRegion::As9231a,
+            Region::As9231c => ProtoRegion::As9231c,
+            Region::As9231d => ProtoRegion::As9231d,
+            Region::As9231e => ProtoRegion::As9231e,
+            Region::As9231f => ProtoRegion::As9231f,
         }
     }
 }
@@ -113,6 +141,20 @@ impl From<ProtoRegion> for Region {
             ProtoRegion::Kr920 => Region::Kr920,
             ProtoRegion::In865 => Region::In865,
             ProtoRegion::Cd9001a => Region::Cd900_1a,
+            ProtoRegion::Ru864 => Region::Ru864,
+            ProtoRegion::Eu868A => Region::Eu868A,
+            ProtoRegion::Eu868B => Region::Eu868B,
+            ProtoRegion::Eu868C => Region::Eu868C,
+            ProtoRegion::Eu868D => Region::Eu868D,
+            ProtoRegion::Eu868E => Region::Eu868E,
+            ProtoRegion::Eu868F => Region::Eu868F,
+            ProtoRegion::Au915Sb1 => Region::Au915Sb1,
+            ProtoRegion::Au915Sb2 => Region::Au915Sb2,
+            ProtoRegion::As9231a => Region::As9231a,
+            ProtoRegion::As9231c => Region::As9231c,
+            ProtoRegion::As9231d => Region::As9231d,
+            ProtoRegion::As9231e => Region::As9231e,
+            ProtoRegion::As9231f => Region::As9231f,
         }
     }
 }

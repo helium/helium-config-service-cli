@@ -204,6 +204,7 @@ fn to_route(config: Config, net_id: HexNetID, oui: u64) -> Route {
                     FlowType::Async,
                     config.http_dedupe_timeout.unwrap_or(250),
                     url.path().into(),
+                    None,
                 ),
             )
         }
@@ -218,7 +219,6 @@ fn to_route(config: Config, net_id: HexNetID, oui: u64) -> Route {
         oui,
         server,
         max_copies: config.multi_buy.unwrap_or(0),
-        nonce: 0,
     }
 }
 

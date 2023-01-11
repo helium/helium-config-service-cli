@@ -187,6 +187,9 @@ pub struct AddHttpSettings {
     /// The rest will be taken from the Server {host}:{port}
     #[arg(short, long)]
     pub path: String,
+    /// Authorization Header
+    #[arg(short, long)]
+    pub auth_header: Option<String>,
     /// Path of route to apply http settings to
     #[arg(long, default_value = "./new_route.json")]
     pub route_file: PathBuf,
