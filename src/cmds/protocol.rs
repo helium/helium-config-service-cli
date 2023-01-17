@@ -6,7 +6,12 @@ use crate::{
 };
 
 pub async fn add_http_protocol(args: AddHttpSettings) -> Result<Msg> {
-    let http = Protocol::make_http(args.flow_type, args.dedupe_timeout, args.path);
+    let http = Protocol::make_http(
+        args.flow_type,
+        args.dedupe_timeout,
+        args.path,
+        args.auth_header,
+    );
     let server = Server::new(args.host, args.port, http);
 
     if !args.commit {
