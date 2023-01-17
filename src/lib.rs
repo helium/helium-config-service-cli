@@ -121,11 +121,11 @@ impl RouteList {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone, Hash)]
 pub struct DevaddrRange {
-    route_id: String,
-    start_addr: hex_field::HexDevAddr,
-    end_addr: hex_field::HexDevAddr,
+    pub route_id: String,
+    pub start_addr: hex_field::HexDevAddr,
+    pub end_addr: hex_field::HexDevAddr,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
@@ -158,11 +158,11 @@ impl DevaddrConstraint {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub struct RouteEui {
-    route_id: String,
-    app_eui: hex_field::HexEui,
-    dev_eui: hex_field::HexEui,
+    pub route_id: String,
+    pub app_eui: hex_field::HexEui,
+    pub dev_eui: hex_field::HexEui,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -260,6 +260,16 @@ impl From<DevaddrConstraint> for proto::DevaddrConstraintV1 {
         Self {
             start_addr: value.start_addr.into(),
             end_addr: value.end_addr.into(),
+        }
+    }
+}
+
+impl From<proto::EuiPairV1> for RouteEui {
+    fn from(value: proto::EuiPairV1) -> Self {
+        Self {
+            route_id: value.route_id,
+            app_eui: value.app_eui.into(),
+            dev_eui: value.dev_eui.into(),
         }
     }
 }

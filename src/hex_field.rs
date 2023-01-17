@@ -1,9 +1,9 @@
-use crate::{DevaddrConstraint, DevaddrRange, Result};
+use crate::{DevaddrConstraint, Result};
 use anyhow::anyhow;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{fmt::Display, str::FromStr};
 
-#[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, Default, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct HexField<const WIDTH: usize>(pub u64);
 
 pub type HexNetID = HexField<6>;

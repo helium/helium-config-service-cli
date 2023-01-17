@@ -7,7 +7,7 @@ use crate::{
     route::Route,
     server::Protocol,
     subnet::RouteSubnets,
-    DevaddrConstraint, DevaddrRange, Eui, Msg, PrettyJson, Result,
+    DevaddrConstraint, Msg, PrettyJson, Result,
 };
 
 use super::{AddDevaddr, AddEui, AddGwmpMapping};

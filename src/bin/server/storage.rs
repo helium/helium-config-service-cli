@@ -1,31 +1,38 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     sync::{Arc, Mutex, RwLock},
 };
 
 use anyhow::anyhow;
 use helium_config_service_cli::{
     hex_field::{self, HexDevAddr},
-    proto::OrgV1,
+    proto::{DevaddrRangeV1, EuiPairV1, OrgV1},
     route::Route,
-    DevaddrConstraint, DevaddrRange, Org, Result,
+    DevaddrConstraint, DevaddrRange, Org, Result, RouteEui,
 };
 use helium_crypto::PublicKey;
 use helium_proto::services::iot_config::{
-    RouteStreamResV1, SessionKeyFilterStreamResV1, SessionKeyFilterV1,
+    route_stream_res_v1, ActionV1, RouteStreamResV1, SessionKeyFilterStreamResV1,
+    SessionKeyFilterV1,
 };
 use tokio::sync::broadcast::{Receiver, Sender};
-use tracing::info;
+use tracing::{info, warn};
 
 pub type Oui = u64;
+pub type RouteId = String;
+
 pub type OrgMap = RwLock<HashMap<Oui, DbOrg>>;
 pub type RouteMap = RwLock<HashMap<Oui, Vec<Route>>>;
+pub type Euis = RwLock<HashSet<RouteEui>>;
+pub type Devaddrs = RwLock<HashSet<DevaddrRange>>;
 pub type FilterMap = RwLock<HashMap<Oui, SessionKeyFilter>>;
 
 #[derive(Debug)]
 pub struct Storage {
     orgs: OrgMap,
     routes: RouteMap,
+    euis: Euis,
+    devaddrs: Devaddrs,
     filters: FilterMap,
     next_oui: Mutex<u64>,
     next_helium_devaddr: Mutex<HexDevAddr>,
@@ -48,6 +55,16 @@ pub trait RouteStorage {
     fn update_route(&self, route: Route) -> Result<Route>;
     fn delete_route(&self, route_id: String) -> Option<Route>;
     fn subscribe_to_routes(&self) -> Receiver<RouteStreamResV1>;
+    // Euis
+    fn get_euis_for_route(&self, route_id: &RouteId) -> Vec<EuiPairV1>;
+    fn clear_euis_for_route(&self, route_id: &RouteId);
+    fn add_eui(&self, eui: EuiPairV1) -> bool;
+    fn remove_eui(&self, eui: EuiPairV1) -> bool;
+    // Devaddrs
+    fn get_devaddrs_for_route(&self, route_id: &RouteId) -> Vec<DevaddrRangeV1>;
+    fn clear_devaddrs_for_route(&self, route_id: &RouteId);
+    fn add_devaddr(&self, devaddr: DevaddrRangeV1) -> bool;
+    fn remove_devaddr(&self, devaddr: DevaddrRangeV1) -> bool;
 }
 
 pub trait SkfStorage {
@@ -150,6 +167,8 @@ impl Storage {
         Self {
             orgs: RwLock::new(HashMap::new()),
             routes: RwLock::new(HashMap::new()),
+            euis: RwLock::new(HashSet::new()),
+            devaddrs: RwLock::new(HashSet::new()),
             filters: RwLock::new(HashMap::new()),
             next_oui: Mutex::new(0),
             next_helium_devaddr: Mutex::new(helium_net_id.range_start()),
@@ -180,12 +199,17 @@ impl Storage {
             .map(|o| o.devaddr_constraints.to_owned())
     }
 
-    fn ranges_within_org_constraint(&self, oui: u64, ranges: &[DevaddrRange]) -> Result {
+    fn ranges_within_org_constraint(&self, oui: Oui, ranges: &[DevaddrRange]) -> Result {
         match self.get_devaddr_constraints(oui) {
             Some(constraint) => ranges.iter().all(|range| constraint.contains(range)),
             None => return Err(anyhow!("all orgs should have constraints")),
         };
         Ok(())
+    }
+
+    fn get_org_for_route_id(&self, route_id: RouteId) -> Oui {
+        let route = self.get_route(route_id).expect("route exists");
+        route.oui
     }
 }
 
@@ -249,18 +273,16 @@ impl RouteStorage for Storage {
     }
 
     fn create_route(&self, oui: u64, route: Route) -> Result<Route> {
-        // self.ranges_within_org_constraint(oui, &route.devaddr_ranges)?;
         let mut route = route;
         route.id = format!("{}", uuid::Uuid::new_v4());
         let mut store = self.routes.write().expect("route store lock");
         if let Some(routes) = store.get_mut(&oui) {
             routes.push(route.clone());
 
-            // TODO
-            // self.route_update_channel.send(RouteStreamResV1 {
-            //     action: ActionV1::Create.into(),
-            //     route: Some(route.clone().into()),
-            // })?;
+            self.route_update_channel.send(RouteStreamResV1 {
+                action: ActionV1::Add.into(),
+                data: Some(route_stream_res_v1::Data::Route(route.clone().into())),
+            })?;
 
             return Ok(route);
         }
@@ -268,18 +290,16 @@ impl RouteStorage for Storage {
     }
 
     fn update_route(&self, route: Route) -> Result<Route> {
-        // self.ranges_within_org_constraint(route.oui, &route.devaddr_ranges)?;
         let mut store = self.routes.write().expect("route store lock");
         if let Some(routes) = store.get_mut(&route.oui) {
             for old_route in routes {
                 if old_route.id == route.id {
                     *old_route = route.clone();
 
-                    // TODO
-                    // self.route_update_channel.send(RouteStreamResV1 {
-                    //     action: ActionV1::Update.into(),
-                    //     route: Some(route.clone().into()),
-                    // })?;
+                    self.route_update_channel.send(RouteStreamResV1 {
+                        action: ActionV1::Add.into(),
+                        data: Some(route_stream_res_v1::Data::Route(route.clone().into())),
+                    })?;
 
                     return Ok(route);
                 }
@@ -302,13 +322,12 @@ impl RouteStorage for Storage {
             if let Some(oui_routes) = store.get_mut(&inner_route.oui) {
                 oui_routes.retain(|route| route.id != id_to_remove)
             }
-            // TODO
-            // self.route_update_channel
-            //     .send(RouteStreamResV1 {
-            //         action: ActionV1::Delete.into(),
-            //         route: Some(inner_route.clone().into()),
-            //     })
-            //     .expect("sent delete update");
+            self.route_update_channel
+                .send(RouteStreamResV1 {
+                    action: ActionV1::Remove.into(),
+                    data: Some(route_stream_res_v1::Data::Route(inner_route.clone().into())),
+                })
+                .expect("sent delete update");
         }
 
         removed
@@ -316,6 +335,127 @@ impl RouteStorage for Storage {
 
     fn subscribe_to_routes(&self) -> Receiver<RouteStreamResV1> {
         self.route_update_channel.subscribe()
+    }
+
+    fn get_euis_for_route(&self, route_id: &RouteId) -> Vec<EuiPairV1> {
+        self.euis
+            .read()
+            .expect("euis store lock")
+            .clone()
+            .into_iter()
+            .filter_map(|eui_pair| {
+                if &eui_pair.route_id == route_id {
+                    Some(eui_pair.into())
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    fn clear_euis_for_route(&self, route_id: &RouteId) {
+        let to_remove = self
+            .euis
+            .read()
+            .expect("euis store lock")
+            .clone()
+            .into_iter()
+            .filter(|eui_pair| &eui_pair.route_id == route_id);
+
+        for eui in to_remove {
+            self.remove_eui(eui.into());
+        }
+    }
+
+    fn add_eui(&self, eui: EuiPairV1) -> bool {
+        let added = self
+            .euis
+            .write()
+            .expect("euis store lock")
+            .insert(eui.clone().into());
+
+        if added {
+            self.route_update_channel
+                .send(RouteStreamResV1 {
+                    action: ActionV1::Add.into(),
+                    data: Some(route_stream_res_v1::Data::Euis(eui)),
+                })
+                .expect("sent eui add update");
+        }
+
+        added
+    }
+
+    fn remove_eui(&self, eui: EuiPairV1) -> bool {
+        let removed = self
+            .euis
+            .write()
+            .expect("euis store lock")
+            .remove(&eui.clone().into());
+
+        if removed {
+            self.route_update_channel
+                .send(RouteStreamResV1 {
+                    action: ActionV1::Remove.into(),
+                    data: Some(route_stream_res_v1::Data::Euis(eui)),
+                })
+                .expect("sent eui remove udpate");
+        }
+
+        removed
+    }
+
+    fn get_devaddrs_for_route(&self, route_id: &RouteId) -> Vec<DevaddrRangeV1> {
+        self.devaddrs
+            .read()
+            .expect("devaddrs store lock")
+            .clone()
+            .into_iter()
+            .filter_map(|devaddr| {
+                if &devaddr.route_id == route_id {
+                    Some(devaddr.into())
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    fn clear_devaddrs_for_route(&self, route_id: &RouteId) {
+        let to_remove = self
+            .devaddrs
+            .read()
+            .expect("devaddrs store lock")
+            .clone()
+            .into_iter()
+            .filter(|devaddr| &devaddr.route_id == route_id);
+
+        for devaddr in to_remove {
+            self.remove_devaddr(devaddr.into());
+        }
+    }
+
+    fn add_devaddr(&self, devaddr: DevaddrRangeV1) -> bool {
+        let oui = self.get_org_for_route_id(devaddr.route_id.clone());
+        let range: DevaddrRange = devaddr.clone().into();
+        match self.ranges_within_org_constraint(oui, &vec![range]) {
+            Ok(()) => self
+                .devaddrs
+                .write()
+                .expect("devaddrs store lock")
+                .insert(devaddr.into()),
+            Err(e) => {
+                warn!("cannot add devaddr: {e:?}");
+                false
+            }
+        }
+    }
+
+    fn remove_devaddr(&self, devaddr: DevaddrRangeV1) -> bool {
+        self.devaddrs
+            .write()
+            .expect("devaddrs store lock")
+            .remove(&devaddr.into())
     }
 }
 

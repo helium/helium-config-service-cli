@@ -91,12 +91,46 @@ pub enum RouteCommands {
     Remove(RemoveRoute),
     /// Print out subnet mask for Devaddr Range
     SubnetMask(SubnetMask),
+    // /// Operate on EUIs for a Route
+    // Euis {
+    //     #[command(subcommand)]
+    //     command: EuiCommands,
+    // },
+    // /// Operate on Devaddrs for a Route
+    // Devaddrs {
+    //     #[command(subcommand)]
+    //     command: DevaddrCommands,
+    // },
     /// Updating sections in Routes
     Add {
         #[command(subcommand)]
         command: AddCommands,
     },
 }
+
+// #[derive(Debug, Subcommand)]
+// pub enum EuiCommands {
+//     /// Get all EUI pairs for a Route
+//     Get,
+//     /// Add EUI pair to Route
+//     Add,
+//     /// Remove EUI pair from Route
+//     Remove,
+//     /// Remove ALL EUI Pairs from Route
+//     Delete,
+// }
+
+// #[derive(Debug, Subcommand)]
+// pub enum DevaddrCommands {
+//     /// Get all Devaddr Ranges for a Route
+//     Get,
+//     /// Add Devaddr Range to Route
+//     Add,
+//     /// Remove Devaddr Range from Route
+//     Remove,
+//     /// Remove ALL Devaddr Ranges from Route
+//     Delete,
+// }
 
 #[derive(Debug, Subcommand)]
 pub enum OrgCommands {
