@@ -2,11 +2,11 @@ use ipnet;
 use serde::Serialize;
 use std::net;
 
-use crate::{hex_field::HexDevAddr, route::Route, DevaddrRange};
+use crate::{hex_field::HexDevAddr, route::Route, DevaddrConstraint};
 
 #[derive(Debug, Serialize, PartialEq, Eq)]
 pub struct DevaddrSubnet {
-    range: DevaddrRange,
+    range: DevaddrConstraint,
     subnets: Vec<String>,
 }
 
@@ -30,11 +30,12 @@ impl RouteSubnets {
     pub fn from_route(route: Route) -> Self {
         Self {
             id: route.id.clone(),
-            subnets: route
-                .devaddr_ranges
-                .into_iter()
-                .map(DevaddrRange::to_subnet)
-                .collect(),
+            // TODO:
+            subnets: vec![], // subnets: route
+                             //     .devaddr_ranges
+                             //     .into_iter()
+                             //     .map(DevaddrRange::to_subnet)
+                             //     .collect(),
         }
     }
 }
@@ -46,19 +47,19 @@ impl RouteSubnets {
 /// # Example
 ///
 /// ```
-/// use helium_config_service_cli::DevaddrRange;
+/// use helium_config_service_cli::DevaddrConstraint;
 /// use helium_config_service_cli::hex_field;
 /// use helium_config_service_cli::subnet;
 ///
 /// let start = hex_field::devaddr(0x11_22_33_40);
 /// let end = hex_field::devaddr(0x11_22_33_47);
-/// let range = DevaddrRange::new(start, end).unwrap();
+/// let range = DevaddrConstraint::new(start, end).unwrap();
 /// let subnet = range.to_subnet();
 ///
 /// let expected = vec!["11223340/29".to_string()];
 /// assert_eq!(subnet.subnets().unwrap(), expected);
 /// ```
-impl DevaddrRange {
+impl DevaddrConstraint {
     pub fn to_subnet(self) -> DevaddrSubnet {
         let start = net::Ipv4Addr::from(self.start_addr.0 as u32);
         let end = net::Ipv4Addr::from(self.end_addr.0 as u32);
@@ -85,11 +86,11 @@ impl DevaddrRange {
 }
 
 impl HexDevAddr {
-    pub fn to_range(self, add: u32) -> DevaddrRange {
+    pub fn to_range(self, add: u32) -> DevaddrConstraint {
         // Range includes starting address
         // (start, end]
         let end = (self.0 + (add - 1) as u64).into();
-        DevaddrRange {
+        DevaddrConstraint {
             start_addr: self,
             end_addr: end,
         }
@@ -106,7 +107,7 @@ impl From<net::Ipv4Addr> for HexDevAddr {
 #[cfg(test)]
 mod tests {
     use super::DevaddrSubnet;
-    use crate::{hex_field, DevaddrRange};
+    use crate::{hex_field, DevaddrConstraint};
     use pretty_assertions::assert_eq;
 
     #[test]
@@ -148,7 +149,7 @@ mod tests {
         );
 
         // It's not simple to create a backwards devaddr range.
-        let invalid_range = DevaddrRange {
+        let invalid_range = DevaddrConstraint {
             start_addr: end,
             end_addr: start,
         };

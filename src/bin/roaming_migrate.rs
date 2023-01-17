@@ -214,8 +214,6 @@ fn to_route(config: Config, net_id: HexNetID, oui: u64) -> Route {
         // No ID, that will be added when the route is pushed to the config service.
         id: "".into(),
         net_id,
-        devaddr_ranges: config.devaddrs,
-        euis: config.joins,
         oui,
         server,
         max_copies: config.multi_buy.unwrap_or(0),

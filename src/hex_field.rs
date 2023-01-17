@@ -1,4 +1,4 @@
-use crate::{DevaddrRange, Result};
+use crate::{DevaddrConstraint, DevaddrRange, Result};
 use anyhow::anyhow;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{fmt::Display, str::FromStr};
@@ -221,8 +221,8 @@ impl HexNetID {
         devaddr(max_devaddr as u64)
     }
 
-    pub fn full_range(&self) -> DevaddrRange {
-        DevaddrRange {
+    pub fn full_range(&self) -> DevaddrConstraint {
+        DevaddrConstraint {
             start_addr: self.range_start(),
             end_addr: self.range_end(),
         }
@@ -236,7 +236,7 @@ mod tests {
 
     use crate::{
         hex_field::{devaddr, eui, net_id},
-        DevaddrRange,
+        DevaddrConstraint,
     };
     use pretty_assertions::assert_eq;
 
@@ -287,7 +287,7 @@ mod tests {
             assert_eq!(test.netid_type, net_id.netid_type());
             assert_eq!(test.nwk_id, net_id.nwk_id());
             assert_eq!(
-                DevaddrRange::new(devaddr(test.start_addr), devaddr(test.end_addr)).unwrap(),
+                DevaddrConstraint::new(devaddr(test.start_addr), devaddr(test.end_addr)).unwrap(),
                 net_id.full_range()
             );
         }

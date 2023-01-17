@@ -7,7 +7,7 @@ use crate::{
     route::Route,
     server::Protocol,
     subnet::RouteSubnets,
-    DevaddrRange, Eui, Msg, PrettyJson, Result,
+    DevaddrConstraint, DevaddrRange, Eui, Msg, PrettyJson, Result,
 };
 
 use super::{AddDevaddr, AddEui, AddGwmpMapping};
@@ -132,7 +132,7 @@ pub async fn remove_route(args: RemoveRoute) -> Result<Msg> {
 
 pub fn subnet_mask(args: SubnetMask) -> Result<Msg> {
     if let (Some(start), Some(end)) = (args.start_addr, args.end_addr) {
-        let devaddr_range = DevaddrRange::new(start, end)?;
+        let devaddr_range = DevaddrConstraint::new(start, end)?;
         return Msg::ok(devaddr_range.to_subnet().pretty_json()?);
     }
 
@@ -153,34 +153,36 @@ pub fn subnet_mask(args: SubnetMask) -> Result<Msg> {
     Msg::err("not enough arguments, run again with `--help`".to_string())
 }
 
-pub async fn add_devaddr(args: AddDevaddr) -> Result<Msg> {
-    let devaddr = DevaddrRange::new(args.start_addr, args.end_addr)?;
-    if !args.commit {
-        return Msg::ok(format!(
-            "valid range, insert into `devaddr_ranges` section\n{}",
-            devaddr.pretty_json()?
-        ));
-    }
+pub async fn add_devaddr(_args: AddDevaddr) -> Result<Msg> {
+    unimplemented!("adding devaddr range to route");
+    // let devaddr = DevaddrRange::new(args.start_addr, args.end_addr)?;
+    // if !args.commit {
+    //     return Msg::ok(format!(
+    //         "valid range, insert into `devaddr_ranges` section\n{}",
+    //         devaddr.pretty_json()?
+    //     ));
+    // }
 
-    let mut route = Route::from_file(&args.route_file)?;
-    route.add_devaddr(devaddr);
-    route.write(&args.route_file)?;
-    Msg::ok(format!("{} written", args.route_file.display()))
+    // let mut route = Route::from_file(&args.route_file)?;
+    // route.add_devaddr(devaddr);
+    // route.write(&args.route_file)?;
+    // Msg::ok(format!("{} written", args.route_file.display()))
 }
 
-pub async fn add_eui(args: AddEui) -> Result<Msg> {
-    let eui = Eui::new(args.app_eui, args.dev_eui)?;
-    if !args.commit {
-        return Msg::ok(format!(
-            "valid eui, insert into `euis` section\n{}",
-            eui.pretty_json()?
-        ));
-    }
+pub async fn add_eui(_args: AddEui) -> Result<Msg> {
+    unimplemented!("adding EUI to route");
+    // let eui = Eui::new(args.app_eui, args.dev_eui)?;
+    // if !args.commit {
+    //     return Msg::ok(format!(
+    //         "valid eui, insert into `euis` section\n{}",
+    //         eui.pretty_json()?
+    //     ));
+    // }
 
-    let mut route = Route::from_file(&args.route_file)?;
-    route.add_eui(eui);
-    route.write(&args.route_file)?;
-    Msg::ok(format!("{} written", args.route_file.display()))
+    // let mut route = Route::from_file(&args.route_file)?;
+    // route.add_eui(eui);
+    // route.write(&args.route_file)?;
+    // Msg::ok(format!("{} written", args.route_file.display()))
 }
 
 pub async fn add_gwmp_mapping(args: AddGwmpMapping) -> Result<Msg> {

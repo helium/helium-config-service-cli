@@ -59,7 +59,7 @@ impl OrgServer for OrgService {
                 Ok(Response::new(OrgResV1 {
                     org: Some(org.into()),
                     net_id: 0,
-                    devaddr_ranges: vec![],
+                    devaddr_constraints: vec![],
                 }))
             }
             _ => {
@@ -91,7 +91,7 @@ impl OrgServer for OrgService {
         Ok(Response::new(OrgResV1 {
             org: Some(OrgV1::from(org)),
             net_id: net_id.into(),
-            devaddr_ranges: vec![devaddr_constraint.into()],
+            devaddr_constraints: vec![devaddr_constraint.into()],
         }))
     }
 
@@ -117,7 +117,7 @@ impl OrgServer for OrgService {
         Ok(Response::new(OrgResV1 {
             org: Some(OrgV1::from(org)),
             net_id: net_id.into(),
-            devaddr_ranges: vec![devaddr_constraint.into()],
+            devaddr_constraints: vec![devaddr_constraint.into()],
         }))
     }
 }

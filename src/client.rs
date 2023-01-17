@@ -1,10 +1,10 @@
-use crate::{hex_field, route::Route, Eui, OrgList, OrgResponse, Result, RouteList};
+use crate::{hex_field, route::Route, DevaddrRange, Eui, OrgList, OrgResponse, Result, RouteList};
 use helium_crypto::{Keypair, PublicKey, Sign};
 use helium_proto::{
     services::iot_config::{
         org_client, route_client, OrgCreateHeliumReqV1, OrgCreateRoamerReqV1, OrgGetReqV1,
-        OrgListReqV1, RouteCreateReqV1, RouteDeleteReqV1, RouteEuisActionV1, RouteEuisReqV1,
-        RouteEuisResV1, RouteGetReqV1, RouteListReqV1, RouteUpdateReqV1,
+        OrgListReqV1, RouteCreateReqV1, RouteDeleteReqV1, RouteEuisResV1, RouteGetReqV1,
+        RouteListReqV1, RouteUpdateReqV1,
     },
     Message,
 };
@@ -186,16 +186,26 @@ impl RouteClient {
         euis: Vec<Eui>,
         keypair: &Keypair,
     ) -> Result<RouteEuisResV1> {
-        let mut request = RouteEuisReqV1 {
-            action: RouteEuisActionV1::AddEuis.into(),
-            euis: euis.into_iter().map(|e| e.into()).collect(),
-            id: route_id,
-            timestamp: current_timestamp()?,
-            signer: keypair.public_key().into(),
-            signature: vec![],
-        };
-        request.signature = request.sign(keypair)?;
-        Ok(self.client.euis(request).await?.into_inner())
+        todo!("adding euis to specific route")
+        // let mut request = RouteEuisReqV1 {
+        //     action: RouteEuisActionV1::AddEuis.into(),
+        //     euis: euis.into_iter().map(|e| e.into()).collect(),
+        //     id: route_id,
+        //     timestamp: current_timestamp()?,
+        //     signer: keypair.public_key().into(),
+        //     signature: vec![],
+        // };
+        // request.signature = request.sign(keypair)?;
+        // Ok(self.client.euis(request).await?.into_inner())
+    }
+
+    pub async fn add_devaddrs(
+        &mut self,
+        route_id: String,
+        devaddrs: Vec<DevaddrRange>,
+        keypair: &Keypair,
+    ) -> Result<()> {
+        todo!("adding devaddrs to specific route")
     }
 }
 
@@ -226,6 +236,5 @@ impl_sign!(RouteGetReqV1, signature);
 impl_sign!(RouteCreateReqV1, signature);
 impl_sign!(RouteDeleteReqV1, signature);
 impl_sign!(RouteUpdateReqV1, signature);
-impl_sign!(RouteEuisReqV1, signature);
 impl_sign!(OrgCreateHeliumReqV1, signature);
 impl_sign!(OrgCreateRoamerReqV1, signature);

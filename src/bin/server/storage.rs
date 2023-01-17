@@ -8,11 +8,11 @@ use helium_config_service_cli::{
     hex_field::{self, HexDevAddr},
     proto::OrgV1,
     route::Route,
-    DevaddrRange, Org, Result,
+    DevaddrConstraint, DevaddrRange, Org, Result,
 };
 use helium_crypto::PublicKey;
 use helium_proto::services::iot_config::{
-    ActionV1, RouteStreamResV1, SessionKeyFilterStreamResV1, SessionKeyFilterV1,
+    RouteStreamResV1, SessionKeyFilterStreamResV1, SessionKeyFilterV1,
 };
 use tokio::sync::broadcast::{Receiver, Sender};
 use tracing::info;
@@ -35,8 +35,8 @@ pub struct Storage {
 
 pub trait OrgStorage {
     fn next_oui(&self) -> u64;
-    fn create_helium_org(&self, org: Org, devaddr_constraints: DevaddrRange);
-    fn create_roamer_org(&self, org: Org, devaddr_constraints: DevaddrRange);
+    fn create_helium_org(&self, org: Org, devaddr_constraints: DevaddrConstraint);
+    fn create_roamer_org(&self, org: Org, devaddr_constraints: DevaddrConstraint);
     fn get_orgs(&self) -> Vec<DbOrg>;
     fn get_org(&self, oui: u64) -> Option<DbOrg>;
 }
@@ -157,7 +157,7 @@ impl Storage {
             filter_update_channel: filter_updates,
         }
     }
-    fn create_org(&self, org: Org, devaddr_constraints: DevaddrRange) {
+    fn create_org(&self, org: Org, devaddr_constraints: DevaddrConstraint) {
         info!(oui = org.oui, "saving org");
         let key = org.oui;
 
@@ -172,7 +172,7 @@ impl Storage {
             .insert(key, vec![]);
     }
 
-    fn get_devaddr_constraints(&self, oui: u64) -> Option<DevaddrRange> {
+    fn get_devaddr_constraints(&self, oui: u64) -> Option<DevaddrConstraint> {
         self.orgs
             .read()
             .expect("org store lock")
@@ -197,7 +197,7 @@ impl OrgStorage for Storage {
         *oui
     }
 
-    fn create_helium_org(&self, org: Org, devaddr_constraints: DevaddrRange) {
+    fn create_helium_org(&self, org: Org, devaddr_constraints: DevaddrConstraint) {
         let next = devaddr_constraints
             .next_start()
             .expect("next devaddr for net_id");
@@ -207,7 +207,7 @@ impl OrgStorage for Storage {
         self.create_org(org, devaddr_constraints);
     }
 
-    fn create_roamer_org(&self, org: Org, devaddr_constraints: DevaddrRange) {
+    fn create_roamer_org(&self, org: Org, devaddr_constraints: DevaddrConstraint) {
         self.create_org(org, devaddr_constraints)
     }
 
@@ -249,17 +249,18 @@ impl RouteStorage for Storage {
     }
 
     fn create_route(&self, oui: u64, route: Route) -> Result<Route> {
-        self.ranges_within_org_constraint(oui, &route.devaddr_ranges)?;
+        // self.ranges_within_org_constraint(oui, &route.devaddr_ranges)?;
         let mut route = route;
         route.id = format!("{}", uuid::Uuid::new_v4());
         let mut store = self.routes.write().expect("route store lock");
         if let Some(routes) = store.get_mut(&oui) {
             routes.push(route.clone());
 
-            self.route_update_channel.send(RouteStreamResV1 {
-                action: ActionV1::Create.into(),
-                route: Some(route.clone().into()),
-            })?;
+            // TODO
+            // self.route_update_channel.send(RouteStreamResV1 {
+            //     action: ActionV1::Create.into(),
+            //     route: Some(route.clone().into()),
+            // })?;
 
             return Ok(route);
         }
@@ -267,17 +268,18 @@ impl RouteStorage for Storage {
     }
 
     fn update_route(&self, route: Route) -> Result<Route> {
-        self.ranges_within_org_constraint(route.oui, &route.devaddr_ranges)?;
+        // self.ranges_within_org_constraint(route.oui, &route.devaddr_ranges)?;
         let mut store = self.routes.write().expect("route store lock");
         if let Some(routes) = store.get_mut(&route.oui) {
             for old_route in routes {
                 if old_route.id == route.id {
                     *old_route = route.clone();
 
-                    self.route_update_channel.send(RouteStreamResV1 {
-                        action: ActionV1::Update.into(),
-                        route: Some(route.clone().into()),
-                    })?;
+                    // TODO
+                    // self.route_update_channel.send(RouteStreamResV1 {
+                    //     action: ActionV1::Update.into(),
+                    //     route: Some(route.clone().into()),
+                    // })?;
 
                     return Ok(route);
                 }
@@ -300,12 +302,13 @@ impl RouteStorage for Storage {
             if let Some(oui_routes) = store.get_mut(&inner_route.oui) {
                 oui_routes.retain(|route| route.id != id_to_remove)
             }
-            self.route_update_channel
-                .send(RouteStreamResV1 {
-                    action: ActionV1::Delete.into(),
-                    route: Some(inner_route.clone().into()),
-                })
-                .expect("sent delete update");
+            // TODO
+            // self.route_update_channel
+            //     .send(RouteStreamResV1 {
+            //         action: ActionV1::Delete.into(),
+            //         route: Some(inner_route.clone().into()),
+            //     })
+            //     .expect("sent delete update");
         }
 
         removed
@@ -319,11 +322,11 @@ impl RouteStorage for Storage {
 #[derive(Debug, Clone)]
 pub struct DbOrg {
     org: Org,
-    devaddr_constraints: DevaddrRange,
+    devaddr_constraints: DevaddrConstraint,
 }
 
 impl DbOrg {
-    fn new(org: Org, devaddr_constraints: DevaddrRange) -> Self {
+    fn new(org: Org, devaddr_constraints: DevaddrConstraint) -> Self {
         Self {
             org,
             devaddr_constraints,

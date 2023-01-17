@@ -1,8 +1,14 @@
-use helium_config_service_cli::{route::Route, Result};
+use helium_config_service_cli::{
+    proto::{DevaddrRangeV1, EuiPairV1},
+    route::Route,
+    Result,
+};
 use helium_proto::services::iot_config::{
-    route_server, RouteCreateReqV1, RouteDeleteReqV1, RouteDevaddrsActionV1, RouteDevaddrsReqV1,
-    RouteDevaddrsResV1, RouteEuisActionV1, RouteEuisReqV1, RouteEuisResV1, RouteGetReqV1,
-    RouteListReqV1, RouteListResV1, RouteStreamReqV1, RouteStreamResV1, RouteUpdateReqV1, RouteV1,
+    route_server, RouteCreateReqV1, RouteDeleteDevaddrRangesReqV1, RouteDeleteEuisReqV1,
+    RouteDeleteReqV1, RouteDevaddrRangesResV1, RouteEuisResV1, RouteGetDevaddrRangesReqV1,
+    RouteGetEuisReqV1, RouteGetReqV1, RouteListReqV1, RouteListResV1, RouteStreamReqV1,
+    RouteStreamResV1, RouteUpdateDevaddrRangesReqV1, RouteUpdateEuisReqV1, RouteUpdateReqV1,
+    RouteV1,
 };
 use std::sync::Arc;
 use tokio_stream::wrappers::ReceiverStream;
@@ -120,100 +126,144 @@ impl route_server::Route for RouteService {
         Ok(Response::new(ReceiverStream::new(rx)))
     }
 
-    async fn euis(
+    type get_euisStream = ReceiverStream<Result<EuiPairV1, Status>>;
+    async fn get_euis(
         &self,
-        request: tonic::Request<RouteEuisReqV1>,
+        request: tonic::Request<RouteGetEuisReqV1>,
+    ) -> Result<tonic::Response<Self::get_euisStream>, tonic::Status> {
+        todo!("getting euis for route")
+    }
+
+    async fn update_euis(
+        &self,
+        request: tonic::Request<tonic::Streaming<RouteUpdateEuisReqV1>>,
     ) -> Result<tonic::Response<RouteEuisResV1>, tonic::Status> {
-        let req = request.into_inner();
-        info!(
-            route_id = req.id,
-            euis_cnt = req.euis.len(),
-            "adding euis to route"
-        );
-
-        match self.storage.get_route(req.id.clone()) {
-            None => Err(tonic::Status::not_found("Route not found")),
-            Some(mut route) => {
-                match req.action() {
-                    RouteEuisActionV1::AddEuis => {
-                        for eui in req.euis.iter() {
-                            info!(" . adding {eui:?}");
-                            route.add_eui(eui.into())
-                        }
-                    }
-                    RouteEuisActionV1::RemoveEuis => {
-                        for eui in req.euis.iter() {
-                            info!(" . removing {eui:?}");
-                            route.remove_eui(eui.into())
-                        }
-                    }
-                    RouteEuisActionV1::UpdateEuis => {
-                        info!(
-                            old_cnt = route.euis.len(),
-                            new_cnt = req.euis.len(),
-                            " . updating eui"
-                        );
-                        route.euis = req.euis.iter().map(|e| e.into()).collect();
-                    }
-                }
-                match self.storage.update_route(route) {
-                    Ok(_) => Ok(Response::new(RouteEuisResV1 {
-                        id: req.id,
-                        action: req.action,
-                        euis: req.euis,
-                    })),
-                    Err(err) => Err(Status::internal(format!("something went wrong: {err:?}"))),
-                }
-            }
-        }
+        todo!("updating euis for route")
     }
 
-    async fn devaddrs(
+    async fn delete_euis(
         &self,
-        request: tonic::Request<RouteDevaddrsReqV1>,
-    ) -> Result<tonic::Response<RouteDevaddrsResV1>, tonic::Status> {
-        let req = request.into_inner();
-        info!(
-            route_id = req.id,
-            devaddrs_cnt = req.devaddr_ranges.len(),
-            "adding devaddrs to route"
-        );
-
-        match self.storage.get_route(req.id.clone()) {
-            None => Err(tonic::Status::not_found("Route not found")),
-            Some(mut route) => {
-                match req.action() {
-                    RouteDevaddrsActionV1::AddDevaddrs => {
-                        for range in req.devaddr_ranges.iter() {
-                            info!(" . adding {range:?}");
-                            route.add_devaddr(range.into());
-                        }
-                    }
-                    RouteDevaddrsActionV1::RemoveDevaddrs => {
-                        for range in req.devaddr_ranges.iter() {
-                            info!(" . removing {range:?}");
-                            route.remove_devaddr(range.into());
-                        }
-                    }
-                    RouteDevaddrsActionV1::UpdateDevaddrs => {
-                        info!(
-                            old_cnt = route.devaddr_ranges.len(),
-                            new_cnt = req.devaddr_ranges.len(),
-                            " . updating devaddr_ranges"
-                        );
-                        route.devaddr_ranges =
-                            req.devaddr_ranges.iter().map(|d| d.into()).collect();
-                    }
-                }
-                match self.storage.update_route(route) {
-                    Ok(_) => Ok(Response::new(RouteDevaddrsResV1 {
-                        id: req.id,
-                        action: req.action,
-                        devaddr_ranges: req.devaddr_ranges,
-                    })),
-                    Err(err) => Err(Status::internal(format!("something went wrong: {err:?}"))),
-                }
-            }
-        }
+        request: tonic::Request<RouteDeleteEuisReqV1>,
+    ) -> Result<tonic::Response<RouteEuisResV1>, tonic::Status> {
+        todo!("clearing all euis for route")
     }
+
+    type get_devaddr_rangesStream = ReceiverStream<Result<DevaddrRangeV1, Status>>;
+    async fn get_devaddr_ranges(
+        &self,
+        request: tonic::Request<RouteGetDevaddrRangesReqV1>,
+    ) -> Result<tonic::Response<Self::get_devaddr_rangesStream>, tonic::Status> {
+        todo!("getting devaddrs for route")
+    }
+
+    async fn update_devaddr_ranges(
+        &self,
+        request: tonic::Request<tonic::Streaming<RouteUpdateDevaddrRangesReqV1>>,
+    ) -> Result<tonic::Response<RouteDevaddrRangesResV1>, tonic::Status> {
+        todo!("updating devaddrs for route")
+    }
+
+    async fn delete_devaddr_ranges(
+        &self,
+        request: tonic::Request<RouteDeleteDevaddrRangesReqV1>,
+    ) -> Result<tonic::Response<RouteDevaddrRangesResV1>, tonic::Status> {
+        todo!("clearing all devaddrs fro route")
+    }
+
+    // async fn euis(
+    //     &self,
+    //     request: tonic::Request<RouteEuisReqV1>,
+    // ) -> Result<tonic::Response<RouteEuisResV1>, tonic::Status> {
+    //     let req = request.into_inner();
+    //     info!(
+    //         route_id = req.id,
+    //         euis_cnt = req.euis.len(),
+    //         "adding euis to route"
+    //     );
+
+    //     match self.storage.get_route(req.id.clone()) {
+    //         None => Err(tonic::Status::not_found("Route not found")),
+    //         Some(mut route) => {
+    //             match req.action() {
+    //                 RouteEuisActionV1::AddEuis => {
+    //                     for eui in req.euis.iter() {
+    //                         info!(" . adding {eui:?}");
+    //                         route.add_eui(eui.into())
+    //                     }
+    //                 }
+    //                 RouteEuisActionV1::RemoveEuis => {
+    //                     for eui in req.euis.iter() {
+    //                         info!(" . removing {eui:?}");
+    //                         route.remove_eui(eui.into())
+    //                     }
+    //                 }
+    //                 RouteEuisActionV1::UpdateEuis => {
+    //                     info!(
+    //                         old_cnt = route.euis.len(),
+    //                         new_cnt = req.euis.len(),
+    //                         " . updating eui"
+    //                     );
+    //                     route.euis = req.euis.iter().map(|e| e.into()).collect();
+    //                 }
+    //             }
+    //             match self.storage.update_route(route) {
+    //                 Ok(_) => Ok(Response::new(RouteEuisResV1 {
+    //                     id: req.id,
+    //                     action: req.action,
+    //                     euis: req.euis,
+    //                 })),
+    //                 Err(err) => Err(Status::internal(format!("something went wrong: {err:?}"))),
+    //             }
+    //         }
+    //     }
+    // }
+
+    // async fn devaddrs(
+    //     &self,
+    //     request: tonic::Request<RouteDevaddrsReqV1>,
+    // ) -> Result<tonic::Response<RouteDevaddrsResV1>, tonic::Status> {
+    //     let req = request.into_inner();
+    //     info!(
+    //         route_id = req.id,
+    //         devaddrs_cnt = req.devaddr_ranges.len(),
+    //         "adding devaddrs to route"
+    //     );
+
+    //     match self.storage.get_route(req.id.clone()) {
+    //         None => Err(tonic::Status::not_found("Route not found")),
+    //         Some(mut route) => {
+    //             match req.action() {
+    //                 RouteDevaddrsActionV1::AddDevaddrs => {
+    //                     for range in req.devaddr_ranges.iter() {
+    //                         info!(" . adding {range:?}");
+    //                         route.add_devaddr(range.into());
+    //                     }
+    //                 }
+    //                 RouteDevaddrsActionV1::RemoveDevaddrs => {
+    //                     for range in req.devaddr_ranges.iter() {
+    //                         info!(" . removing {range:?}");
+    //                         route.remove_devaddr(range.into());
+    //                     }
+    //                 }
+    //                 RouteDevaddrsActionV1::UpdateDevaddrs => {
+    //                     info!(
+    //                         old_cnt = route.devaddr_ranges.len(),
+    //                         new_cnt = req.devaddr_ranges.len(),
+    //                         " . updating devaddr_ranges"
+    //                     );
+    //                     route.devaddr_ranges =
+    //                         req.devaddr_ranges.iter().map(|d| d.into()).collect();
+    //                 }
+    //             }
+    //             match self.storage.update_route(route) {
+    //                 Ok(_) => Ok(Response::new(RouteDevaddrsResV1 {
+    //                     id: req.id,
+    //                     action: req.action,
+    //                     devaddr_ranges: req.devaddr_ranges,
+    //                 })),
+    //                 Err(err) => Err(Status::internal(format!("something went wrong: {err:?}"))),
+    //             }
+    //         }
+    //     }
+    // }
 }
