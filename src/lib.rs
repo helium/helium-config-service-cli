@@ -94,6 +94,12 @@ pub struct OrgList {
     orgs: Vec<Org>,
 }
 
+impl OrgList {
+    pub fn first(&self) -> Option<&Org> {
+        self.orgs.first()
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct Org {
     pub oui: u64,
