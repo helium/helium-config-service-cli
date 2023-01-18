@@ -84,7 +84,7 @@ impl OrgServer for OrgService {
         };
 
         let net_id = hex_field::net_id(0xC00053);
-        let devaddr_constraint = net_id.range_start().to_range(8);
+        let devaddr_constraint = net_id.range_start().to_range(req.devaddrs as u32);
         self.storage
             .create_helium_org(org.clone(), devaddr_constraint.clone());
 
