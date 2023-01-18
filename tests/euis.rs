@@ -80,3 +80,28 @@ async fn create_route_and_add_remove_euis() -> Result {
 
     Ok(())
 }
+
+#[tokio::test]
+async fn push_eui_to_route() -> Result {
+    tracing_subscriber::fmt::init();
+
+    let working_dir = TempDir::new()?;
+    let keypair_path = working_dir.child("keypair.bin");
+    let config_host = "https://alb.iot.mainnet.helium.io:6080".to_string();
+
+    // Generate keypair
+    let _public_key = common::generate_keypair(keypair_path.clone())?;
+
+    let out1 = cmds::route::euis::add_euis(AddEuis {
+        dev_eui: hex_field::eui(1),
+        app_eui: hex_field::eui(2),
+        route_id: "f5469a8c-938d-11ed-ac1e-e36715565962".to_string(),
+        config_host,
+        keypair: keypair_path.clone(),
+        commit: true,
+    })
+    .await?;
+    info!("1: {out1}");
+
+    Ok(())
+}

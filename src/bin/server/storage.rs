@@ -109,7 +109,7 @@ impl RouteUpdate for Storage {
     fn notify_add_eui(&self, eui: EuiPairV1) {
         match self.route_update_channel.send(RouteStreamResV1 {
             action: ActionV1::Add.into(),
-            data: Some(route_stream_res_v1::Data::Euis(eui)),
+            data: Some(route_stream_res_v1::Data::EuiPair(eui)),
         }) {
             Ok(count) => info!("eui add sent to {count} receivers"),
             Err(_err) => info!("no one is listening"),
@@ -119,7 +119,7 @@ impl RouteUpdate for Storage {
     fn notify_remove_eui(&self, eui: EuiPairV1) {
         match self.route_update_channel.send(RouteStreamResV1 {
             action: ActionV1::Remove.into(),
-            data: Some(route_stream_res_v1::Data::Euis(eui)),
+            data: Some(route_stream_res_v1::Data::EuiPair(eui)),
         }) {
             Ok(count) => info!("eui remove sent to {count} receivers"),
             Err(_err) => info!("no one is listening"),
