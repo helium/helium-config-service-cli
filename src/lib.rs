@@ -119,6 +119,14 @@ impl RouteList {
     pub fn count(&self) -> usize {
         self.routes.len()
     }
+
+    pub fn first(&self) -> Option<&Route> {
+        self.routes.first()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.routes.is_empty()
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone, Hash)]
