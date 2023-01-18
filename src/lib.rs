@@ -136,12 +136,30 @@ pub struct DevaddrRange {
     pub end_addr: hex_field::HexDevAddr,
 }
 
+impl DevaddrRange {
+    pub fn new(
+        route_id: String,
+        start_addr: hex_field::HexDevAddr,
+        end_addr: hex_field::HexDevAddr,
+    ) -> Result<Self> {
+        if end_addr < start_addr {
+            return Err(anyhow!("start_addr cannot be greater thand end_addr"));
+        }
+
+        Ok(Self {
+            route_id,
+            start_addr,
+            end_addr,
+        })
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct DevaddrConstraint {
     #[serde(alias = "lower")]
-    start_addr: hex_field::HexDevAddr,
+    pub start_addr: hex_field::HexDevAddr,
     #[serde(alias = "upper")]
-    end_addr: hex_field::HexDevAddr,
+    pub end_addr: hex_field::HexDevAddr,
 }
 
 impl DevaddrConstraint {
