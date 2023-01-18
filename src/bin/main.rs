@@ -1,8 +1,8 @@
 use clap::Parser;
 use helium_config_service_cli::{
     cmds::{
-        self, AddCommands as Add, Cli, Commands, EnvCommands as Env, OrgCommands as Org,
-        ProtocolCommands as Protocol, RouteCommands as Route,
+        self, Cli, Commands, EnvCommands as Env, OrgCommands as Org, ProtocolCommands as Protocol,
+        RouteCommands as Route,
     },
     Msg, Result,
 };
@@ -32,17 +32,13 @@ async fn handle_cli(cli: Cli) -> Result<Msg> {
             Route::Update(args) => cmds::route::update_route(args).await,
             Route::Remove(args) => cmds::route::remove_route(args).await,
             Route::SubnetMask(args) => cmds::route::subnet_mask(args),
-            Route::Add { command } => match command {
-                Add::Protocol { command } => match command {
-                    Protocol::Http(args) => cmds::protocol::add_http_protocol(args).await,
-                    Protocol::Gwmp(args) => cmds::protocol::add_gwmp_protocol(args).await,
-                    Protocol::PacketRouter(args) => {
-                        cmds::protocol::add_packet_router_protocol(args).await
-                    }
-                },
-                Add::Devaddr(args) => cmds::route::add_devaddr(args).await,
-                Add::Eui(args) => cmds::route::add_eui(args).await,
-                Add::GwmpMapping(args) => cmds::route::add_gwmp_mapping(args).await,
+            Route::Protocol { command } => match command {
+                Protocol::Http(args) => cmds::protocol::add_http_protocol(args).await,
+                Protocol::Gwmp(args) => cmds::protocol::add_gwmp_protocol(args).await,
+                Protocol::PacketRouter(args) => {
+                    cmds::protocol::add_packet_router_protocol(args).await
+                }
+                Protocol::GwmpMapping(args) => cmds::route::add_gwmp_mapping(args).await,
             },
             Route::Euis { command } => match command {
                 cmds::EuiCommands::Get(args) => cmds::route::euis::get_euis(args).await,

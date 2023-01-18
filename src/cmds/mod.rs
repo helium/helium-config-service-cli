@@ -101,10 +101,10 @@ pub enum RouteCommands {
         #[command(subcommand)]
         command: DevaddrCommands,
     },
-    /// Updating sections in Routes
-    Add {
+    /// Operate on Protocols for a Route
+    Protocol {
         #[command(subcommand)]
-        command: AddCommands,
+        command: ProtocolCommands,
     },
 }
 
@@ -291,23 +291,6 @@ pub struct EnvInfo {
 }
 
 #[derive(Debug, Subcommand)]
-pub enum AddCommands {
-    /// Add Protocol to route file (default: ./new_route.json)
-    Protocol {
-        #[command(subcommand)]
-        command: ProtocolCommands,
-    },
-    /// Add Devaddr Range to route file (default: ./new_route.json)
-    Devaddr(AddDevaddr),
-    /// Add EUI to route file (default: ./new_route.json)
-    Eui(AddEui),
-    // Protocol Specific commands
-    //
-    /// Map a LoRa region to a Port
-    GwmpMapping(AddGwmpMapping),
-}
-
-#[derive(Debug, Subcommand)]
 pub enum ProtocolCommands {
     /// Add the Http Protocol to a Route
     Http(AddHttpSettings),
@@ -318,6 +301,10 @@ pub enum ProtocolCommands {
     Gwmp(AddGwmpSettings),
     /// Add the Packet Router Protocol to a Route
     PacketRouter(AddPacketRouterSettings),
+    // Protocol Specific commands
+    //
+    /// Map a LoRa region to a Port
+    GwmpMapping(AddGwmpMapping),
 }
 
 #[derive(Debug, Args)]
