@@ -6,6 +6,7 @@ use helium_proto::services::iot_config::{
 use std::sync::Arc;
 use storage::Storage;
 use tonic::transport::Server;
+use tracing::info;
 
 mod org;
 mod route;
@@ -26,6 +27,8 @@ async fn main() -> Result {
     let org_service = org::OrgService::new(store.clone());
     let route_service = route::RouteService::new(store.clone());
     let skf_service = skf::SKFService::new(store.clone());
+
+    info!("listening on {address}");
 
     Server::builder()
         .add_service(OrgServer::new(org_service))
