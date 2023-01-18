@@ -33,7 +33,6 @@ use helium_config_service_cli::{
     hex_field::HexNetID,
     route::Route,
     server::{FlowType, Protocol, Server},
-    DevaddrRange,
 };
 use reqwest::Url;
 use serde::Deserialize;
@@ -143,14 +142,13 @@ struct OrgConfigs {
 }
 
 /// Config is the old style Route
+// TODO: bring back updating euis and devaddrs
 #[derive(Debug, Deserialize)]
 struct Config {
-    devaddrs: Vec<DevaddrRange>,
     address: Option<String>,
     port: Option<u32>,
     http_dedupe_timeout: Option<u32>,
     http_endpoint: Option<String>,
-    joins: Vec<helium_config_service_cli::Eui>,
     multi_buy: Option<u32>,
     protocol: String,
     // Unused fields:
@@ -224,21 +222,16 @@ fn to_route(config: Config, net_id: HexNetID, oui: u64) -> Route {
 mod tests {
 
     use crate::{to_route, Config, OrgConfigs};
-    use helium_config_service_cli::{hex_field, Eui};
+    use helium_config_service_cli::hex_field;
     use std::collections::HashMap;
 
     #[test]
     fn config_to_route() {
         let x = Config {
-            devaddrs: vec![],
             address: None,
             port: None,
             http_dedupe_timeout: Some(20),
             http_endpoint: Some("http://example.com".to_string()),
-            joins: vec![
-                Eui::new(hex_field::eui(0), hex_field::eui(2615410877735726668)).unwrap(),
-                Eui::new(hex_field::eui(0), hex_field::eui(10307799872453973643)).unwrap(),
-            ],
             multi_buy: Some(0),
             protocol: "http".to_string(),
         };
@@ -249,12 +242,10 @@ mod tests {
     #[test]
     fn config_to_route_2() {
         let x = Config {
-            devaddrs: vec![],
             address: None,
             port: None,
             http_dedupe_timeout: None,
             http_endpoint: Some("http://example.com".to_string()),
-            joins: vec![],
             multi_buy: Some(5),
             protocol: "http".to_string(),
         };
