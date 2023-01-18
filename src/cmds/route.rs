@@ -67,6 +67,65 @@ pub mod euis {
     }
 }
 
+pub mod devaddrs {
+    use crate::{
+        client,
+        cmds::{AddDevaddrs, DeleteDevaddrs, GetDevaddrs, PathBufKeypair, RemoveDevaddrs},
+        DevaddrRange, Msg, PrettyJson, Result,
+    };
+
+    pub async fn get_devaddrs(args: GetDevaddrs) -> Result<Msg> {
+        let mut client = client::DevaddrClient::new(&args.config_host).await?;
+        let devaddrs_for_route = client
+            .get_devaddrs(&args.route_id, &args.keypair.to_keypair()?)
+            .await?;
+
+        Msg::ok(devaddrs_for_route.pretty_json()?)
+    }
+
+    pub async fn add_devaddrs(args: AddDevaddrs) -> Result<Msg> {
+        let mut client = client::DevaddrClient::new(&args.config_host).await?;
+        let devaddr_range =
+            DevaddrRange::new(args.route_id.clone(), args.start_addr, args.end_addr)?;
+
+        client
+            .add_devaddrs(
+                args.route_id,
+                vec![devaddr_range.clone()],
+                &args.keypair.to_keypair()?,
+            )
+            .await?;
+
+        Msg::ok(format!("added {devaddr_range:?}"))
+    }
+
+    pub async fn remove_devaddrs(args: RemoveDevaddrs) -> Result<Msg> {
+        let mut client = client::DevaddrClient::new(&args.config_host).await?;
+        let devaddr_range =
+            DevaddrRange::new(args.route_id.clone(), args.start_addr, args.end_addr)?;
+
+        client
+            .remove_devaddrs(
+                args.route_id,
+                vec![devaddr_range.clone()],
+                &args.keypair.to_keypair()?,
+            )
+            .await?;
+
+        Msg::ok(format!("removed {devaddr_range:?}"))
+    }
+
+    pub async fn delete_devaddrs(args: DeleteDevaddrs) -> Result<Msg> {
+        let mut client = client::DevaddrClient::new(&args.config_host).await?;
+
+        client
+            .delete_devaddrs(args.route_id.clone(), &args.keypair.to_keypair()?)
+            .await?;
+
+        Msg::ok(format!("All Devaddrs removed from {}", args.route_id))
+    }
+}
+
 pub fn generate_route(args: GenerateRoute) -> Result<Msg> {
     if args.out_file.exists() && !args.commit {
         return Msg::err(format!(

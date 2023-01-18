@@ -50,6 +50,16 @@ async fn handle_cli(cli: Cli) -> Result<Msg> {
                 cmds::EuiCommands::Remove(args) => cmds::route::euis::remove_euis(args).await,
                 cmds::EuiCommands::Delete(args) => cmds::route::euis::delete_euis(args).await,
             },
+            Route::Devaddrs { command } => match command {
+                cmds::DevaddrCommands::Get(args) => cmds::route::devaddrs::get_devaddrs(args).await,
+                cmds::DevaddrCommands::Add(args) => cmds::route::devaddrs::add_devaddrs(args).await,
+                cmds::DevaddrCommands::Remove(args) => {
+                    cmds::route::devaddrs::remove_devaddrs(args).await
+                }
+                cmds::DevaddrCommands::Delete(args) => {
+                    cmds::route::devaddrs::delete_devaddrs(args).await
+                }
+            },
         },
         Commands::Org { command } => match command {
             Org::List(args) => cmds::org::get_orgs(args).await,

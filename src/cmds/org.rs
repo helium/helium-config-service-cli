@@ -22,7 +22,7 @@ pub async fn create_helium_org(args: CreateHelium) -> Result<Msg> {
                 &args.owner,
                 &args.payer,
                 args.devaddr_count,
-                args.keypair.to_keypair()?,
+                &args.keypair.to_keypair()?,
             )
             .await?;
         return Msg::ok(format!(
