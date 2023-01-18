@@ -76,6 +76,77 @@ pub trait SkfStorage {
     fn subscribe_to_filters(&self) -> Receiver<SessionKeyFilterStreamResV1>;
 }
 
+trait RouteUpdate {
+    fn notify_add_route(&self, route: Route);
+    fn notify_remove_route(&self, route: Route);
+    fn notify_add_eui(&self, eui: EuiPairV1);
+    fn notify_remove_eui(&self, eui: EuiPairV1);
+    fn notify_add_devaddr(&self, devaddr: DevaddrRangeV1);
+    fn notify_remove_devaddr(&self, devaddr: DevaddrRangeV1);
+}
+
+impl RouteUpdate for Storage {
+    fn notify_add_route(&self, route: Route) {
+        match self.route_update_channel.send(RouteStreamResV1 {
+            action: ActionV1::Add.into(),
+            data: Some(route_stream_res_v1::Data::Route(route.into())),
+        }) {
+            Ok(count) => info!("route add sent to {count} receivers"),
+            Err(_err) => info!("no one is listening"),
+        };
+    }
+
+    fn notify_remove_route(&self, route: Route) {
+        match self.route_update_channel.send(RouteStreamResV1 {
+            action: ActionV1::Remove.into(),
+            data: Some(route_stream_res_v1::Data::Route(route.into())),
+        }) {
+            Ok(count) => info!("route remove sent to {count} receivers"),
+            Err(_err) => info!("no one is listening"),
+        };
+    }
+
+    fn notify_add_eui(&self, eui: EuiPairV1) {
+        match self.route_update_channel.send(RouteStreamResV1 {
+            action: ActionV1::Add.into(),
+            data: Some(route_stream_res_v1::Data::Euis(eui)),
+        }) {
+            Ok(count) => info!("eui add sent to {count} receivers"),
+            Err(_err) => info!("no one is listening"),
+        };
+    }
+
+    fn notify_remove_eui(&self, eui: EuiPairV1) {
+        match self.route_update_channel.send(RouteStreamResV1 {
+            action: ActionV1::Remove.into(),
+            data: Some(route_stream_res_v1::Data::Euis(eui)),
+        }) {
+            Ok(count) => info!("eui remove sent to {count} receivers"),
+            Err(_err) => info!("no one is listening"),
+        };
+    }
+
+    fn notify_add_devaddr(&self, devaddr: DevaddrRangeV1) {
+        match self.route_update_channel.send(RouteStreamResV1 {
+            action: ActionV1::Add.into(),
+            data: Some(route_stream_res_v1::Data::DevaddrRange(devaddr)),
+        }) {
+            Ok(count) => info!("devaddr add sent to {count} receivers"),
+            Err(_err) => info!("no one is listening"),
+        };
+    }
+
+    fn notify_remove_devaddr(&self, devaddr: DevaddrRangeV1) {
+        match self.route_update_channel.send(RouteStreamResV1 {
+            action: ActionV1::Remove.into(),
+            data: Some(route_stream_res_v1::Data::DevaddrRange(devaddr)),
+        }) {
+            Ok(count) => info!("devaddr remove sent to {count} receivers"),
+            Err(_err) => info!("no one is listening"),
+        };
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct SessionKeyFilter {
     devaddr: HexDevAddr,
@@ -279,11 +350,7 @@ impl RouteStorage for Storage {
         if let Some(routes) = store.get_mut(&oui) {
             routes.push(route.clone());
 
-            self.route_update_channel.send(RouteStreamResV1 {
-                action: ActionV1::Add.into(),
-                data: Some(route_stream_res_v1::Data::Route(route.clone().into())),
-            })?;
-
+            self.notify_add_route(route.clone());
             return Ok(route);
         }
         Err(anyhow!("oui does not exist"))
@@ -296,11 +363,7 @@ impl RouteStorage for Storage {
                 if old_route.id == route.id {
                     *old_route = route.clone();
 
-                    self.route_update_channel.send(RouteStreamResV1 {
-                        action: ActionV1::Add.into(),
-                        data: Some(route_stream_res_v1::Data::Route(route.clone().into())),
-                    })?;
-
+                    self.notify_add_route(route.clone());
                     return Ok(route);
                 }
             }
@@ -322,12 +385,7 @@ impl RouteStorage for Storage {
             if let Some(oui_routes) = store.get_mut(&inner_route.oui) {
                 oui_routes.retain(|route| route.id != id_to_remove)
             }
-            self.route_update_channel
-                .send(RouteStreamResV1 {
-                    action: ActionV1::Remove.into(),
-                    data: Some(route_stream_res_v1::Data::Route(inner_route.clone().into())),
-                })
-                .expect("sent delete update");
+            self.notify_remove_route(inner_route.clone());
         }
 
         removed
@@ -375,12 +433,7 @@ impl RouteStorage for Storage {
             .insert(eui.clone().into());
 
         if added {
-            self.route_update_channel
-                .send(RouteStreamResV1 {
-                    action: ActionV1::Add.into(),
-                    data: Some(route_stream_res_v1::Data::Euis(eui)),
-                })
-                .expect("sent eui add update");
+            self.notify_add_eui(eui);
         }
 
         added
@@ -394,12 +447,7 @@ impl RouteStorage for Storage {
             .remove(&eui.clone().into());
 
         if removed {
-            self.route_update_channel
-                .send(RouteStreamResV1 {
-                    action: ActionV1::Remove.into(),
-                    data: Some(route_stream_res_v1::Data::Euis(eui)),
-                })
-                .expect("sent eui remove udpate");
+            self.notify_remove_eui(eui);
         }
 
         removed
@@ -439,11 +487,17 @@ impl RouteStorage for Storage {
         let oui = self.get_org_for_route_id(devaddr.route_id.clone());
         let range: DevaddrRange = devaddr.clone().into();
         match self.ranges_within_org_constraint(oui, &vec![range]) {
-            Ok(()) => self
-                .devaddrs
-                .write()
-                .expect("devaddrs store lock")
-                .insert(devaddr.into()),
+            Ok(()) => {
+                let added = self
+                    .devaddrs
+                    .write()
+                    .expect("devaddrs store lock")
+                    .insert(devaddr.clone().into());
+                if added {
+                    self.notify_add_devaddr(devaddr);
+                }
+                added
+            }
             Err(e) => {
                 warn!("cannot add devaddr: {e:?}");
                 false
@@ -452,10 +506,17 @@ impl RouteStorage for Storage {
     }
 
     fn remove_devaddr(&self, devaddr: DevaddrRangeV1) -> bool {
-        self.devaddrs
+        let removed = self
+            .devaddrs
             .write()
             .expect("devaddrs store lock")
-            .remove(&devaddr.into())
+            .remove(&devaddr.clone().into());
+
+        if removed {
+            self.notify_remove_devaddr(devaddr);
+        }
+
+        removed
     }
 }
 
