@@ -64,8 +64,8 @@ pub async fn env_init() -> Result<Msg> {
 
 pub fn env_info(args: EnvInfo) -> Result<Msg> {
     let env_keypair = env::var(ENV_KEYPAIR_BIN).ok().map(|i| i.into());
-    let (env_keypair_location, env_public_key) = get_keypair(env_keypair);
-    let (arg_keypair_location, arg_public_key) = get_keypair(args.keypair);
+    let (env_keypair_location, env_public_key) = get_public_key_from_path(env_keypair);
+    let (arg_keypair_location, arg_public_key) = get_public_key_from_path(args.keypair);
 
     let output = json!({
         "environment": {
@@ -106,7 +106,7 @@ pub fn generate_keypair(args: GenerateKeypair) -> Result<Msg> {
     ))
 }
 
-fn get_keypair(path: Option<PathBuf>) -> (String, String) {
+pub fn get_public_key_from_path(path: Option<PathBuf>) -> (String, String) {
     match path {
         None => ("unset".to_string(), "unset".to_string()),
         Some(path) => {
@@ -131,7 +131,7 @@ mod tests {
     use crate::{
         cmds::{
             self,
-            env::{env_info, generate_keypair, get_keypair},
+            env::{env_info, generate_keypair, get_public_key_from_path},
             EnvInfo, GenerateKeypair,
         },
         hex_field,
@@ -199,7 +199,7 @@ mod tests {
 
     #[test]
     fn get_keypair_does_not_exist() {
-        let (location, pubkey) = get_keypair(Some("./nowhere.bin".into()));
+        let (location, pubkey) = get_public_key_from_path(Some("./nowhere.bin".into()));
         assert_eq!(location, "path does not exist: ./nowhere.bin");
         assert!(pubkey.is_empty());
     }
@@ -212,14 +212,14 @@ mod tests {
         fs::write(arg_keypair.clone(), "invalid key").unwrap();
 
         // =======
-        let (location, pubkey) = get_keypair(Some(arg_keypair.clone()));
+        let (location, pubkey) = get_public_key_from_path(Some(arg_keypair.clone()));
         assert_eq!(location, arg_keypair.display().to_string());
         assert_eq!(pubkey, "decode error");
     }
 
     #[test]
     fn get_keypair_not_provided() {
-        let (location, pubkey) = get_keypair(None);
+        let (location, pubkey) = get_public_key_from_path(None);
         assert_eq!(location, "unset");
         assert_eq!(pubkey, "unset");
     }
