@@ -2,9 +2,10 @@ use crate::{hex_field, route::Route, DevaddrRange, Eui, OrgList, OrgResponse, Re
 use helium_crypto::{Keypair, PublicKey, Sign};
 use helium_proto::{
     services::iot_config::{
-        org_client, route_client, OrgCreateHeliumReqV1, OrgCreateRoamerReqV1, OrgGetReqV1,
-        OrgListReqV1, RouteCreateReqV1, RouteDeleteReqV1, RouteEuisResV1, RouteGetReqV1,
-        RouteListReqV1, RouteUpdateReqV1,
+        org_client, route_client, ActionV1, DevaddrRangeV1, EuiPairV1, OrgCreateHeliumReqV1,
+        OrgCreateRoamerReqV1, OrgGetReqV1, OrgListReqV1, RouteCreateReqV1, RouteDeleteReqV1,
+        RouteDevaddrRangesResV1, RouteEuisResV1, RouteGetReqV1, RouteListReqV1,
+        RouteUpdateDevaddrRangesReqV1, RouteUpdateEuisReqV1, RouteUpdateReqV1,
     },
     Message,
 };
@@ -186,17 +187,23 @@ impl RouteClient {
         euis: Vec<Eui>,
         keypair: &Keypair,
     ) -> Result<RouteEuisResV1> {
-        todo!("adding euis to specific route")
-        // let mut request = RouteEuisReqV1 {
-        //     action: RouteEuisActionV1::AddEuis.into(),
-        //     euis: euis.into_iter().map(|e| e.into()).collect(),
-        //     id: route_id,
-        //     timestamp: current_timestamp()?,
-        //     signer: keypair.public_key().into(),
-        //     signature: vec![],
-        // };
-        // request.signature = request.sign(keypair)?;
-        // Ok(self.client.euis(request).await?.into_inner())
+        let timestamp = current_timestamp()?;
+        let route_euis: Vec<RouteUpdateEuisReqV1> = euis
+            .iter()
+            .map(|eui| RouteUpdateEuisReqV1 {
+                action: ActionV1::Add.into(),
+                timestamp,
+                signer: keypair.public_key().into(),
+                signature: vec![],
+                euis: Some(EuiPairV1 {
+                    route_id: route_id.clone(),
+                    app_eui: eui.app_eui.into(),
+                    dev_eui: eui.dev_eui.into(),
+                }),
+            })
+            .collect();
+        let request = futures::prelude::stream::iter(route_euis);
+        Ok(self.client.update_euis(request).await?.into_inner())
     }
 
     pub async fn add_devaddrs(
@@ -204,8 +211,32 @@ impl RouteClient {
         route_id: String,
         devaddrs: Vec<DevaddrRange>,
         keypair: &Keypair,
-    ) -> Result<()> {
-        todo!("adding devaddrs to specific route")
+    ) -> Result<RouteDevaddrRangesResV1> {
+        let timestamp = current_timestamp()?;
+        let route_devaddrs: Vec<RouteUpdateDevaddrRangesReqV1> = devaddrs
+            .iter()
+            .flat_map(|devaddr| -> Result<RouteUpdateDevaddrRangesReqV1> {
+                let mut request = RouteUpdateDevaddrRangesReqV1 {
+                    action: ActionV1::Add.into(),
+                    timestamp,
+                    signer: keypair.public_key().into(),
+                    signature: vec![],
+                    devaddr_range: Some(DevaddrRangeV1 {
+                        route_id: route_id.clone(),
+                        start_addr: devaddr.start_addr.into(),
+                        end_addr: devaddr.end_addr.into(),
+                    }),
+                };
+                request.signature = request.sign(keypair)?;
+                Ok(request)
+            })
+            .collect();
+        let request = futures::prelude::stream::iter(route_devaddrs);
+        Ok(self
+            .client
+            .update_devaddr_ranges(request)
+            .await?
+            .into_inner())
     }
 }
 
@@ -236,5 +267,6 @@ impl_sign!(RouteGetReqV1, signature);
 impl_sign!(RouteCreateReqV1, signature);
 impl_sign!(RouteDeleteReqV1, signature);
 impl_sign!(RouteUpdateReqV1, signature);
+impl_sign!(RouteUpdateDevaddrRangesReqV1, signature);
 impl_sign!(OrgCreateHeliumReqV1, signature);
 impl_sign!(OrgCreateRoamerReqV1, signature);
