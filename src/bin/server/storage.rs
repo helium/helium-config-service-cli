@@ -270,12 +270,11 @@ impl Storage {
             .map(|o| o.devaddr_constraints.to_owned())
     }
 
-    fn ranges_within_org_constraint(&self, oui: Oui, ranges: &[DevaddrRange]) -> Result {
+    fn ranges_within_org_constraint(&self, oui: Oui, ranges: &[DevaddrRange]) -> Result<bool> {
         match self.get_devaddr_constraints(oui) {
-            Some(constraint) => ranges.iter().all(|range| constraint.contains(range)),
+            Some(constraint) => Ok(ranges.iter().all(|range| constraint.contains(range))),
             None => return Err(anyhow!("all orgs should have constraints")),
-        };
-        Ok(())
+        }
     }
 
     fn get_org_for_route_id(&self, route_id: RouteId) -> Oui {
@@ -487,7 +486,7 @@ impl RouteStorage for Storage {
         let oui = self.get_org_for_route_id(devaddr.route_id.clone());
         let range: DevaddrRange = devaddr.clone().into();
         match self.ranges_within_org_constraint(oui, &vec![range]) {
-            Ok(()) => {
+            Ok(true) => {
                 let added = self
                     .devaddrs
                     .write()
@@ -497,6 +496,10 @@ impl RouteStorage for Storage {
                     self.notify_add_devaddr(devaddr);
                 }
                 added
+            }
+            Ok(false) => {
+                warn!("devaddr outside org constraint");
+                false
             }
             Err(e) => {
                 warn!("cannot add devaddr: {e:?}");
