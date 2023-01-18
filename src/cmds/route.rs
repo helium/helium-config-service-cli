@@ -12,6 +12,61 @@ use crate::{
 
 use super::{AddDevaddr, AddEui, AddGwmpMapping};
 
+pub mod euis {
+    use crate::{
+        client,
+        cmds::{AddEuis, DeleteEuis, GetEuis, PathBufKeypair, RemoveEuis},
+        Eui, Msg, PrettyJson, Result,
+    };
+
+    pub async fn get_euis(args: GetEuis) -> Result<Msg> {
+        let mut client = client::EuiClient::new(&args.config_host).await?;
+        let euis_for_route = client
+            .get_euis(&args.route_id, &args.keypair.to_keypair()?)
+            .await?;
+
+        Msg::ok(euis_for_route.pretty_json()?)
+    }
+
+    pub async fn add_euis(args: AddEuis) -> Result<Msg> {
+        let mut client = client::EuiClient::new(&args.config_host).await?;
+        let eui_pair = Eui::new(args.app_eui, args.dev_eui)?;
+
+        client
+            .add_euis(
+                args.route_id.clone(),
+                vec![eui_pair.clone()],
+                &args.keypair.to_keypair()?,
+            )
+            .await?;
+
+        Msg::ok(format!("added {eui_pair:?} to {}", args.route_id))
+    }
+
+    pub async fn remove_euis(args: RemoveEuis) -> Result<Msg> {
+        let mut client = client::EuiClient::new(&args.config_host).await?;
+        let eui_pair = Eui::new(args.app_eui, args.dev_eui)?;
+
+        client
+            .remove_euis(
+                args.route_id.clone(),
+                vec![eui_pair.clone()],
+                &args.keypair.to_keypair()?,
+            )
+            .await?;
+
+        Msg::ok(format!("removed {eui_pair:?} from {}", args.route_id))
+    }
+
+    pub async fn delete_euis(args: DeleteEuis) -> Result<Msg> {
+        let mut client = client::EuiClient::new(&args.config_host).await?;
+        client
+            .delete_euis(args.route_id.clone(), &args.keypair.to_keypair()?)
+            .await?;
+        Msg::ok(format!("All Euis removed from {}", args.route_id))
+    }
+}
+
 pub fn generate_route(args: GenerateRoute) -> Result<Msg> {
     if args.out_file.exists() && !args.commit {
         return Msg::err(format!(

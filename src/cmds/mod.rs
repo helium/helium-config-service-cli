@@ -91,11 +91,11 @@ pub enum RouteCommands {
     Remove(RemoveRoute),
     /// Print out subnet mask for Devaddr Range
     SubnetMask(SubnetMask),
-    // /// Operate on EUIs for a Route
-    // Euis {
-    //     #[command(subcommand)]
-    //     command: EuiCommands,
-    // },
+    /// Operate on EUIs for a Route
+    Euis {
+        #[command(subcommand)]
+        command: EuiCommands,
+    },
     // /// Operate on Devaddrs for a Route
     // Devaddrs {
     //     #[command(subcommand)]
@@ -108,17 +108,17 @@ pub enum RouteCommands {
     },
 }
 
-// #[derive(Debug, Subcommand)]
-// pub enum EuiCommands {
-//     /// Get all EUI pairs for a Route
-//     Get,
-//     /// Add EUI pair to Route
-//     Add,
-//     /// Remove EUI pair from Route
-//     Remove,
-//     /// Remove ALL EUI Pairs from Route
-//     Delete,
-// }
+#[derive(Debug, Subcommand)]
+pub enum EuiCommands {
+    /// Get all EUI pairs for a Route
+    Get(GetEuis),
+    /// Add EUI pair to Route
+    Add(AddEuis),
+    /// Remove EUI pair from Route
+    Remove(RemoveEuis),
+    /// Remove ALL EUI Pairs from Route
+    Delete(DeleteEuis),
+}
 
 // #[derive(Debug, Subcommand)]
 // pub enum DevaddrCommands {
@@ -142,6 +142,65 @@ pub enum OrgCommands {
     CreateHelium(CreateHelium),
     /// Create a new Roaming Organization (admin only)
     CreateRoaming(CreateRoaming),
+}
+
+#[derive(Debug, Args)]
+pub struct GetEuis {
+    #[arg(short, long)]
+    pub route_id: String,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+}
+
+#[derive(Debug, Args)]
+pub struct AddEuis {
+    #[arg(short, long, value_parser = hex_field::validate_eui)]
+    pub dev_eui: hex_field::HexEui,
+    #[arg(short, long, value_parser = hex_field::validate_eui)]
+    pub app_eui: hex_field::HexEui,
+    /// Path of route to apply devaddr range to
+    #[arg(long)]
+    pub route_id: String,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    /// Add the verified eui entry to the routes file
+    #[arg(short, long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct RemoveEuis {
+    #[arg(short, long, value_parser = hex_field::validate_eui)]
+    pub dev_eui: hex_field::HexEui,
+    #[arg(short, long, value_parser = hex_field::validate_eui)]
+    pub app_eui: hex_field::HexEui,
+    /// Path of route to apply devaddr range to
+    #[arg(long)]
+    pub route_id: String,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    /// Add the verified eui entry to the routes file
+    #[arg(short, long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct DeleteEuis {
+    #[arg(short, long)]
+    pub route_id: String,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    /// Remove ALL Euis from a route
+    #[arg(short, long)]
+    pub commit: bool,
 }
 
 #[derive(Debug, Args)]

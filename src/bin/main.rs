@@ -44,6 +44,12 @@ async fn handle_cli(cli: Cli) -> Result<Msg> {
                 Add::Eui(args) => cmds::route::add_eui(args).await,
                 Add::GwmpMapping(args) => cmds::route::add_gwmp_mapping(args).await,
             },
+            Route::Euis { command } => match command {
+                cmds::EuiCommands::Get(args) => cmds::route::euis::get_euis(args).await,
+                cmds::EuiCommands::Add(args) => cmds::route::euis::add_euis(args).await,
+                cmds::EuiCommands::Remove(args) => cmds::route::euis::remove_euis(args).await,
+                cmds::EuiCommands::Delete(args) => cmds::route::euis::delete_euis(args).await,
+            },
         },
         Commands::Org { command } => match command {
             Org::List(args) => cmds::org::get_orgs(args).await,

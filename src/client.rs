@@ -1,11 +1,12 @@
-use crate::{hex_field, route::Route, DevaddrRange, Eui, OrgList, OrgResponse, Result, RouteList};
+use crate::{route::Route, DevaddrRange, Eui, OrgList, OrgResponse, Result, RouteEui, RouteList};
 use helium_crypto::{Keypair, PublicKey, Sign};
 use helium_proto::{
     services::iot_config::{
         org_client, route_client, ActionV1, DevaddrRangeV1, EuiPairV1, OrgCreateHeliumReqV1,
-        OrgCreateRoamerReqV1, OrgGetReqV1, OrgListReqV1, RouteCreateReqV1, RouteDeleteReqV1,
-        RouteDevaddrRangesResV1, RouteEuisResV1, RouteGetReqV1, RouteListReqV1,
-        RouteUpdateDevaddrRangesReqV1, RouteUpdateEuisReqV1, RouteUpdateReqV1,
+        OrgCreateRoamerReqV1, OrgGetReqV1, OrgListReqV1, RouteCreateReqV1, RouteDeleteEuisReqV1,
+        RouteDeleteReqV1, RouteDevaddrRangesResV1, RouteEuisResV1, RouteGetEuisReqV1,
+        RouteGetReqV1, RouteListReqV1, RouteUpdateDevaddrRangesReqV1, RouteUpdateEuisReqV1,
+        RouteUpdateReqV1,
     },
     Message,
 };
@@ -17,6 +18,8 @@ pub struct OrgClient {
 pub struct RouteClient {
     client: route_client::RouteClient<tonic::transport::Channel>,
 }
+
+pub type EuiClient = RouteClient;
 
 impl OrgClient {
     pub async fn new(host: &str) -> Result<Self> {
@@ -84,6 +87,88 @@ impl OrgClient {
     }
 }
 
+impl EuiClient {
+    pub async fn get_euis(&mut self, route_id: &str, keypair: &Keypair) -> Result<Vec<RouteEui>> {
+        let mut request = RouteGetEuisReqV1 {
+            route_id: route_id.to_string(),
+            timestamp: current_timestamp()?,
+            signer: keypair.public_key().into(),
+            signature: vec![],
+        };
+        request.signature = request.sign(keypair)?;
+        let mut stream = self.client.get_euis(request).await?.into_inner();
+
+        let mut pairs = vec![];
+        while let Some(pair) = stream.message().await? {
+            pairs.push(pair.into());
+        }
+
+        Ok(pairs)
+    }
+
+    pub async fn add_euis(
+        &mut self,
+        route_id: String,
+        euis: Vec<Eui>,
+        keypair: &Keypair,
+    ) -> Result<RouteEuisResV1> {
+        let timestamp = current_timestamp()?;
+        let route_euis: Vec<RouteUpdateEuisReqV1> = euis
+            .iter()
+            .map(|eui| RouteUpdateEuisReqV1 {
+                action: ActionV1::Add.into(),
+                timestamp,
+                signer: keypair.public_key().into(),
+                signature: vec![],
+                euis: Some(EuiPairV1 {
+                    route_id: route_id.clone(),
+                    app_eui: eui.app_eui.into(),
+                    dev_eui: eui.dev_eui.into(),
+                }),
+            })
+            .collect();
+        let request = futures::prelude::stream::iter(route_euis);
+        Ok(self.client.update_euis(request).await?.into_inner())
+    }
+
+    pub async fn remove_euis(
+        &mut self,
+        route_id: String,
+        euis: Vec<Eui>,
+        keypair: &Keypair,
+    ) -> Result<RouteEuisResV1> {
+        let timestamp = current_timestamp()?;
+        let route_euis: Vec<RouteUpdateEuisReqV1> = euis
+            .iter()
+            .map(|eui| RouteUpdateEuisReqV1 {
+                action: ActionV1::Remove.into(),
+                timestamp,
+                signer: keypair.public_key().into(),
+                signature: vec![],
+                euis: Some(EuiPairV1 {
+                    route_id: route_id.clone(),
+                    app_eui: eui.app_eui.into(),
+                    dev_eui: eui.dev_eui.into(),
+                }),
+            })
+            .collect();
+        let request = futures::prelude::stream::iter(route_euis);
+        Ok(self.client.update_euis(request).await?.into_inner())
+    }
+
+    pub async fn delete_euis(&mut self, route_id: String, keypair: &Keypair) -> Result {
+        let mut request = RouteDeleteEuisReqV1 {
+            route_id,
+            timestamp: current_timestamp()?,
+            signer: keypair.public_key().into(),
+            signature: vec![],
+        };
+        request.signature = request.sign(keypair)?;
+        self.client.delete_euis(request).await?;
+        Ok(())
+    }
+}
+
 impl RouteClient {
     pub async fn new(host: &str) -> Result<Self> {
         Ok(Self {
@@ -115,24 +200,6 @@ impl RouteClient {
         };
         request.signature = request.sign(keypair)?;
         Ok(self.client.get(request).await?.into_inner().into())
-    }
-
-    pub async fn create(
-        &mut self,
-        net_id: hex_field::HexNetID,
-        oui: u64,
-        max_copies: u32,
-        keypair: &Keypair,
-    ) -> Result<Route> {
-        let mut request = RouteCreateReqV1 {
-            oui,
-            route: Some(Route::new(net_id, oui, max_copies).into()),
-            signer: keypair.public_key().into(),
-            timestamp: current_timestamp()?,
-            signature: vec![],
-        };
-        request.signature = request.sign(keypair)?;
-        Ok(self.client.create(request).await?.into_inner().into())
     }
 
     pub async fn create_route(
@@ -179,31 +246,6 @@ impl RouteClient {
         };
         request.signature = request.sign(keypair)?;
         Ok(self.client.update(request).await?.into_inner().into())
-    }
-
-    pub async fn add_euis(
-        &mut self,
-        route_id: String,
-        euis: Vec<Eui>,
-        keypair: &Keypair,
-    ) -> Result<RouteEuisResV1> {
-        let timestamp = current_timestamp()?;
-        let route_euis: Vec<RouteUpdateEuisReqV1> = euis
-            .iter()
-            .map(|eui| RouteUpdateEuisReqV1 {
-                action: ActionV1::Add.into(),
-                timestamp,
-                signer: keypair.public_key().into(),
-                signature: vec![],
-                euis: Some(EuiPairV1 {
-                    route_id: route_id.clone(),
-                    app_eui: eui.app_eui.into(),
-                    dev_eui: eui.dev_eui.into(),
-                }),
-            })
-            .collect();
-        let request = futures::prelude::stream::iter(route_euis);
-        Ok(self.client.update_euis(request).await?.into_inner())
     }
 
     pub async fn add_devaddrs(
@@ -268,5 +310,7 @@ impl_sign!(RouteCreateReqV1, signature);
 impl_sign!(RouteDeleteReqV1, signature);
 impl_sign!(RouteUpdateReqV1, signature);
 impl_sign!(RouteUpdateDevaddrRangesReqV1, signature);
+impl_sign!(RouteGetEuisReqV1, signature);
+impl_sign!(RouteDeleteEuisReqV1, signature);
 impl_sign!(OrgCreateHeliumReqV1, signature);
 impl_sign!(OrgCreateRoamerReqV1, signature);
