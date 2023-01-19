@@ -46,7 +46,7 @@ impl OrgClient {
             payer: payer.into(),
             devaddrs: devaddr_count,
             timestamp: current_timestamp()?,
-            signer: owner.into(),
+            signer: keypair.public_key().into(),
             signature: vec![],
         };
         request.signature = request.sign(&keypair)?;
@@ -70,7 +70,7 @@ impl OrgClient {
             payer: payer.into(),
             net_id,
             timestamp: current_timestamp()?,
-            signer: owner.into(),
+            signer: keypair.public_key().into(),
             signature: vec![],
         };
         request.signature = request.sign(&keypair)?;
@@ -93,12 +93,11 @@ impl RouteClient {
     pub async fn list(
         &mut self,
         oui: u64,
-        owner: &PublicKey,
         keypair: &Keypair,
     ) -> Result<RouteList> {
         let mut request = RouteListReqV1 {
             oui,
-            signer: owner.into(),
+            signer: keypair.public_key().into(),
             timestamp: current_timestamp()?,
             signature: vec![],
         };
@@ -106,10 +105,10 @@ impl RouteClient {
         Ok(self.client.list(request).await?.into_inner().into())
     }
 
-    pub async fn get(&mut self, id: &str, owner: &PublicKey, keypair: &Keypair) -> Result<Route> {
+    pub async fn get(&mut self, id: &str, keypair: &Keypair) -> Result<Route> {
         let mut request = RouteGetReqV1 {
             id: id.into(),
-            signer: owner.into(),
+            signer: keypair.public_key().into(),
             signature: vec![],
             timestamp: current_timestamp()?,
         };
@@ -122,13 +121,12 @@ impl RouteClient {
         net_id: hex_field::HexNetID,
         oui: u64,
         max_copies: u32,
-        owner: &PublicKey,
         keypair: &Keypair,
     ) -> Result<Route> {
         let mut request = RouteCreateReqV1 {
             oui,
             route: Some(Route::new(net_id, oui, max_copies).into()),
-            signer: owner.into(),
+            signer: keypair.public_key().into(),
             timestamp: current_timestamp()?,
             signature: vec![],
         };
@@ -139,13 +137,12 @@ impl RouteClient {
     pub async fn create_route(
         &mut self,
         route: Route,
-        owner: &PublicKey,
         keypair: &Keypair,
     ) -> Result<Route> {
         let mut request = RouteCreateReqV1 {
             oui: route.oui,
             route: Some(route.into()),
-            signer: owner.into(),
+            signer: keypair.public_key().into(),
             timestamp: current_timestamp()?,
             signature: vec![],
         };
@@ -156,12 +153,11 @@ impl RouteClient {
     pub async fn delete(
         &mut self,
         id: &str,
-        owner: &PublicKey,
         keypair: &Keypair,
     ) -> Result<Route> {
         let mut request = RouteDeleteReqV1 {
             id: id.into(),
-            signer: owner.into(),
+            signer: keypair.public_key().into(),
             timestamp: current_timestamp()?,
             signature: vec![],
         };
@@ -172,12 +168,11 @@ impl RouteClient {
     pub async fn push(
         &mut self,
         route: Route,
-        owner: &PublicKey,
         keypair: &Keypair,
     ) -> Result<Route> {
         let mut request = RouteUpdateReqV1 {
             route: Some(route.into()),
-            signer: owner.into(),
+            signer: keypair.public_key().into(),
             timestamp: current_timestamp()?,
             signature: vec![],
         };

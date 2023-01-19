@@ -242,8 +242,6 @@ pub struct GenerateRoute {
 pub struct GetRoutes {
     #[arg(long, env = ENV_OUI)]
     pub oui: u64,
-    #[arg(short, long)]
-    pub owner: PublicKey,
     #[arg(from_global)]
     pub keypair: PathBuf,
     // #[arg(long, default_value = "./routes")]
@@ -263,8 +261,6 @@ pub struct GetRoutes {
 pub struct GetRoute {
     #[arg(short, long)]
     pub route_id: String,
-    #[arg(short, long)]
-    pub owner: PublicKey,
     #[arg(from_global)]
     pub keypair: PathBuf,
     #[arg(long, default_value = "./routes")]
@@ -293,8 +289,6 @@ pub struct GetOrg {
 pub struct CreateRoute {
     #[arg(long, default_value = "./new_route.json")]
     pub route_file: PathBuf,
-    #[arg(long)]
-    pub owner: PublicKey,
     #[arg(from_global)]
     pub keypair: PathBuf,
     #[arg(from_global)]
@@ -309,8 +303,6 @@ pub struct CreateRoute {
 pub struct UpdateRoute {
     #[arg(long)]
     pub route_file: PathBuf,
-    #[arg(long)]
-    pub owner: PublicKey,
     #[arg(from_global)]
     pub keypair: PathBuf,
     #[arg(from_global)]
@@ -323,8 +315,6 @@ pub struct UpdateRoute {
 pub struct RemoveRoute {
     #[arg(long)]
     pub route_file: PathBuf,
-    #[arg(long)]
-    pub owner: PublicKey,
     #[arg(from_global)]
     pub keypair: PathBuf,
     #[arg(from_global)]
