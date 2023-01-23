@@ -142,9 +142,7 @@ pub fn generate_route(args: GenerateRoute) -> Result<Msg> {
 
 pub async fn get_routes(args: GetRoutes) -> Result<Msg> {
     let mut client = client::RouteClient::new(&args.config_host).await?;
-    let route_list = client
-        .list(args.oui, &args.owner, &args.keypair.to_keypair()?)
-        .await?;
+    let route_list = client.list(args.oui, &args.keypair.to_keypair()?).await?;
 
     if args.commit {
         route_list.write_all(&args.route_out_dir)?;
@@ -157,7 +155,7 @@ pub async fn get_routes(args: GetRoutes) -> Result<Msg> {
 pub async fn get_route(args: GetRoute) -> Result<Msg> {
     let mut client = client::RouteClient::new(&args.config_host).await?;
     let route = client
-        .get(&args.route_id, &args.owner, &args.keypair.to_keypair()?)
+        .get(&args.route_id, &args.keypair.to_keypair()?)
         .await?;
 
     if args.commit {
@@ -181,7 +179,7 @@ pub async fn create_route(args: CreateRoute) -> Result<Msg> {
     if args.commit {
         let mut client = client::RouteClient::new(&args.config_host).await?;
         match client
-            .create_route(route, &args.owner, &args.keypair.to_keypair()?)
+            .create_route(route, &args.keypair.to_keypair()?)
             .await
         {
             Ok(created_route) => {
@@ -212,9 +210,7 @@ pub async fn update_route(args: UpdateRoute) -> Result<Msg> {
     let route = Route::from_file(&args.route_file)?;
     if args.commit {
         let mut client = client::RouteClient::new(&args.config_host).await?;
-        let updated_route = client
-            .push(route, &args.owner, &args.keypair.to_keypair()?)
-            .await?;
+        let updated_route = client.push(route, &args.keypair.to_keypair()?).await?;
         updated_route.write(args.route_file.as_path())?;
         return Msg::ok(format!("{} written", &args.route_file.display()));
     }
@@ -229,7 +225,7 @@ pub async fn remove_route(args: RemoveRoute) -> Result<Msg> {
     if args.commit {
         let mut client = client::RouteClient::new(&args.config_host).await?;
         let removed_route = client
-            .delete(&route.id, &args.owner, &args.keypair.to_keypair()?)
+            .delete(&route.id, &args.keypair.to_keypair()?)
             .await?;
         removed_route.remove(
             args.route_file
