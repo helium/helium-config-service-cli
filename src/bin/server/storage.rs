@@ -25,7 +25,7 @@ pub type OrgMap = RwLock<HashMap<Oui, DbOrg>>;
 pub type RouteMap = RwLock<HashMap<Oui, Vec<Route>>>;
 pub type Euis = RwLock<HashSet<RouteEui>>;
 pub type Devaddrs = RwLock<HashSet<DevaddrRange>>;
-pub type FilterMap = RwLock<HashMap<Oui, SessionKeyFilter>>;
+pub type Filters = RwLock<HashSet<SessionKeyFilter>>;
 
 #[derive(Debug)]
 pub struct Storage {
@@ -33,7 +33,7 @@ pub struct Storage {
     routes: RouteMap,
     euis: Euis,
     devaddrs: Devaddrs,
-    filters: FilterMap,
+    filters: Filters,
     next_oui: Mutex<u64>,
     next_helium_devaddr: Mutex<HexDevAddr>,
     route_update_channel: Arc<Sender<RouteStreamResV1>>,
@@ -68,12 +68,15 @@ pub trait RouteStorage {
 }
 
 pub trait SkfStorage {
-    fn get_filters(&self, oui: Oui) -> Result<Vec<SessionKeyFilter>>;
-    fn get_filter(&self, oui: Oui) -> Result<SessionKeyFilter>;
-    fn create_filter(&self, oui: Oui, filter: SessionKeyFilter) -> Result<SessionKeyFilter>;
-    fn update_filter(&self, oui: Oui, filter: SessionKeyFilter) -> Result<SessionKeyFilter>;
-    fn delete_filter(&self, oui: Oui) -> Result<SessionKeyFilter>;
+    fn get_filters_for_oui(&self, oui: Oui) -> Result<Vec<SessionKeyFilter>>;
+    fn get_filters_for_devaddr(
+        &self,
+        oui: Oui,
+        devaddr: HexDevAddr,
+    ) -> Result<Vec<SessionKeyFilter>>;
     fn subscribe_to_filters(&self) -> Receiver<SessionKeyFilterStreamResV1>;
+    fn add_filter(&self, filter: SessionKeyFilter) -> bool;
+    fn remove_filter(&self, filter: SessionKeyFilter) -> bool;
 }
 
 trait RouteUpdate {
@@ -83,6 +86,8 @@ trait RouteUpdate {
     fn notify_remove_eui(&self, eui: EuiPairV1);
     fn notify_add_devaddr(&self, devaddr: DevaddrRangeV1);
     fn notify_remove_devaddr(&self, devaddr: DevaddrRangeV1);
+    fn notify_add_skf(&self, session_key_filter: SessionKeyFilter);
+    fn notify_remove_skf(&self, session_key_filter: SessionKeyFilter);
 }
 
 impl RouteUpdate for Storage {
@@ -145,23 +150,46 @@ impl RouteUpdate for Storage {
             Err(_err) => info!("no one is listening"),
         };
     }
+
+    fn notify_add_skf(&self, session_key_filter: SessionKeyFilter) {
+        match self
+            .filter_update_channel
+            .send(SessionKeyFilterStreamResV1 {
+                action: ActionV1::Add.into(),
+                filter: Some(session_key_filter.into()),
+            }) {
+            Ok(count) => info!("skf add sent to {count} receivers"),
+            Err(_err) => todo!("no one is listening"),
+        }
+    }
+
+    fn notify_remove_skf(&self, session_key_filter: SessionKeyFilter) {
+        match self
+            .filter_update_channel
+            .send(SessionKeyFilterStreamResV1 {
+                action: ActionV1::Remove.into(),
+                filter: Some(session_key_filter.into()),
+            }) {
+            Ok(count) => info!("skf remove sent to {count} receivers"),
+            Err(_err) => info!("no one is listening"),
+        }
+    }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SessionKeyFilter {
+    oui: u64,
     devaddr: HexDevAddr,
-    session_keys: Vec<PublicKey>,
+    session_key: PublicKey,
 }
 
 impl From<SessionKeyFilterV1> for SessionKeyFilter {
     fn from(filter: SessionKeyFilterV1) -> Self {
         Self {
+            oui: filter.oui,
             devaddr: (filter.devaddr as u64).into(),
-            session_keys: filter
-                .session_keys
-                .into_iter()
-                .flat_map(PublicKey::try_from)
-                .collect(),
+            session_key: PublicKey::try_from(filter.session_key)
+                .expect("valid public key for session key filter"),
         }
     }
 }
@@ -169,58 +197,78 @@ impl From<SessionKeyFilterV1> for SessionKeyFilter {
 impl From<SessionKeyFilter> for SessionKeyFilterV1 {
     fn from(filter: SessionKeyFilter) -> Self {
         Self {
+            oui: filter.oui,
             devaddr: filter.devaddr.0 as u32,
-            session_keys: filter
-                .session_keys
-                .into_iter()
-                .map(|pk| pk.into())
-                .collect(),
+            session_key: filter.session_key.into(),
         }
     }
 }
 
 impl SkfStorage for Storage {
-    fn get_filters(&self, _oui: Oui) -> Result<Vec<SessionKeyFilter>> {
+    fn get_filters_for_oui(&self, oui: Oui) -> Result<Vec<SessionKeyFilter>> {
+        Ok(self
+            .filters
+            .read()
+            .expect("euis store lock")
+            .clone()
+            .into_iter()
+            .filter_map(|filter| {
+                if filter.oui == oui {
+                    Some(filter)
+                } else {
+                    None
+                }
+            })
+            .collect())
+    }
+
+    fn get_filters_for_devaddr(
+        &self,
+        oui: Oui,
+        devaddr: HexDevAddr,
+    ) -> Result<Vec<SessionKeyFilter>> {
         Ok(self
             .filters
             .read()
             .expect("filter store lock")
             .clone()
-            .into_values()
+            .into_iter()
+            .filter_map(|filter| {
+                if filter.oui == oui && filter.devaddr == devaddr {
+                    Some(filter)
+                } else {
+                    None
+                }
+            })
             .collect())
     }
 
-    fn get_filter(&self, oui: Oui) -> Result<SessionKeyFilter> {
-        self.filters
-            .read()
-            .expect("filter store lock")
-            .get(&oui)
-            .map(|x| x.to_owned())
-            .ok_or_else(|| anyhow!("filter not found"))
-    }
-
-    fn create_filter(&self, oui: Oui, filter: SessionKeyFilter) -> Result<SessionKeyFilter> {
-        self.filters
+    fn add_filter(&self, filter: SessionKeyFilter) -> bool {
+        let added = self
+            .filters
             .write()
             .expect("filter write lock")
-            .insert(oui, filter.clone());
-        Ok(filter)
+            .insert(filter.clone().into());
+
+        if added {
+            self.notify_add_skf(filter);
+        }
+
+        added
     }
 
-    fn update_filter(&self, oui: Oui, filter: SessionKeyFilter) -> Result<SessionKeyFilter> {
-        self.filters
+    fn remove_filter(&self, filter: SessionKeyFilter) -> bool {
+        let removed = self
+            .filters
             .write()
             .expect("filter write lock")
-            .insert(oui, filter.clone());
-        Ok(filter)
-    }
+            .remove(&filter.clone().into());
 
-    fn delete_filter(&self, oui: Oui) -> Result<SessionKeyFilter> {
-        self.filters
-            .write()
-            .expect("filter write lock")
-            .remove(&oui)
-            .ok_or_else(|| anyhow!("could not delete filter"))
+        if removed {
+            self.notify_remove_skf(filter);
+        }
+
+        removed
     }
 
     fn subscribe_to_filters(&self) -> Receiver<SessionKeyFilterStreamResV1> {
@@ -240,7 +288,7 @@ impl Storage {
             routes: RwLock::new(HashMap::new()),
             euis: RwLock::new(HashSet::new()),
             devaddrs: RwLock::new(HashSet::new()),
-            filters: RwLock::new(HashMap::new()),
+            filters: RwLock::new(HashSet::new()),
             next_oui: Mutex::new(0),
             next_helium_devaddr: Mutex::new(helium_net_id.range_start()),
             route_update_channel: route_updates,

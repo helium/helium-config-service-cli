@@ -1,11 +1,11 @@
-use crate::storage::{SessionKeyFilter, SkfStorage, Storage};
+use crate::storage::{SkfStorage, Storage};
 use helium_config_service_cli::Result;
 use helium_proto::services::iot_config::{
-    session_key_filter_server, SessionKeyFilterCreateReqV1, SessionKeyFilterDeleteReqV1,
-    SessionKeyFilterGetReqV1, SessionKeyFilterListReqV1, SessionKeyFilterListResV1,
+    session_key_filter_server, ActionV1, SessionKeyFilterGetReqV1, SessionKeyFilterListReqV1,
     SessionKeyFilterStreamReqV1, SessionKeyFilterStreamResV1, SessionKeyFilterUpdateReqV1,
-    SessionKeyFilterV1,
+    SessionKeyFilterUpdateResV1, SessionKeyFilterV1,
 };
+
 use std::sync::Arc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Response, Status};
@@ -24,74 +24,85 @@ impl SKFService {
 
 #[tonic::async_trait]
 impl session_key_filter_server::SessionKeyFilter for SKFService {
+    type listStream = ReceiverStream<Result<SessionKeyFilterV1, Status>>;
     async fn list(
         &self,
         request: tonic::Request<SessionKeyFilterListReqV1>,
-    ) -> Result<tonic::Response<SessionKeyFilterListResV1>, tonic::Status> {
+    ) -> Result<tonic::Response<Self::listStream>, tonic::Status> {
         let req = request.into_inner();
         info!(oui = req.oui, "getting filters");
-        match self.storage.get_filters(req.oui) {
-            Ok(filters) => Ok(Response::new(SessionKeyFilterListResV1 {
-                filters: filters.iter().map(|f| f.to_owned().into()).collect(),
-            })),
-            Err(e) => Err(Status::not_found(format!("no filters: {e}"))),
+
+        let (tx, rx) = tokio::sync::mpsc::channel(50);
+
+        match self.storage.get_filters_for_oui(req.oui) {
+            Ok(filters) => {
+                tokio::spawn(async move {
+                    for filter in filters {
+                        tx.send(Ok(filter.into()))
+                            .await
+                            .expect("session key filter sent")
+                    }
+                });
+            }
+            Err(e) => return Err(Status::not_found(format!("no filters: {e}"))),
         }
+
+        Ok(Response::new(ReceiverStream::new(rx)))
     }
 
+    type getStream = ReceiverStream<Result<SessionKeyFilterV1, Status>>;
     async fn get(
         &self,
         request: tonic::Request<SessionKeyFilterGetReqV1>,
-    ) -> Result<tonic::Response<SessionKeyFilterV1>, tonic::Status> {
+    ) -> Result<tonic::Response<Self::getStream>, tonic::Status> {
         let req = request.into_inner();
         info!(oui = req.oui, "getting filter");
-        match self.storage.get_filter(req.oui) {
-            Ok(filter) => Ok(Response::new(filter.into())),
-            Err(e) => Err(Status::not_found(format!("filter not found: {e}"))),
-        }
-    }
 
-    async fn create(
-        &self,
-        request: tonic::Request<SessionKeyFilterCreateReqV1>,
-    ) -> Result<tonic::Response<SessionKeyFilterV1>, tonic::Status> {
-        let req = request.into_inner();
-        info!(oui = req.oui, "creating filter");
-        let filter: SessionKeyFilter = req.filter.expect("filter to create").into();
-        match self.storage.create_filter(req.oui, filter) {
-            Ok(filter) => Ok(Response::new(filter.into())),
-            Err(e) => Err(Status::not_found(format!("could not create: {e}"))),
+        let (tx, rx) = tokio::sync::mpsc::channel(50);
+        match self
+            .storage
+            .get_filters_for_devaddr(req.oui, req.devaddr.into())
+        {
+            Ok(filters) => {
+                tokio::spawn(async move {
+                    for filter in filters {
+                        tx.send(Ok(filter.into()))
+                            .await
+                            .expect("session key filter sent")
+                    }
+                });
+            }
+            Err(e) => return Err(Status::not_found(format!("filter not found: {e}"))),
         }
+
+        Ok(Response::new(ReceiverStream::new(rx)))
     }
 
     async fn update(
         &self,
-        request: tonic::Request<SessionKeyFilterUpdateReqV1>,
-    ) -> Result<tonic::Response<SessionKeyFilterV1>, tonic::Status> {
-        let req = request.into_inner();
-        info!("updating filter");
+        request: tonic::Request<tonic::Streaming<SessionKeyFilterUpdateReqV1>>,
+    ) -> Result<tonic::Response<SessionKeyFilterUpdateResV1>, tonic::Status> {
+        let mut stream = request.into_inner();
 
-        let filter: SessionKeyFilter = req.filter.expect("filter to update").into();
-        match self.storage.update_filter(req.oui, filter) {
-            Ok(filter) => Ok(Response::new(filter.into())),
-            Err(e) => Err(Status::not_found(format!("filter not found: {e}"))),
+        while let Ok(Some(update)) = stream.message().await {
+            match update.action() {
+                ActionV1::Add => {
+                    let filter = update.filter.expect("filter to update exists");
+                    let added = self.storage.add_filter(filter.clone().into());
+                    info!(added, ?filter, "adding skf");
+                }
+                ActionV1::Remove => {
+                    let filter = update.filter.expect("filter to udpate exists");
+                    let removed = self.storage.remove_filter(filter.clone().into());
+                    info!(removed, ?filter, "removing skf");
+                }
+            }
         }
-    }
 
-    async fn delete(
-        &self,
-        request: tonic::Request<SessionKeyFilterDeleteReqV1>,
-    ) -> Result<tonic::Response<SessionKeyFilterV1>, tonic::Status> {
-        let req = request.into_inner();
-        info!(oui = req.oui, "deleting filter");
-
-        match self.storage.delete_filter(req.oui) {
-            Ok(filter) => Ok(Response::new(filter.into())),
-            Err(e) => Err(Status::not_found(format!("filter not found: {e}"))),
-        }
+        Ok(Response::new(SessionKeyFilterUpdateResV1 {}))
     }
 
     type streamStream = ReceiverStream<Result<SessionKeyFilterStreamResV1, Status>>;
-
     async fn stream(
         &self,
         _request: tonic::Request<SessionKeyFilterStreamReqV1>,

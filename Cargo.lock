@@ -870,7 +870,7 @@ dependencies = [
 [[package]]
 name = "helium-proto"
 version = "0.1.0"
-source = "git+https://github.com/helium/proto?branch=macpie/scale_routes#214b4a03e9e32a85ae0f2a1585a33af44cb4de24"
+source = "git+https://github.com/helium/proto?branch=macpie/scale_routes#6ec96dfc0474f645e44e00a8f71bb355ec20d0e5"
 dependencies = [
  "bytes 1.2.1",
  "prost",

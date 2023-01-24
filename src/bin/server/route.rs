@@ -155,12 +155,12 @@ impl route_server::Route for RouteService {
         while let Ok(Some(update)) = stream.message().await {
             match update.action() {
                 ActionV1::Add => {
-                    let eui = update.euis.expect("eui to update exists");
+                    let eui = update.eui_pair.expect("eui to update exists");
                     let added = self.storage.add_eui(eui.clone());
                     info!(added, ?eui, "adding eui");
                 }
                 ActionV1::Remove => {
-                    let eui = update.euis.expect("eui to update exists");
+                    let eui = update.eui_pair.expect("eui to update exists");
                     let removed = self.storage.remove_eui(eui.clone());
                     info!(removed, ?eui, "removing eui");
                 }

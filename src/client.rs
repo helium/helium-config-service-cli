@@ -52,6 +52,7 @@ impl OrgClient {
             payer: payer.into(),
             devaddrs: devaddr_count,
             timestamp: current_timestamp()?,
+            delegate_keys: vec![],
             signer: keypair.public_key().into(),
             signature: vec![],
         };
@@ -76,6 +77,7 @@ impl OrgClient {
             payer: payer.into(),
             net_id,
             timestamp: current_timestamp()?,
+            delegate_keys: vec![],
             signer: keypair.public_key().into(),
             signature: vec![],
         };
@@ -223,7 +225,7 @@ impl EuiClient {
                 timestamp,
                 signer: keypair.public_key().into(),
                 signature: vec![],
-                euis: Some(EuiPairV1 {
+                eui_pair: Some(EuiPairV1 {
                     route_id: route_id.clone(),
                     app_eui: eui.app_eui.into(),
                     dev_eui: eui.dev_eui.into(),
@@ -248,7 +250,7 @@ impl EuiClient {
                 timestamp,
                 signer: keypair.public_key().into(),
                 signature: vec![],
-                euis: Some(EuiPairV1 {
+                eui_pair: Some(EuiPairV1 {
                     route_id: route_id.clone(),
                     app_eui: eui.app_eui.into(),
                     dev_eui: eui.dev_eui.into(),
@@ -279,11 +281,7 @@ impl RouteClient {
         })
     }
 
-    pub async fn list(
-        &mut self,
-        oui: u64,
-        keypair: &Keypair,
-    ) -> Result<RouteList> {
+    pub async fn list(&mut self, oui: u64, keypair: &Keypair) -> Result<RouteList> {
         let mut request = RouteListReqV1 {
             oui,
             signer: keypair.public_key().into(),
@@ -305,11 +303,7 @@ impl RouteClient {
         Ok(self.client.get(request).await?.into_inner().into())
     }
 
-    pub async fn create_route(
-        &mut self,
-        route: Route,
-        keypair: &Keypair,
-    ) -> Result<Route> {
+    pub async fn create_route(&mut self, route: Route, keypair: &Keypair) -> Result<Route> {
         let mut request = RouteCreateReqV1 {
             oui: route.oui,
             route: Some(route.into()),
@@ -321,11 +315,7 @@ impl RouteClient {
         Ok(self.client.create(request).await?.into_inner().into())
     }
 
-    pub async fn delete(
-        &mut self,
-        id: &str,
-        keypair: &Keypair,
-    ) -> Result<Route> {
+    pub async fn delete(&mut self, id: &str, keypair: &Keypair) -> Result<Route> {
         let mut request = RouteDeleteReqV1 {
             id: id.into(),
             signer: keypair.public_key().into(),
@@ -336,11 +326,7 @@ impl RouteClient {
         Ok(self.client.delete(request).await?.into_inner().into())
     }
 
-    pub async fn push(
-        &mut self,
-        route: Route,
-        keypair: &Keypair,
-    ) -> Result<Route> {
+    pub async fn push(&mut self, route: Route, keypair: &Keypair) -> Result<Route> {
         let mut request = RouteUpdateReqV1 {
             route: Some(route.into()),
             signer: keypair.public_key().into(),
