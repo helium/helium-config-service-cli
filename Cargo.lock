@@ -820,7 +820,6 @@ name = "helium-config-service-cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "async-trait",
  "clap",
  "config",
  "dialoguer",
@@ -840,7 +839,6 @@ dependencies = [
  "temp-dir",
  "tokio",
  "tokio-stream",
- "toml",
  "tonic",
  "tonic-build",
  "tracing",
