@@ -32,7 +32,7 @@ use clap::Parser;
 use helium_config_service_cli::{
     hex_field::HexNetID,
     route::Route,
-    server::{FlowType, Protocol, Server},
+    server::{Protocol, Server},
 };
 use reqwest::Url;
 use serde::Deserialize;
@@ -199,7 +199,6 @@ fn to_route(config: Config, net_id: HexNetID, oui: u64) -> Route {
                 url.as_str().to_string(),
                 url.port().unwrap_or(80) as u32,
                 Protocol::make_http(
-                    FlowType::Async,
                     config.http_dedupe_timeout.unwrap_or(250),
                     url.path().into(),
                     None,

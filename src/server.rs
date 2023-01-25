@@ -70,14 +70,9 @@ impl Protocol {
         BTreeMap::from([(region, port)])
     }
 
-    pub fn make_http(
-        flow_type: FlowType,
-        dedupe_timeout: u32,
-        path: String,
-        auth_header: Option<String>,
-    ) -> Self {
+    pub fn make_http(dedupe_timeout: u32, path: String, auth_header: Option<String>) -> Self {
         Self::Http(Http {
-            flow_type,
+            flow_type: FlowType::Async,
             dedupe_timeout,
             path,
             auth_header: auth_header.unwrap_or_default(),
@@ -120,10 +115,10 @@ pub struct Gwmp {
 
 #[derive(Serialize, Debug, Deserialize, Clone, PartialEq, Eq, Default)]
 pub struct Http {
-    flow_type: FlowType,
-    dedupe_timeout: u32,
-    path: String,
-    auth_header: String,
+    pub flow_type: FlowType,
+    pub dedupe_timeout: u32,
+    pub path: String,
+    pub auth_header: String,
 }
 
 #[derive(clap::ValueEnum, Clone, Serialize, Debug, Deserialize, PartialEq, Eq, Default)]
