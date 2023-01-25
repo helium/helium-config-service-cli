@@ -54,6 +54,30 @@ pub enum Protocol {
 }
 
 impl Protocol {
+    pub fn into_http_inner(&self) -> Result<Http> {
+        match self {
+            Protocol::Http(http) => Ok(http.clone()),
+            Protocol::Gwmp(_) => Err(anyhow!("Cannot return http for gwmp protocol")),
+            Protocol::PacketRouter => Err(anyhow!("Cannot return http for packet-router protocol")),
+        }
+    }
+
+    pub fn into_gwmp_inner(&self) -> Result<Gwmp> {
+        match self {
+            Protocol::Gwmp(gwmp) => Ok(gwmp.clone()),
+            Protocol::Http(_) => Err(anyhow!("Cannot return gwmp for http protocol")),
+            Protocol::PacketRouter => Err(anyhow!("Cannot return gwmp for packet-router protocl")),
+        }
+    }
+
+    pub fn is_gwmp(&self) -> bool {
+        match self {
+            Protocol::Gwmp(_) => true,
+            Protocol::Http(_) => false,
+            Protocol::PacketRouter => false,
+        }
+    }
+
     pub fn default_gwmp() -> Self {
         Protocol::Gwmp(Gwmp::default())
     }
@@ -85,7 +109,7 @@ impl Protocol {
         Ok(gwmp)
     }
 
-    fn gwmp_add_mapping(&mut self, map: GwmpMap) -> Result {
+    pub fn gwmp_add_mapping(&mut self, map: GwmpMap) -> Result {
         match self {
             Protocol::Gwmp(Gwmp { ref mut mapping }) => {
                 mapping.extend(map);
@@ -93,6 +117,17 @@ impl Protocol {
             }
             Protocol::Http(_) => Err(anyhow!("cannot add region mapping to http")),
             Protocol::PacketRouter => Err(anyhow!("cannot add region mapping to packet router")),
+        }
+    }
+
+    pub fn gwmp_remove_mapping(&mut self, region: &Region) -> Result {
+        match self {
+            Protocol::Gwmp(Gwmp { ref mut mapping }) => {
+                mapping.remove(region);
+                Ok(())
+            }
+            Protocol::Http(_) => Err(anyhow!("cannot remove region mapping from http")),
+            Protocol::PacketRouter => Err(anyhow!("cannot remove region from packet router")),
         }
     }
 
