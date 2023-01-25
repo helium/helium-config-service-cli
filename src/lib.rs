@@ -24,6 +24,7 @@ pub type Result<T = (), E = Error> = anyhow::Result<T, E>;
 
 #[derive(Debug, Serialize)]
 pub enum Msg {
+    DryRun(String),
     Success(String),
     Error(String),
 }
@@ -35,8 +36,12 @@ impl Msg {
     pub fn err(msg: String) -> Result<Self> {
         Ok(Self::Error(msg))
     }
+    pub fn dry_run(msg: String) -> Result<Self> {
+        Ok(Self::DryRun(msg))
+    }
     pub fn into_inner(self) -> String {
         match self {
+            Msg::DryRun(s) => s,
             Msg::Success(s) => s,
             Msg::Error(s) => s,
         }
@@ -46,6 +51,7 @@ impl Msg {
 impl Display for Msg {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Msg::DryRun(msg) => write!(f, "== DRY RUN == (pass `--commit`)\n{}", msg),
             Msg::Success(msg) => write!(f, "\u{2713} {}", msg),
             Msg::Error(msg) => write!(f, "\u{2717} {}", msg),
         }
