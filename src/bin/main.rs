@@ -2,7 +2,7 @@ use clap::Parser;
 use helium_config_service_cli::{
     cmds::{
         self, Cli, Commands, EnvCommands as Env, OrgCommands as Org, ProtocolCommands as Protocol,
-        RouteCommands as Route,
+        RouteCommands, RouteCommandsOld as RouteOld, RouteUpdateCommand,
     },
     Msg, Result,
 };
@@ -25,14 +25,32 @@ async fn handle_cli(cli: Cli) -> Result<Msg> {
             Env::GenerateKeypair(args) => cmds::env::generate_keypair(args),
         },
         Commands::Route { command } => match command {
-            Route::Generate(args) => cmds::route::generate_route(args),
-            Route::List(args) => cmds::route::get_routes(args).await,
-            Route::Get(args) => cmds::route::get_route(args).await,
-            Route::Create(args) => cmds::route::create_route(args).await,
-            Route::Update(args) => cmds::route::update_route(args).await,
-            Route::Remove(args) => cmds::route::remove_route(args).await,
-            Route::SubnetMask(args) => cmds::route::subnet_mask(args),
-            Route::Protocol { command } => match command {
+            RouteCommands::List(args) => cmds::route::list_routes(args).await,
+            RouteCommands::Get(args) => cmds::route::get_route(args).await,
+            RouteCommands::New(args) => cmds::route::new_route(args).await,
+            RouteCommands::Delete(args) => cmds::route::delete_route(args).await,
+            RouteCommands::Update(args) => match args.command {
+                RouteUpdateCommand::MaxCopies(args) => cmds::route::update_max_copies(args).await,
+                RouteUpdateCommand::Server(args) => cmds::route::update_server(args).await,
+                RouteUpdateCommand::Http(args) => cmds::route::update_http(args).await,
+                RouteUpdateCommand::AddGwmpRegion(args) => cmds::route::add_gwmp_region(args).await,
+                RouteUpdateCommand::RemoveGwmpRegion(args) => {
+                    cmds::route::remove_gwmp_region(args).await
+                }
+                RouteUpdateCommand::PacketRouter(args) => {
+                    cmds::route::update_packet_router(args).await
+                }
+            },
+        },
+        Commands::RouteOld { command } => match command {
+            RouteOld::Generate(args) => cmds::route::generate_route(args),
+            RouteOld::List(args) => cmds::route::get_routes(args).await,
+            RouteOld::Get(args) => cmds::route::get_route_old(args).await,
+            RouteOld::Create(args) => cmds::route::create_route(args).await,
+            RouteOld::Update(args) => cmds::route::update_route(args).await,
+            RouteOld::Remove(args) => cmds::route::remove_route(args).await,
+            RouteOld::SubnetMask(args) => cmds::route::subnet_mask(args),
+            RouteOld::Protocol { command } => match command {
                 Protocol::Http(args) => cmds::protocol::add_http_protocol(args).await,
                 Protocol::Gwmp(args) => cmds::protocol::add_gwmp_protocol(args).await,
                 Protocol::PacketRouter(args) => {
@@ -40,13 +58,13 @@ async fn handle_cli(cli: Cli) -> Result<Msg> {
                 }
                 Protocol::GwmpMapping(args) => cmds::route::add_gwmp_mapping(args).await,
             },
-            Route::Euis { command } => match command {
+            RouteOld::Euis { command } => match command {
                 cmds::EuiCommands::Get(args) => cmds::route::euis::get_euis(args).await,
                 cmds::EuiCommands::Add(args) => cmds::route::euis::add_euis(args).await,
                 cmds::EuiCommands::Remove(args) => cmds::route::euis::remove_euis(args).await,
                 cmds::EuiCommands::Delete(args) => cmds::route::euis::delete_euis(args).await,
             },
-            Route::Devaddrs { command } => match command {
+            RouteOld::Devaddrs { command } => match command {
                 cmds::DevaddrCommands::Get(args) => cmds::route::devaddrs::get_devaddrs(args).await,
                 cmds::DevaddrCommands::Add(args) => cmds::route::devaddrs::add_devaddrs(args).await,
                 cmds::DevaddrCommands::Remove(args) => {

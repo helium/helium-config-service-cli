@@ -1,8 +1,8 @@
 use crate::{
     client,
     cmds::{
-        CreateRoute, GenerateRoute, GetRoute, GetRoutes, PathBufKeypair, RemoveRoute, SubnetMask,
-        UpdateRoute,
+        CreateRoute, GenerateRoute, GetRouteOld, GetRoutes, PathBufKeypair, RemoveRoute,
+        SubnetMask, UpdateRouteOld,
     },
     route::Route,
     server::Protocol,
@@ -10,7 +10,267 @@ use crate::{
     DevaddrConstraint, Msg, PrettyJson, Result,
 };
 
-use super::{AddDevaddr, AddEui, AddGwmpMapping};
+use super::{
+    AddDevaddr, AddEui, AddGwmpMapping, AddGwmpRegion, DeleteRoute, GetRoute, ListRoutes, NewRoute,
+    RemoveGwmpRegion, UpdateHttp, UpdateMaxCopies, UpdatePacketRouter, UpdateServer,
+};
+
+pub async fn list_routes(args: ListRoutes) -> Result<Msg> {
+    let mut client = client::RouteClient::new(&args.config_host).await?;
+    match client.list(args.oui, &args.keypair.to_keypair()?).await {
+        Ok(route_list) => Msg::ok(route_list.pretty_json()?),
+        Err(err) => Msg::err(format!("could not list routes: {err}")),
+    }
+}
+
+pub async fn get_route(args: GetRoute) -> Result<Msg> {
+    let mut client = client::RouteClient::new(&args.config_host).await?;
+    match client
+        .get(&args.route_id, &args.keypair.to_keypair()?)
+        .await
+    {
+        Ok(route) => Msg::ok(route.pretty_json()?),
+        Err(err) => Msg::err(format!("could not get route: {err}")),
+    }
+}
+
+pub async fn new_route(args: NewRoute) -> Result<Msg> {
+    let mut client = client::RouteClient::new(&args.config_host).await?;
+    let route = Route::new(args.net_id, args.oui, args.max_copies);
+
+    if !args.commit {
+        return Msg::dry_run(route.pretty_json()?);
+    }
+
+    match client
+        .create_route(route, &args.keypair.to_keypair()?)
+        .await
+    {
+        Ok(created_route) => Msg::ok(format!(
+            "created route {}\n{}",
+            created_route.id,
+            created_route.pretty_json()?
+        )),
+        Err(err) => Msg::err(format!("route not created: {err}")),
+    }
+}
+
+pub async fn delete_route(args: DeleteRoute) -> Result<Msg> {
+    let mut client = client::RouteClient::new(&args.config_host).await?;
+
+    if !args.commit {
+        return Msg::dry_run(format!("delete {}", args.route_id));
+    }
+
+    match client
+        .delete(&args.route_id, &args.keypair.to_keypair()?)
+        .await
+    {
+        Ok(removed_route) => Msg::ok(format!("deleted route {}", removed_route.id)),
+        Err(err) => Msg::err(format!("route not deleted: {err}")),
+    }
+}
+
+pub async fn update_max_copies(args: UpdateMaxCopies) -> Result<Msg> {
+    let mut client = client::RouteClient::new(&args.config_host).await?;
+    let keypair = args.keypair.to_keypair()?;
+
+    let mut route = client.get(&args.route_id, &keypair).await?;
+    let old_route = route.clone();
+
+    route.max_copies = args.max_copies;
+
+    if !args.commit {
+        return Msg::dry_run(format!(
+            "Updated {}\n== Old\n{}\n== New\n{}",
+            route.id,
+            old_route.pretty_json()?,
+            route.pretty_json()?
+        ));
+    }
+
+    match client.push(route, &keypair).await {
+        Ok(updated_route) => Msg::ok(format!(
+            "Updated {}\n== Old\n{}\n== New\n{}",
+            updated_route.id,
+            old_route.pretty_json()?,
+            updated_route.pretty_json()?
+        )),
+        Err(err) => Msg::err(format!("could not update max_copies: {err}")),
+    }
+}
+
+pub async fn update_server(args: UpdateServer) -> Result<Msg> {
+    let mut client = client::RouteClient::new(&args.config_host).await?;
+    let keypair = args.keypair.to_keypair()?;
+
+    let mut route = client.get(&args.route_id, &keypair).await?;
+    let old_route = route.clone();
+
+    route.server.host = args.host;
+    route.server.port = args.port;
+
+    if !args.commit {
+        return Msg::dry_run(format!(
+            "Updated {}\n== Old\n{}\n== New\n{}",
+            route.id,
+            old_route.pretty_json()?,
+            route.pretty_json()?
+        ));
+    }
+
+    match client.push(route, &keypair).await {
+        Ok(updated_route) => Msg::ok(format!(
+            "Updated {}\n== Old\n{}\n== New\n{}",
+            updated_route.id,
+            old_route.pretty_json()?,
+            updated_route.pretty_json()?
+        )),
+
+        Err(err) => Msg::err(format!("could not update server host and port: {err}")),
+    }
+}
+
+pub async fn update_http(args: UpdateHttp) -> Result<Msg> {
+    let mut client = client::RouteClient::new(&args.config_host).await?;
+    let keypair = args.keypair.to_keypair()?;
+
+    let mut route = client.get(&args.route_id, &keypair).await?;
+    let old_route = route.clone();
+
+    let http = Protocol::make_http(args.dedupe_timeout, args.path, args.auth_header);
+    route.server.protocol = Some(http);
+
+    if !args.commit {
+        return Msg::dry_run(format!(
+            "Updated {}\n== Old\n{}\n== New\n{}",
+            route.id,
+            old_route.pretty_json()?,
+            route.pretty_json()?
+        ));
+    }
+
+    match client.push(route, &keypair).await {
+        Ok(updated_route) => Msg::ok(format!(
+            "Updated {}\n== Old\n{}\n== New\n{}",
+            updated_route.id,
+            old_route.pretty_json()?,
+            updated_route.pretty_json()?
+        )),
+        Err(err) => Msg::err(format!("Could not update http protocol: {err}")),
+    }
+}
+
+pub async fn add_gwmp_region(args: AddGwmpRegion) -> Result<Msg> {
+    let mut client = client::RouteClient::new(&args.config_host).await?;
+    let keypair = args.keypair.to_keypair()?;
+
+    let mut route = client.get(&args.route_id, &keypair).await?;
+    let old_route = route.clone();
+    let old_protocol = route.server.protocol;
+
+    let gwmp = if let Some(protocol) = old_protocol.as_ref() {
+        if protocol.is_gwmp() {
+            let mut new_protocol = protocol.clone();
+            let map = Protocol::make_gwmp_mapping(args.region, args.region_port);
+            new_protocol.gwmp_add_mapping(map)?;
+            new_protocol
+        } else {
+            Protocol::make_gwmp(args.region, args.region_port)?
+        }
+    } else {
+        Protocol::make_gwmp(args.region, args.region_port)?
+    };
+
+    route.server.protocol = Some(gwmp);
+
+    if !args.commit {
+        return Msg::dry_run(format!(
+            "Updated {}\n== Old\n{}\n== New\n{}",
+            route.id,
+            old_route.pretty_json()?,
+            route.pretty_json()?
+        ));
+    }
+
+    match client.push(route, &keypair).await {
+        Ok(updated_route) => Msg::ok(format!(
+            "Updated {}\n== Old\n{}\n== New\n{}",
+            updated_route.id,
+            old_route.pretty_json()?,
+            updated_route.pretty_json()?
+        )),
+        Err(err) => Msg::err(format!("Could not update gwmp protocol: {err}")),
+    }
+}
+
+pub async fn remove_gwmp_region(args: RemoveGwmpRegion) -> Result<Msg> {
+    let mut client = client::RouteClient::new(&args.config_host).await?;
+    let keypair = args.keypair.to_keypair()?;
+
+    let mut route = client.get(&args.route_id, &keypair).await?;
+    let old_route = route.clone();
+
+    let old_protocol = route.server.protocol;
+
+    let mut new_protocol = if let Some(p) = old_protocol.as_ref() {
+        p.clone()
+    } else {
+        return Msg::err(format!("Cannot remove region mapping, no protocol"));
+    };
+    new_protocol.gwmp_remove_mapping(&args.region)?;
+
+    route.server.protocol = Some(new_protocol);
+
+    if !args.commit {
+        return Msg::dry_run(format!(
+            "Updated {}\n== Old\n{}\n== New\n{}",
+            route.id,
+            old_route.pretty_json()?,
+            route.pretty_json()?
+        ));
+    }
+
+    match client.push(route, &keypair).await {
+        Ok(updated_route) => Msg::ok(format!(
+            "Updated {}\n== Old\n{}\n== New\n{}",
+            updated_route.id,
+            old_route.pretty_json()?,
+            updated_route.pretty_json()?
+        )),
+        Err(err) => Msg::err(format!("Could not update gwmp protocol: {err}")),
+    }
+}
+
+pub async fn update_packet_router(args: UpdatePacketRouter) -> Result<Msg> {
+    let mut client = client::RouteClient::new(&args.config_host).await?;
+    let keypair = args.keypair.to_keypair()?;
+
+    let mut route = client.get(&args.route_id, &keypair).await?;
+    let old_route = route.clone();
+
+    let new_protocol = Protocol::default_packet_router();
+    route.server.protocol = Some(new_protocol);
+
+    if !args.commit {
+        return Msg::dry_run(format!(
+            "Updated {}\n== Old\n{}\n== New\n{}",
+            route.id,
+            old_route.pretty_json()?,
+            route.pretty_json()?
+        ));
+    }
+
+    match client.push(route, &keypair).await {
+        Ok(updated_route) => Msg::ok(format!(
+            "Updated {}\n== Old\n{}\n== New\n{}",
+            updated_route.id,
+            old_route.pretty_json()?,
+            updated_route.pretty_json()?
+        )),
+        Err(_) => todo!(),
+    }
+}
 
 pub mod euis {
     use crate::{
@@ -152,7 +412,7 @@ pub async fn get_routes(args: GetRoutes) -> Result<Msg> {
     Msg::ok(route_list.pretty_json()?)
 }
 
-pub async fn get_route(args: GetRoute) -> Result<Msg> {
+pub async fn get_route_old(args: GetRouteOld) -> Result<Msg> {
     let mut client = client::RouteClient::new(&args.config_host).await?;
     let route = client
         .get(&args.route_id, &args.keypair.to_keypair()?)
@@ -206,7 +466,7 @@ pub async fn create_route(args: CreateRoute) -> Result<Msg> {
     ))
 }
 
-pub async fn update_route(args: UpdateRoute) -> Result<Msg> {
+pub async fn update_route(args: UpdateRouteOld) -> Result<Msg> {
     let route = Route::from_file(&args.route_file)?;
     if args.commit {
         let mut client = client::RouteClient::new(&args.config_host).await?;

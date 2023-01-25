@@ -58,6 +58,12 @@ pub enum Commands {
         command: RouteCommands,
     },
 
+    /// Route
+    RouteOld {
+        #[command(subcommand)]
+        command: RouteCommandsOld,
+    },
+
     /// Org
     Org {
         #[command(subcommand)]
@@ -77,16 +83,209 @@ pub enum EnvCommands {
 
 #[derive(Debug, Subcommand)]
 pub enum RouteCommands {
+    List(ListRoutes),
+    Get(GetRoute),
+    /// Create new Route
+    New(NewRoute),
+    /// Update Route component
+    Update(UpdateRoute),
+    /// Remove Route
+    Delete(DeleteRoute),
+}
+
+#[derive(Debug, Args)]
+pub struct ListRoutes {
+    #[arg(long, env = ENV_OUI)]
+    pub oui: u64,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct GetRoute {
+    #[arg(short, long)]
+    pub route_id: String,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+}
+
+#[derive(Debug, Args)]
+pub struct NewRoute {
+    #[arg(long, env = ENV_NET_ID, default_value = "C00053")]
+    pub net_id: HexNetID,
+    #[arg(long, env = ENV_OUI)]
+    pub oui: u64,
+    #[arg(long, env = ENV_MAX_COPIES, default_value = "5")]
+    pub max_copies: u32,
+
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct DeleteRoute {
+    #[arg(short, long)]
+    pub route_id: String,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct UpdateRoute {
+    #[command(subcommand)]
+    pub command: RouteUpdateCommand,
+    #[arg(short, long)]
+    pub route_id: String,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum RouteUpdateCommand {
+    /// Update max number of packets to buy.
+    MaxCopies(UpdateMaxCopies),
+    /// Update server destination details.
+    Server(UpdateServer),
+    /// Set the Route Protocol to Http
+    Http(UpdateHttp),
+    /// Set the Route Protocol to Gwmp (UDP)
+    /// This will change the protocol to Gwmp AND add
+    /// a region mapping if one was provided.
+    AddGwmpRegion(AddGwmpRegion),
+    /// Remove a region mapping from the Gwmp Protocol.
+    /// This only works if the protocol is already gwmp.
+    RemoveGwmpRegion(RemoveGwmpRegion),
+    /// Set the Route Protocol to PacketRouter (GRPC)
+    PacketRouter(UpdatePacketRouter),
+}
+
+#[derive(Debug, Args)]
+pub struct UpdateMaxCopies {
+    #[arg(short, long)]
+    pub route_id: String,
+    #[arg(short, long)]
+    pub max_copies: u32,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct UpdateServer {
+    #[arg(short, long)]
+    pub route_id: String,
+    #[arg(long)]
+    pub host: String,
+    #[arg(long)]
+    pub port: u32,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct UpdateHttp {
+    #[arg(short, long)]
+    pub route_id: String,
+    #[arg(short, long, default_value = "250")]
+    pub dedupe_timeout: u32,
+    /// Just the path part of the Server URL
+    ///
+    /// The rest will be taken from the Server {host}:{port}
+    #[arg(short, long)]
+    pub path: String,
+    /// Authorization Header
+    #[arg(short, long)]
+    pub auth_header: Option<String>,
+
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+
+pub struct UpdatePacketRouter {
+    #[arg(short, long)]
+    pub route_id: String,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct AddGwmpRegion {
+    #[arg(short, long)]
+    pub route_id: String,
+    #[arg(value_enum)]
+    pub region: Region,
+    pub region_port: u32,
+
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct RemoveGwmpRegion {
+    #[arg(short, long)]
+    pub route_id: String,
+    #[arg(value_enum)]
+    pub region: Region,
+
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum RouteCommandsOld {
     /// Make an empty route file edit
     Generate(GenerateRoute),
     /// Get all Routes for an OUI
     List(GetRoutes),
     /// Get a Route by ID and write to file
-    Get(GetRoute),
+    Get(GetRouteOld),
     /// Create a Route from a file
     Create(CreateRoute),
     /// Update a Route
-    Update(UpdateRoute),
+    Update(UpdateRouteOld),
     /// Remove a Route
     Remove(RemoveRoute),
     /// Print out subnet mask for Devaddr Range
@@ -426,7 +625,7 @@ pub struct GetRoutes {
 }
 
 #[derive(Debug, Args)]
-pub struct GetRoute {
+pub struct GetRouteOld {
     #[arg(short, long)]
     pub route_id: String,
     #[arg(from_global)]
@@ -468,7 +667,7 @@ pub struct CreateRoute {
 }
 
 #[derive(Debug, Args)]
-pub struct UpdateRoute {
+pub struct UpdateRouteOld {
     #[arg(long)]
     pub route_file: PathBuf,
     #[arg(from_global)]
