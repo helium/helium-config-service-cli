@@ -56,10 +56,11 @@ impl OrgServer for OrgService {
         match self.storage.get_org(req.oui) {
             Some(org) => {
                 info!(oui = req.oui, "found");
+
                 Ok(Response::new(OrgResV1 {
-                    org: Some(org.into()),
+                    org: Some(org.clone().into()),
                     net_id: 0,
-                    devaddr_constraints: vec![],
+                    devaddr_constraints: vec![org.devaddr_constraints.into()],
                 }))
             }
             _ => {

@@ -574,7 +574,7 @@ impl RouteStorage for Storage {
 #[derive(Debug, Clone)]
 pub struct DbOrg {
     org: Org,
-    devaddr_constraints: DevaddrConstraint,
+    pub devaddr_constraints: DevaddrConstraint,
 }
 
 impl DbOrg {
