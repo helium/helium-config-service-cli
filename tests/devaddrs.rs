@@ -25,18 +25,11 @@ async fn create_route_and_add_remove_devadddrs() -> Result {
     // Create an org and ensure we start out with no routes
     let org_res = common::create_helium_org(&public_key, 16, keypair_path.clone()).await?;
     let constraint = org_res.devaddr_constraints.first().unwrap();
-    let _ = common::ensure_no_routes(org_res.org.oui, &public_key, keypair_path.clone()).await?;
+    let _ = common::ensure_no_routes(org_res.org.oui, keypair_path.clone()).await?;
 
     // Create a route and ensure there's no default devaddrs
     let net_id = hex_field::net_id(0xC00053);
-    let route = common::create_empty_route(
-        &working_dir,
-        net_id,
-        org_res.org.oui,
-        &public_key,
-        keypair_path.clone(),
-    )
-    .await?;
+    let route = common::create_empty_route(net_id, org_res.org.oui, keypair_path.clone()).await?;
     let _ = common::ensure_no_devaddrs(&route.id, keypair_path.clone()).await?;
 
     // devaddr outside org constraint, should not add

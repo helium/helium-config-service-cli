@@ -8,7 +8,6 @@ use helium_config_service_cli::{
     OrgResponse, Result,
 };
 use helium_crypto::PublicKey;
-use temp_dir::TempDir;
 use tracing::info;
 
 pub const CONFIG_HOST: &str = "http://127.0.0.1:50051";
@@ -61,64 +60,52 @@ pub async fn create_helium_org(
     Ok(res)
 }
 
-pub async fn ensure_no_routes(oui: u64, owner: &PublicKey, keypair_path: PathBuf) -> Result {
-    let out = cmds::route::get_routes(GetRoutes {
+pub async fn ensure_no_routes(oui: u64, keypair_path: PathBuf) -> Result {
+    let out = cmds::route::list_routes(ListRoutes {
         oui,
-        owner: owner.to_owned(),
         keypair: keypair_path.clone(),
         config_host: CONFIG_HOST.to_string(),
-        route_out_dir: PathBuf::from_str("no-writing")?,
         commit: false,
     })
     .await?;
     info!("{out}");
 
     let mut route_client = client::RouteClient::new(CONFIG_HOST).await?;
-    let route_list = route_client
-        .list(oui, owner, &keypair_path.to_keypair()?)
-        .await?;
+    let route_list = route_client.list(oui, &keypair_path.to_keypair()?).await?;
     assert!(route_list.is_empty());
     Ok(())
 }
 
 pub async fn create_empty_route(
-    working_dir: &TempDir,
     net_id: hex_field::HexNetID,
     oui: u64,
-    owner: &PublicKey,
     keypair_path: PathBuf,
 ) -> Result<Route> {
-    let out_file = working_dir.child("new_route.json");
-    let out_dir = working_dir.child("test-routes");
-
-    let out1 = cmds::route::generate_route(GenerateRoute {
+    let out1 = cmds::route::new_route(NewRoute {
         net_id,
         oui,
         max_copies: 5,
-        out_file: out_file.clone(),
-        commit: true,
-    })?;
-    info!("{out1}");
-
-    let out2 = cmds::route::create_route(CreateRoute {
-        route_file: out_file,
-        owner: owner.clone(),
         keypair: keypair_path.clone(),
         config_host: CONFIG_HOST.to_string(),
-        route_out_dir: out_dir,
         commit: true,
     })
     .await?;
-    info!("{out2}");
+    info!("{out1}");
 
     let mut route_client = client::RouteClient::new(CONFIG_HOST).await?;
-    let route_list = route_client
-        .list(oui, owner, &keypair_path.to_keypair()?)
-        .await?;
+    let route_list = route_client.list(oui, &keypair_path.to_keypair()?).await?;
     Ok(route_list
         .first()
         .expect("route created through CLI commands")
         .to_owned())
+}
+
+pub async fn get_route(route_id: &str, keypair_path: PathBuf) -> Result<Route> {
+    let mut route_client = client::RouteClient::new(CONFIG_HOST).await?;
+    let route = route_client
+        .get(route_id, &keypair_path.to_keypair()?)
+        .await?;
+    Ok(route)
 }
 
 pub async fn ensure_no_euis(route_id: &str, keypair_path: PathBuf) -> Result {
