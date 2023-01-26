@@ -1,6 +1,5 @@
 #![allow(unused)]
 use std::{path::PathBuf, str::FromStr};
-
 use helium_config_service_cli::{
     client,
     cmds::{self, *},

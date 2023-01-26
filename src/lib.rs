@@ -128,7 +128,7 @@ impl DevaddrRange {
         end_addr: hex_field::HexDevAddr,
     ) -> Result<Self> {
         if end_addr < start_addr {
-            return Err(anyhow!("start_addr cannot be greater thand end_addr"));
+            return Err(anyhow!("start_addr cannot be greater than end_addr"));
         }
 
         Ok(Self {
