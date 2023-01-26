@@ -21,12 +21,12 @@ async fn create_route_and_add_remove_euis() -> Result {
 
     // Create an org and ensure we start with no routes
     let org_res = common::create_helium_org(&public_key, 8, keypair_path.clone()).await?;
-    let _ = common::ensure_no_routes(org_res.org.oui, keypair_path.clone()).await?;
+    common::ensure_no_routes(org_res.org.oui, keypair_path.clone()).await?;
 
     // Create a route an ensure there's no default euis
     let net_id = hex_field::net_id(0xC00053);
     let route = common::create_empty_route(net_id, org_res.org.oui, keypair_path.clone()).await?;
-    let _ = common::ensure_no_euis(&route.id, keypair_path.clone()).await?;
+    common::ensure_no_euis(&route.id, keypair_path.clone()).await?;
 
     // Add an EUI
     let out1 = cmds::route::euis::add_eui(AddEui {
@@ -39,7 +39,7 @@ async fn create_route_and_add_remove_euis() -> Result {
     })
     .await?;
     info!("1: {out1}");
-    let _ = common::ensure_num_euis(1, &route.id, keypair_path.clone()).await?;
+    common::ensure_num_euis(1, &route.id, keypair_path.clone()).await?;
 
     // Remove Eui
     let out2 = cmds::route::euis::delete_eui(RemoveEui {
@@ -52,7 +52,7 @@ async fn create_route_and_add_remove_euis() -> Result {
     })
     .await?;
     println!("2: {out2}");
-    let _ = common::ensure_no_euis(&route.id, keypair_path.clone()).await?;
+    common::ensure_no_euis(&route.id, keypair_path.clone()).await?;
 
     // Add many Euis to delete
     let mut eui_client = client::EuiClient::new(common::CONFIG_HOST).await?;
@@ -68,12 +68,12 @@ async fn create_route_and_add_remove_euis() -> Result {
         .add_euis(euis, &keypair_path.to_keypair()?)
         .await?;
     info!("bulk adding euis: {adding:?}");
-    let _ = common::ensure_num_euis(15, &route.id, keypair_path.clone()).await?;
+    common::ensure_num_euis(15, &route.id, keypair_path.clone()).await?;
 
     eui_client
         .delete_euis(route.id.clone(), &keypair_path.to_keypair()?)
         .await?;
-    let _ = common::ensure_no_euis(&route.id, keypair_path.clone()).await?;
+    common::ensure_no_euis(&route.id, keypair_path.clone()).await?;
 
     Ok(())
 }

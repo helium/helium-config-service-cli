@@ -32,7 +32,7 @@ pub fn generate_keypair(path: PathBuf) -> Result<PublicKey> {
         commit: true,
     })?;
     info!("generate_keypair: {out}");
-    let (_, public_key) = cmds::env::get_public_key_from_path(Some(path.clone()));
+    let (_, public_key) = cmds::env::get_public_key_from_path(Some(path));
     let public_key = PublicKey::from_str(&public_key)?;
     Ok(public_key)
 }

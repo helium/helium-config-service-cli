@@ -55,7 +55,7 @@ impl OrgClient {
             signer: keypair.public_key().into(),
             signature: vec![],
         };
-        request.signature = request.sign(&keypair)?;
+        request.signature = request.sign(keypair)?;
         Ok(self
             .client
             .create_helium(request)

@@ -99,7 +99,7 @@ pub fn generate_keypair(args: GenerateKeypair) -> Result<Msg> {
     if let Some(parent) = args.out_file.parent() {
         fs::create_dir_all(parent)?;
     }
-    fs::write(&args.out_file, &key.to_vec())?;
+    fs::write(&args.out_file, key.to_vec())?;
     Msg::ok(format!(
         "New Keypair created and written to {:?}",
         args.out_file.display()

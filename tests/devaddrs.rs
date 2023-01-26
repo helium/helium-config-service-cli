@@ -25,12 +25,12 @@ async fn create_route_and_add_remove_devadddrs() -> Result {
     // Create an org and ensure we start out with no routes
     let org_res = common::create_helium_org(&public_key, 16, keypair_path.clone()).await?;
     let constraint = org_res.devaddr_constraints.first().unwrap();
-    let _ = common::ensure_no_routes(org_res.org.oui, keypair_path.clone()).await?;
+    common::ensure_no_routes(org_res.org.oui, keypair_path.clone()).await?;
 
     // Create a route and ensure there's no default devaddrs
     let net_id = hex_field::net_id(0xC00053);
     let route = common::create_empty_route(net_id, org_res.org.oui, keypair_path.clone()).await?;
-    let _ = common::ensure_no_devaddrs(&route.id, keypair_path.clone()).await?;
+    common::ensure_no_devaddrs(&route.id, keypair_path.clone()).await?;
 
     // devaddr outside org constraint, should not add
     let out1 = cmds::route::devaddrs::add_devaddr(AddDevaddr {
@@ -43,7 +43,7 @@ async fn create_route_and_add_remove_devadddrs() -> Result {
     })
     .await?;
     println!("1: {out1}");
-    let _ = common::ensure_no_devaddrs(&route.id, keypair_path.clone()).await?;
+    common::ensure_no_devaddrs(&route.id, keypair_path.clone()).await?;
 
     // Construct a devaddr within the org contraint, add and remove
     let devaddr_range = constraint.start_addr.to_range(3);
@@ -57,7 +57,7 @@ async fn create_route_and_add_remove_devadddrs() -> Result {
     })
     .await?;
     println!("2: {out2}");
-    let _ = common::ensure_num_devaddrs(1, &route.id, keypair_path.clone()).await?;
+    common::ensure_num_devaddrs(1, &route.id, keypair_path.clone()).await?;
 
     let out3 = cmds::route::devaddrs::delete_devaddr(DeleteDevaddr {
         start_addr: devaddr_range.start_addr,
@@ -69,7 +69,7 @@ async fn create_route_and_add_remove_devadddrs() -> Result {
     })
     .await?;
     println!("3: {out3}");
-    let _ = common::ensure_no_devaddrs(&route.id, keypair_path.clone()).await?;
+    common::ensure_no_devaddrs(&route.id, keypair_path.clone()).await?;
 
     // Add many devaddrs to delete
     let mut devaddrs = vec![];

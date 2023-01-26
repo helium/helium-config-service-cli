@@ -515,7 +515,7 @@ pub struct CreateRoaming {
 
 pub fn subnet_mask(args: SubnetMask) -> Result<Msg> {
     let devaddr_range = DevaddrConstraint::new(args.start_addr, args.end_addr)?;
-    return Msg::ok(devaddr_range.to_subnet().pretty_json()?);
+    Msg::ok(devaddr_range.to_subnet().pretty_json()?)
 }
 
 pub trait PathBufKeypair {

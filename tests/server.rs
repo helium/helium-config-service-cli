@@ -20,7 +20,7 @@ async fn create_route_and_update_server() -> Result {
 
     // Create an org and ensure we start out with no routes
     let org_res = common::create_helium_org(&public_key, 16, keypair_path.clone()).await?;
-    let _ = common::ensure_no_routes(org_res.org.oui, keypair_path.clone()).await?;
+    common::ensure_no_routes(org_res.org.oui, keypair_path.clone()).await?;
 
     // Create a route and ensure there's no default server
     let net_id = hex_field::net_id(0xC00053);

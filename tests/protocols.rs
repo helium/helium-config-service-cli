@@ -21,7 +21,7 @@ async fn create_route_and_update_server() -> Result {
 
     // Create an org and ensure we start out with no routes
     let org_res = common::create_helium_org(&public_key, 16, keypair_path.clone()).await?;
-    let _ = common::ensure_no_routes(org_res.org.oui, keypair_path.clone()).await?;
+    common::ensure_no_routes(org_res.org.oui, keypair_path.clone()).await?;
 
     // Create a route and ensure there's no default protocol
     let net_id = hex_field::net_id(0xC00053);
@@ -64,7 +64,7 @@ async fn create_route_and_update_server() -> Result {
         .server
         .protocol
         .expect("existing protocol")
-        .into_http_inner()?;
+        .inner_http()?;
 
     assert_eq!(
         server::Http {
@@ -92,7 +92,7 @@ async fn create_route_and_update_server() -> Result {
         .server
         .protocol
         .expect("existing protocol")
-        .into_gwmp_inner()?;
+        .inner_gwmp()?;
     assert_eq!(1, gwmp_protocol.mapping.len());
 
     let out5 = cmds::route::add_gwmp_region(AddGwmpRegion {
@@ -110,7 +110,7 @@ async fn create_route_and_update_server() -> Result {
         .server
         .protocol
         .expect("existing protocol")
-        .into_gwmp_inner()?;
+        .inner_gwmp()?;
     assert_eq!(2, gwmp_protocol.mapping.len());
 
     let out6 = cmds::route::remove_gwmp_region(RemoveGwmpRegion {
@@ -127,19 +127,19 @@ async fn create_route_and_update_server() -> Result {
         .server
         .protocol
         .expect("existing protocol")
-        .into_gwmp_inner()?;
+        .inner_gwmp()?;
     assert_eq!(1, gwmp_protocol.mapping.len());
 
     Ok(())
 }
 
 trait InnerProtocol {
-    fn into_http_inner(&self) -> Result<server::Http>;
-    fn into_gwmp_inner(&self) -> Result<server::Gwmp>;
+    fn inner_http(&self) -> Result<server::Http>;
+    fn inner_gwmp(&self) -> Result<server::Gwmp>;
 }
 
 impl InnerProtocol for server::Protocol {
-    fn into_http_inner(&self) -> Result<server::Http> {
+    fn inner_http(&self) -> Result<server::Http> {
         match self {
             server::Protocol::Http(http) => Ok(http.clone()),
             server::Protocol::Gwmp(_) => Err(anyhow!("Cannot return http for gwmp protocol")),
@@ -149,7 +149,7 @@ impl InnerProtocol for server::Protocol {
         }
     }
 
-    fn into_gwmp_inner(&self) -> Result<server::Gwmp> {
+    fn inner_gwmp(&self) -> Result<server::Gwmp> {
         match self {
             server::Protocol::Gwmp(gwmp) => Ok(gwmp.clone()),
             server::Protocol::Http(_) => Err(anyhow!("Cannot return gwmp for http protocol")),

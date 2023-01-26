@@ -208,7 +208,7 @@ pub async fn remove_gwmp_region(args: RemoveGwmpRegion) -> Result<Msg> {
     let mut new_protocol = if let Some(p) = old_protocol.as_ref() {
         p.clone()
     } else {
-        return Msg::err(format!("Cannot remove region mapping, no protocol"));
+        return Msg::err("Cannot remove region mapping, no protocol".to_string());
     };
     new_protocol.gwmp_remove_mapping(&args.region)?;
 
