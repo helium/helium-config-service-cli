@@ -226,7 +226,6 @@ pub struct UpdateHttp {
 }
 
 #[derive(Debug, Args)]
-
 pub struct UpdatePacketRouter {
     #[arg(short, long)]
     pub route_id: String,
@@ -323,14 +322,13 @@ pub struct AddEui {
     pub dev_eui: hex_field::HexEui,
     #[arg(short, long, value_parser = hex_field::validate_eui)]
     pub app_eui: hex_field::HexEui,
-    /// Path of route to apply devaddr range to
     #[arg(long)]
     pub route_id: String,
     #[arg(from_global)]
     pub config_host: String,
     #[arg(from_global)]
     pub keypair: PathBuf,
-    /// Add the verified eui entry to the routes file
+    /// Add EUI entry to a Route
     #[arg(short, long)]
     pub commit: bool,
 }
@@ -341,14 +339,13 @@ pub struct RemoveEui {
     pub dev_eui: hex_field::HexEui,
     #[arg(short, long, value_parser = hex_field::validate_eui)]
     pub app_eui: hex_field::HexEui,
-    /// Path of route to apply devaddr range to
     #[arg(long)]
     pub route_id: String,
     #[arg(from_global)]
     pub config_host: String,
     #[arg(from_global)]
     pub keypair: PathBuf,
-    /// Add the verified eui entry to the routes file
+    /// Remove EUI entry from the Route
     #[arg(short, long)]
     pub commit: bool,
 }
@@ -361,7 +358,7 @@ pub struct ClearEuis {
     pub keypair: PathBuf,
     #[arg(from_global)]
     pub config_host: String,
-    /// Remove ALL Euis from a route
+    /// Remove ALL EUIs from a Route
     #[arg(short, long)]
     pub commit: bool,
 }
@@ -382,14 +379,13 @@ pub struct AddDevaddr {
     pub start_addr: hex_field::HexDevAddr,
     #[arg(short, long, value_parser = hex_field::validate_devaddr)]
     pub end_addr: hex_field::HexDevAddr,
-    /// Path of route to apply devaddr range to
     #[arg(long)]
     pub route_id: String,
     #[arg(from_global)]
     pub config_host: String,
     #[arg(from_global)]
     pub keypair: PathBuf,
-    /// Add the verified eui entry to the routes file
+    /// Add Devaddr entry to a Route
     #[arg(short, long)]
     pub commit: bool,
 }
@@ -400,14 +396,13 @@ pub struct DeleteDevaddr {
     pub start_addr: hex_field::HexDevAddr,
     #[arg(short, long, value_parser = hex_field::validate_devaddr)]
     pub end_addr: hex_field::HexDevAddr,
-    /// Path of route to apply devaddr range to
     #[arg(long)]
     pub route_id: String,
     #[arg(from_global)]
     pub config_host: String,
     #[arg(from_global)]
     pub keypair: PathBuf,
-    /// Add the verified eui entry to the routes file
+    /// Remove Devaddr entry from a Route
     #[arg(short, long)]
     pub commit: bool,
 }
@@ -420,7 +415,7 @@ pub struct ClearDevaddrs {
     pub keypair: PathBuf,
     #[arg(from_global)]
     pub config_host: String,
-    /// Remove ALL Euis from a route
+    /// Remove ALL Devaddrs from a route
     #[arg(short, long)]
     pub commit: bool,
 }
