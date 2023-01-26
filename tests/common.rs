@@ -1,3 +1,4 @@
+#![allow(unused)]
 use std::{path::PathBuf, str::FromStr};
 
 use helium_config_service_cli::{
@@ -117,7 +118,7 @@ pub async fn ensure_no_devaddrs(route_id: &str, keypair_path: PathBuf) -> Result
 }
 
 pub async fn ensure_num_euis(eui_count: usize, route_id: &str, keypair_path: PathBuf) -> Result {
-    let out = cmds::route::euis::get_euis(GetEuis {
+    let out = cmds::route::euis::list_euis(ListEuis {
         route_id: route_id.to_string(),
         keypair: keypair_path.clone(),
         config_host: CONFIG_HOST.to_string(),
@@ -138,7 +139,7 @@ pub async fn ensure_num_devaddrs(
     route_id: &str,
     keypair_path: PathBuf,
 ) -> Result {
-    let out = cmds::route::devaddrs::get_devaddrs(GetDevaddrs {
+    let out = cmds::route::devaddrs::list_devaddrs(ListDevaddrs {
         route_id: route_id.to_string(),
         keypair: keypair_path.clone(),
         config_host: CONFIG_HOST.to_string(),

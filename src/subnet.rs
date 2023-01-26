@@ -2,7 +2,7 @@ use ipnet;
 use serde::Serialize;
 use std::net;
 
-use crate::{hex_field::HexDevAddr, route::Route, DevaddrConstraint};
+use crate::{hex_field::HexDevAddr, route::Route, DevaddrConstraint, DevaddrRange};
 
 #[derive(Debug, Serialize, PartialEq, Eq)]
 pub struct DevaddrSubnet {
@@ -82,6 +82,12 @@ impl DevaddrConstraint {
                 subnets,
             }
         }
+    }
+}
+
+impl DevaddrRange {
+    pub fn to_subnet(self) -> DevaddrSubnet {
+        DevaddrConstraint::from(self).to_subnet()
     }
 }
 

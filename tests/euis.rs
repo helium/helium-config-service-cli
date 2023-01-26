@@ -29,7 +29,7 @@ async fn create_route_and_add_remove_euis() -> Result {
     let _ = common::ensure_no_euis(&route.id, keypair_path.clone()).await?;
 
     // Add an EUI
-    let out1 = cmds::route::euis::add_euis(AddEuis {
+    let out1 = cmds::route::euis::add_eui(AddEui {
         dev_eui: hex_field::eui(1),
         app_eui: hex_field::eui(2),
         route_id: route.id.clone(),
@@ -42,7 +42,7 @@ async fn create_route_and_add_remove_euis() -> Result {
     let _ = common::ensure_num_euis(1, &route.id, keypair_path.clone()).await?;
 
     // Remove Eui
-    let out2 = cmds::route::euis::remove_euis(RemoveEuis {
+    let out2 = cmds::route::euis::delete_eui(RemoveEui {
         dev_eui: hex_field::eui(1),
         app_eui: hex_field::eui(2),
         route_id: route.id.clone(),
@@ -85,7 +85,7 @@ async fn push_eui_to_route() -> Result {
     // Generate keypair
     let _public_key = common::generate_keypair(keypair_path.clone())?;
 
-    let out1 = cmds::route::euis::add_euis(AddEuis {
+    let out1 = cmds::route::euis::add_eui(AddEui {
         dev_eui: hex_field::eui(1),
         app_eui: hex_field::eui(2),
         route_id: "f5469a8c-938d-11ed-ac1e-e36715565962".to_string(),

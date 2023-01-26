@@ -1,6 +1,7 @@
-use super::{CreateHelium, CreateRoaming, GetOrg, GetOrgs, PathBufKeypair, ENV_NET_ID, ENV_OUI};
+use super::{CreateHelium, CreateRoaming, GetOrg, ListOrgs, PathBufKeypair, ENV_NET_ID, ENV_OUI};
 use crate::{client, Msg, PrettyJson, Result};
-pub async fn get_orgs(args: GetOrgs) -> Result<Msg> {
+
+pub async fn list_orgs(args: ListOrgs) -> Result<Msg> {
     let mut client = client::OrgClient::new(&args.config_host).await?;
     let org = client.list().await?;
 

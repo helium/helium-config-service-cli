@@ -1,8 +1,7 @@
 use crate::{
     hex_field::{self, HexNetID},
     region::Region,
-    server::FlowType,
-    Result,
+    DevaddrConstraint, Msg, PrettyJson, Result,
 };
 use anyhow::Context;
 use clap::{Args, Parser, Subcommand};
@@ -11,7 +10,6 @@ use std::path::PathBuf;
 
 pub mod env;
 pub mod org;
-pub mod protocol;
 pub mod route;
 
 pub const ENV_CONFIG_HOST: &str = "HELIUM_CONFIG_HOST";
@@ -21,7 +19,7 @@ pub const ENV_OUI: &str = "HELIUM_OUI";
 pub const ENV_MAX_COPIES: &str = "HELIUM_MAX_COPIES";
 
 #[derive(Debug, Parser)]
-#[command(name = "helium-config-cli-alt")]
+#[command(name = "helium-config-cli")]
 #[command(author, version, about, long_about=None)]
 pub struct Cli {
     #[command(subcommand)]
@@ -58,17 +56,13 @@ pub enum Commands {
         command: RouteCommands,
     },
 
-    /// Route
-    RouteOld {
-        #[command(subcommand)]
-        command: RouteCommandsOld,
-    },
-
     /// Org
     Org {
         #[command(subcommand)]
         command: OrgCommands,
     },
+    /// Print a Subnet Mask for a given Devaddr Range
+    SubnetMask(SubnetMask),
 }
 
 #[derive(Debug, Subcommand)]
@@ -83,12 +77,27 @@ pub enum EnvCommands {
 
 #[derive(Debug, Subcommand)]
 pub enum RouteCommands {
+    /// List all Routes for an OUI
     List(ListRoutes),
+    /// Get a Route by ID
     Get(GetRoute),
     /// Create new Route
     New(NewRoute),
     /// Update Route component
-    Update(UpdateRoute),
+    Update {
+        #[command(subcommand)]
+        command: RouteUpdateCommand,
+    },
+    /// Operate on EUIs for a Route
+    Euis {
+        #[command(subcommand)]
+        command: EuiCommands,
+    },
+    /// Operate on Devaddrs for a Route
+    Devaddrs {
+        #[command(subcommand)]
+        command: DevaddrCommands,
+    },
     /// Remove Route
     Delete(DeleteRoute),
 }
@@ -134,20 +143,6 @@ pub struct NewRoute {
 
 #[derive(Debug, Args)]
 pub struct DeleteRoute {
-    #[arg(short, long)]
-    pub route_id: String,
-    #[arg(from_global)]
-    pub keypair: PathBuf,
-    #[arg(from_global)]
-    pub config_host: String,
-    #[arg(long)]
-    pub commit: bool,
-}
-
-#[derive(Debug, Args)]
-pub struct UpdateRoute {
-    #[command(subcommand)]
-    pub command: RouteUpdateCommand,
     #[arg(short, long)]
     pub route_id: String,
     #[arg(from_global)]
@@ -275,66 +270,35 @@ pub struct RemoveGwmpRegion {
 }
 
 #[derive(Debug, Subcommand)]
-pub enum RouteCommandsOld {
-    /// Make an empty route file edit
-    Generate(GenerateRoute),
-    /// Get all Routes for an OUI
-    List(GetRoutes),
-    /// Get a Route by ID and write to file
-    Get(GetRouteOld),
-    /// Create a Route from a file
-    Create(CreateRoute),
-    /// Update a Route
-    Update(UpdateRouteOld),
-    /// Remove a Route
-    Remove(RemoveRoute),
-    /// Print out subnet mask for Devaddr Range
-    SubnetMask(SubnetMask),
-    /// Operate on EUIs for a Route
-    Euis {
-        #[command(subcommand)]
-        command: EuiCommands,
-    },
-    /// Operate on Devaddrs for a Route
-    Devaddrs {
-        #[command(subcommand)]
-        command: DevaddrCommands,
-    },
-    /// Operate on Protocols for a Route
-    Protocol {
-        #[command(subcommand)]
-        command: ProtocolCommands,
-    },
-}
-
-#[derive(Debug, Subcommand)]
 pub enum EuiCommands {
     /// Get all EUI pairs for a Route
-    Get(GetEuis),
+    List(ListEuis),
     /// Add EUI pair to Route
-    Add(AddEuis),
+    Add(AddEui),
     /// Remove EUI pair from Route
-    Remove(RemoveEuis),
+    Remove(RemoveEui),
     /// Remove ALL EUI Pairs from Route
-    Delete(DeleteEuis),
+    Clear(ClearEuis),
 }
 
 #[derive(Debug, Subcommand)]
 pub enum DevaddrCommands {
     /// Get all Devaddr Ranges for a Route
-    Get(GetDevaddrs),
+    List(ListDevaddrs),
     /// Add Devaddr Range to Route
-    Add(AddDevaddrs),
+    Add(AddDevaddr),
     /// Remove Devaddr Range from Route
-    Remove(RemoveDevaddrs),
+    Delete(DeleteDevaddr),
+    /// Print subnet mask for all devaddr ranges in a Route.
+    SubnetMask(RouteSubnetMask),
     /// Remove ALL Devaddr Ranges from Route
-    Delete(DeleteDevaddrs),
+    Clear(ClearDevaddrs),
 }
 
 #[derive(Debug, Subcommand)]
 pub enum OrgCommands {
     /// Get all Orgs
-    List(GetOrgs),
+    List(ListOrgs),
     /// Get an Organization you own
     Get(GetOrg),
     /// Create a new Helium Organization
@@ -344,7 +308,7 @@ pub enum OrgCommands {
 }
 
 #[derive(Debug, Args)]
-pub struct GetEuis {
+pub struct ListEuis {
     #[arg(short, long)]
     pub route_id: String,
     #[arg(from_global)]
@@ -354,7 +318,7 @@ pub struct GetEuis {
 }
 
 #[derive(Debug, Args)]
-pub struct AddEuis {
+pub struct AddEui {
     #[arg(short, long, value_parser = hex_field::validate_eui)]
     pub dev_eui: hex_field::HexEui,
     #[arg(short, long, value_parser = hex_field::validate_eui)]
@@ -372,7 +336,7 @@ pub struct AddEuis {
 }
 
 #[derive(Debug, Args)]
-pub struct RemoveEuis {
+pub struct RemoveEui {
     #[arg(short, long, value_parser = hex_field::validate_eui)]
     pub dev_eui: hex_field::HexEui,
     #[arg(short, long, value_parser = hex_field::validate_eui)]
@@ -390,7 +354,7 @@ pub struct RemoveEuis {
 }
 
 #[derive(Debug, Args)]
-pub struct DeleteEuis {
+pub struct ClearEuis {
     #[arg(short, long)]
     pub route_id: String,
     #[arg(from_global)]
@@ -403,7 +367,7 @@ pub struct DeleteEuis {
 }
 
 #[derive(Debug, Args)]
-pub struct GetDevaddrs {
+pub struct ListDevaddrs {
     #[arg(short, long)]
     pub route_id: String,
     #[arg(from_global)]
@@ -413,7 +377,7 @@ pub struct GetDevaddrs {
 }
 
 #[derive(Debug, Args)]
-pub struct AddDevaddrs {
+pub struct AddDevaddr {
     #[arg(short, long, value_parser = hex_field::validate_devaddr)]
     pub start_addr: hex_field::HexDevAddr,
     #[arg(short, long, value_parser = hex_field::validate_devaddr)]
@@ -431,7 +395,7 @@ pub struct AddDevaddrs {
 }
 
 #[derive(Debug, Args)]
-pub struct RemoveDevaddrs {
+pub struct DeleteDevaddr {
     #[arg(short, long, value_parser = hex_field::validate_devaddr)]
     pub start_addr: hex_field::HexDevAddr,
     #[arg(short, long, value_parser = hex_field::validate_devaddr)]
@@ -449,7 +413,7 @@ pub struct RemoveDevaddrs {
 }
 
 #[derive(Debug, Args)]
-pub struct DeleteDevaddrs {
+pub struct ClearDevaddrs {
     #[arg(short, long)]
     pub route_id: String,
     #[arg(from_global)]
@@ -459,20 +423,24 @@ pub struct DeleteDevaddrs {
     /// Remove ALL Euis from a route
     #[arg(short, long)]
     pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct RouteSubnetMask {
+    #[arg(short, long)]
+    pub route_id: String,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
 }
 
 #[derive(Debug, Args)]
 pub struct SubnetMask {
     #[arg(value_parser = hex_field::validate_devaddr)]
-    pub start_addr: Option<hex_field::HexDevAddr>,
+    pub start_addr: hex_field::HexDevAddr,
     #[arg(value_parser = hex_field::validate_devaddr)]
-    pub end_addr: Option<hex_field::HexDevAddr>,
-
-    /// Print all Devaddr subnets for route.
-    ///
-    /// Optionally pass in a directory to print all Devaddr subnets for all routes.
-    #[arg(long)]
-    pub route_file: Option<PathBuf>,
+    pub end_addr: hex_field::HexDevAddr,
 }
 
 #[derive(Debug, Args)]
@@ -489,97 +457,6 @@ pub struct EnvInfo {
     pub max_copies: Option<u32>,
 }
 
-#[derive(Debug, Subcommand)]
-pub enum ProtocolCommands {
-    /// Add the Http Protocol to a Route
-    Http(AddHttpSettings),
-    /// Add the Gwmp Protocol to a Route
-    ///
-    /// Optionally setting a single Region:Port mapping.
-    /// For additional port mapping, use the `add gwmp-maping` command.
-    Gwmp(AddGwmpSettings),
-    /// Add the Packet Router Protocol to a Route
-    PacketRouter(AddPacketRouterSettings),
-    // Protocol Specific commands
-    //
-    /// Map a LoRa region to a Port
-    GwmpMapping(AddGwmpMapping),
-}
-
-#[derive(Debug, Args)]
-pub struct AddGwmpMapping {
-    #[arg(value_enum)]
-    pub region: Region,
-    pub port: u32,
-    /// Path of route to apply gwmp mapping to
-    #[arg(long, default_value = "./new_route.json")]
-    pub route_file: PathBuf,
-    /// Write the protocol into the route file
-    #[arg(long)]
-    pub commit: bool,
-}
-
-#[derive(Debug, Args)]
-pub struct AddGwmpSettings {
-    #[arg(long)]
-    pub host: String,
-    #[arg(long)]
-    pub port: u32,
-
-    #[arg(value_enum)]
-    pub region: Option<Region>,
-    pub region_port: Option<u32>,
-
-    /// Path of route to apply http settings to
-    #[arg(long, default_value = "./new_route.json")]
-    pub route_file: PathBuf,
-    /// Write the protocol into the route file
-    #[arg(long)]
-    pub commit: bool,
-}
-
-#[derive(Debug, Args)]
-pub struct AddHttpSettings {
-    #[arg(long)]
-    pub host: String,
-    #[arg(long)]
-    pub port: u32,
-
-    #[arg(short, long, value_enum)]
-    pub flow_type: FlowType,
-    #[arg(short, long, default_value = "250")]
-    pub dedupe_timeout: u32,
-    /// Just the path part of the Server URL
-    ///
-    /// The rest will be taken from the Server {host}:{port}
-    #[arg(short, long)]
-    pub path: String,
-    /// Authorization Header
-    #[arg(short, long)]
-    pub auth_header: Option<String>,
-    /// Path of route to apply http settings to
-    #[arg(long, default_value = "./new_route.json")]
-    pub route_file: PathBuf,
-    /// Write the protocol into the route file
-    #[arg(long)]
-    pub commit: bool,
-}
-
-#[derive(Debug, Args)]
-pub struct AddPacketRouterSettings {
-    #[arg(long)]
-    pub host: String,
-    #[arg(long)]
-    pub port: u32,
-
-    /// Path of route to apply http settings to
-    #[arg(long, default_value = "./new_route.json")]
-    pub route_file: PathBuf,
-    /// Write the protocol into the route file
-    #[arg(long)]
-    pub commit: bool,
-}
-
 #[derive(Debug, Args)]
 pub struct GenerateKeypair {
     #[arg(default_value = "./keypair.bin")]
@@ -591,55 +468,7 @@ pub struct GenerateKeypair {
 }
 
 #[derive(Debug, Args)]
-pub struct GenerateRoute {
-    #[arg(long, env = ENV_NET_ID, default_value = "C00053")]
-    pub net_id: HexNetID,
-    #[arg(long, env = ENV_OUI)]
-    pub oui: u64,
-    #[arg(long, env = ENV_MAX_COPIES, default_value = "5")]
-    pub max_copies: u32,
-
-    #[arg(long, default_value = "./new_route.json")]
-    pub out_file: PathBuf,
-    #[arg(long)]
-    pub commit: bool,
-}
-
-#[derive(Debug, Args)]
-pub struct GetRoutes {
-    #[arg(long, env = ENV_OUI)]
-    pub oui: u64,
-    #[arg(from_global)]
-    pub keypair: PathBuf,
-    // #[arg(long, default_value = "./routes")]
-    // pub route_out_dir: PathBuf,
-    #[arg(from_global)]
-    pub config_host: String,
-    #[arg(long, default_value = "./routes")]
-    pub route_out_dir: PathBuf,
-    /// Write all routes --route_out_dir
-    ///
-    /// WARNING!!! This will overwrite unupdated routes
-    #[arg(long)]
-    pub commit: bool,
-}
-
-#[derive(Debug, Args)]
-pub struct GetRouteOld {
-    #[arg(short, long)]
-    pub route_id: String,
-    #[arg(from_global)]
-    pub keypair: PathBuf,
-    #[arg(long, default_value = "./routes")]
-    pub route_out_dir: PathBuf,
-    #[arg(from_global)]
-    pub config_host: String,
-    #[arg(long)]
-    pub commit: bool,
-}
-
-#[derive(Debug, Args)]
-pub struct GetOrgs {
+pub struct ListOrgs {
     #[arg(from_global)]
     pub config_host: String,
 }
@@ -650,44 +479,6 @@ pub struct GetOrg {
     pub oui: u64,
     #[arg(from_global)]
     pub config_host: String,
-}
-
-#[derive(Debug, Args)]
-pub struct CreateRoute {
-    #[arg(long, default_value = "./new_route.json")]
-    pub route_file: PathBuf,
-    #[arg(from_global)]
-    pub keypair: PathBuf,
-    #[arg(from_global)]
-    pub config_host: String,
-    #[arg(long, default_value = "./routes")]
-    pub route_out_dir: PathBuf,
-    #[arg(long)]
-    pub commit: bool,
-}
-
-#[derive(Debug, Args)]
-pub struct UpdateRouteOld {
-    #[arg(long)]
-    pub route_file: PathBuf,
-    #[arg(from_global)]
-    pub keypair: PathBuf,
-    #[arg(from_global)]
-    pub config_host: String,
-    #[arg(long)]
-    pub commit: bool,
-}
-
-#[derive(Debug, Args)]
-pub struct RemoveRoute {
-    #[arg(long)]
-    pub route_file: PathBuf,
-    #[arg(from_global)]
-    pub keypair: PathBuf,
-    #[arg(from_global)]
-    pub config_host: String,
-    #[arg(long)]
-    pub commit: bool,
 }
 
 #[derive(Debug, Args)]
@@ -722,34 +513,9 @@ pub struct CreateRoaming {
     pub commit: bool,
 }
 
-#[derive(Debug, Args)]
-pub struct AddDevaddr {
-    #[arg(value_parser = hex_field::validate_devaddr)]
-    pub start_addr: hex_field::HexDevAddr,
-    #[arg(value_parser = hex_field::validate_devaddr)]
-    pub end_addr: hex_field::HexDevAddr,
-
-    /// Path of route to apply devaddr range to
-    #[arg(long, default_value = "./new_route.json")]
-    pub route_file: PathBuf,
-
-    /// Add the verified devaddr entry to the routes file
-    #[arg(short, long)]
-    pub commit: bool,
-}
-
-#[derive(Debug, Args)]
-pub struct AddEui {
-    #[arg(short, long, value_parser = hex_field::validate_eui)]
-    pub dev_eui: hex_field::HexEui,
-    #[arg(short, long, value_parser = hex_field::validate_eui)]
-    pub app_eui: hex_field::HexEui,
-    /// Path of route to apply devaddr range to
-    #[arg(long, default_value = "./new_route.json")]
-    pub route_file: PathBuf,
-    /// Add the verified eui entry to the routes file
-    #[arg(short, long)]
-    pub commit: bool,
+pub fn subnet_mask(args: SubnetMask) -> Result<Msg> {
+    let devaddr_range = DevaddrConstraint::new(args.start_addr, args.end_addr)?;
+    return Msg::ok(devaddr_range.to_subnet().pretty_json()?);
 }
 
 pub trait PathBufKeypair {

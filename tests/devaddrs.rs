@@ -33,7 +33,7 @@ async fn create_route_and_add_remove_devadddrs() -> Result {
     let _ = common::ensure_no_devaddrs(&route.id, keypair_path.clone()).await?;
 
     // devaddr outside org constraint, should not add
-    let out1 = cmds::route::devaddrs::add_devaddrs(AddDevaddrs {
+    let out1 = cmds::route::devaddrs::add_devaddr(AddDevaddr {
         start_addr: hex_field::devaddr(1),
         end_addr: hex_field::devaddr(2),
         route_id: route.id.clone(),
@@ -47,7 +47,7 @@ async fn create_route_and_add_remove_devadddrs() -> Result {
 
     // Construct a devaddr within the org contraint, add and remove
     let devaddr_range = constraint.start_addr.to_range(3);
-    let out2 = cmds::route::devaddrs::add_devaddrs(AddDevaddrs {
+    let out2 = cmds::route::devaddrs::add_devaddr(AddDevaddr {
         start_addr: devaddr_range.start_addr,
         end_addr: devaddr_range.end_addr,
         route_id: route.id.clone(),
@@ -59,7 +59,7 @@ async fn create_route_and_add_remove_devadddrs() -> Result {
     println!("2: {out2}");
     let _ = common::ensure_num_devaddrs(1, &route.id, keypair_path.clone()).await?;
 
-    let out3 = cmds::route::devaddrs::remove_devaddrs(RemoveDevaddrs {
+    let out3 = cmds::route::devaddrs::delete_devaddr(DeleteDevaddr {
         start_addr: devaddr_range.start_addr,
         end_addr: devaddr_range.end_addr,
         route_id: route.id.clone(),
@@ -76,6 +76,7 @@ async fn create_route_and_add_remove_devadddrs() -> Result {
     for d in 1..10 {
         let range = constraint.start_addr.to_range(d);
         let range = DevaddrRange::new(route.id.clone(), range.start_addr, range.end_addr)?;
+
         devaddrs.push(range);
     }
     let adding = devaddr_client
@@ -84,9 +85,23 @@ async fn create_route_and_add_remove_devadddrs() -> Result {
     info!("bulk adding devaddrs: {adding:?}");
     let _ = common::ensure_num_devaddrs(9, &route.id, keypair_path.clone()).await;
 
-    devaddr_client
-        .delete_devaddrs(route.id.clone(), &keypair_path.to_keypair()?)
-        .await?;
+    // Print subnets for visual inspection
+    let out4 = cmds::route::devaddrs::subnet_mask(RouteSubnetMask {
+        route_id: route.id.clone(),
+        keypair: keypair_path.clone(),
+        config_host: config_host.clone(),
+    })
+    .await?;
+    info!("4: {out4}");
+
+    let out5 = cmds::route::devaddrs::clear_devaddrs(ClearDevaddrs {
+        route_id: route.id.clone(),
+        keypair: keypair_path.clone(),
+        config_host: config_host.clone(),
+        commit: true,
+    })
+    .await?;
+    info!("5: {out5}");
     let _ = common::ensure_no_devaddrs(&route.id, keypair_path.clone()).await;
 
     Ok(())

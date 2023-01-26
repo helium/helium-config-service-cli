@@ -302,6 +302,15 @@ impl From<DevaddrConstraint> for proto::DevaddrConstraintV1 {
     }
 }
 
+impl From<DevaddrRange> for DevaddrConstraint {
+    fn from(value: DevaddrRange) -> Self {
+        Self {
+            start_addr: value.start_addr,
+            end_addr: value.end_addr,
+        }
+    }
+}
+
 impl From<proto::EuiPairV1> for RouteEui {
     fn from(value: proto::EuiPairV1) -> Self {
         Self {
