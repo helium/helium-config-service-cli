@@ -205,12 +205,16 @@ impl EuiClient {
         let timestamp = current_timestamp()?;
         let route_euis: Vec<RouteUpdateEuisReqV1> = euis
             .into_iter()
-            .map(|eui| RouteUpdateEuisReqV1 {
-                action: ActionV1::Add.into(),
-                timestamp,
-                signer: keypair.public_key().into(),
-                signature: vec![],
-                eui_pair: Some(eui.into()),
+            .flat_map(|eui| -> Result<RouteUpdateEuisReqV1> {
+                let mut request = RouteUpdateEuisReqV1 {
+                    action: ActionV1::Add.into(),
+                    timestamp,
+                    signer: keypair.public_key().into(),
+                    signature: vec![],
+                    eui_pair: Some(eui.into()),
+                };
+                request.signature = request.sign(keypair)?;
+                Ok(request)
             })
             .collect();
         let request = futures::prelude::stream::iter(route_euis);
@@ -225,12 +229,16 @@ impl EuiClient {
         let timestamp = current_timestamp()?;
         let route_euis: Vec<RouteUpdateEuisReqV1> = euis
             .into_iter()
-            .map(|eui| RouteUpdateEuisReqV1 {
-                action: ActionV1::Remove.into(),
-                timestamp,
-                signer: keypair.public_key().into(),
-                signature: vec![],
-                eui_pair: Some(eui.into()),
+            .flat_map(|eui| -> Result<RouteUpdateEuisReqV1> {
+                let mut request = RouteUpdateEuisReqV1 {
+                    action: ActionV1::Remove.into(),
+                    timestamp,
+                    signer: keypair.public_key().into(),
+                    signature: vec![],
+                    eui_pair: Some(eui.into()),
+                };
+                request.signature = request.sign(keypair)?;
+                Ok(request)
             })
             .collect();
         let request = futures::prelude::stream::iter(route_euis);
@@ -344,6 +352,7 @@ impl_sign!(RouteUpdateReqV1, signature);
 impl_sign!(RouteUpdateDevaddrRangesReqV1, signature);
 impl_sign!(RouteGetEuisReqV1, signature);
 impl_sign!(RouteDeleteEuisReqV1, signature);
+impl_sign!(RouteUpdateEuisReqV1, signature);
 impl_sign!(RouteGetDevaddrRangesReqV1, signature);
 impl_sign!(RouteDeleteDevaddrRangesReqV1, signature);
 impl_sign!(OrgCreateHeliumReqV1, signature);
