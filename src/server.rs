@@ -54,22 +54,6 @@ pub enum Protocol {
 }
 
 impl Protocol {
-    pub fn into_http_inner(&self) -> Result<Http> {
-        match self {
-            Protocol::Http(http) => Ok(http.clone()),
-            Protocol::Gwmp(_) => Err(anyhow!("Cannot return http for gwmp protocol")),
-            Protocol::PacketRouter => Err(anyhow!("Cannot return http for packet-router protocol")),
-        }
-    }
-
-    pub fn into_gwmp_inner(&self) -> Result<Gwmp> {
-        match self {
-            Protocol::Gwmp(gwmp) => Ok(gwmp.clone()),
-            Protocol::Http(_) => Err(anyhow!("Cannot return gwmp for http protocol")),
-            Protocol::PacketRouter => Err(anyhow!("Cannot return gwmp for packet-router protocl")),
-        }
-    }
-
     pub fn is_gwmp(&self) -> bool {
         match self {
             Protocol::Gwmp(_) => true,

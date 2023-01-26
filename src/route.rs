@@ -3,13 +3,8 @@ use crate::{
     server::{GwmpMap, Http, Server},
     Result,
 };
-use anyhow::Context;
 use helium_proto::services::iot_config::RouteV1 as ProtoRoute;
 use serde::{Deserialize, Serialize};
-use std::{
-    fs,
-    path::{Path, PathBuf},
-};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Route {
@@ -29,58 +24,6 @@ impl Route {
             server: Server::default(),
             max_copies,
         }
-    }
-    pub fn from_file(path: &PathBuf) -> Result<Self> {
-        let data = fs::read_to_string(path).context("reading route file")?;
-        let listing: Self = serde_json::from_str(&data)
-            .context(format!("parsing route file {}", path.display()))?;
-        Ok(listing)
-    }
-
-    pub fn from_dir(dir: &Path) -> Result<Vec<Self>> {
-        let mut routes = vec![];
-
-        for entry_result in fs::read_dir(dir)? {
-            let route = Self::from_file(&entry_result?.path())?;
-            routes.push(route);
-        }
-
-        Ok(routes)
-    }
-
-    pub fn from_id<S>(dir: &Path, id: S) -> Result<Self>
-    where
-        S: AsRef<Path>,
-    {
-        let filename = dir.join(id).with_extension("json");
-        Self::from_file(&filename)
-    }
-
-    pub fn filename(&self) -> String {
-        format!("{}.json", self.id.clone())
-    }
-
-    pub fn write(&self, out: &Path) -> Result {
-        // If a directory is passed in, append the filename before continuing
-        let out = if out.extension().is_none() {
-            out.join(self.filename())
-        } else {
-            out.into()
-        };
-
-        if let Some(parent) = out.parent() {
-            fs::create_dir_all(parent).context("ensuring parent dir exists")?;
-        }
-
-        let data = serde_json::to_string_pretty(&self)?;
-        fs::write(out, data).context("writing file")?;
-        Ok(())
-    }
-
-    pub fn remove(&self, out_dir: &Path) -> Result {
-        let filename = out_dir.join(self.filename());
-        fs::remove_file(filename)?;
-        Ok(())
     }
 
     pub fn set_server(&mut self, server: Server) {

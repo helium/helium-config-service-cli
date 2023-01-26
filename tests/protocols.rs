@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use helium_config_service_cli::{
     cmds::{self, *},
     hex_field, server, Result,
@@ -9,7 +10,7 @@ mod common;
 
 #[tokio::test]
 async fn create_route_and_update_server() -> Result {
-    tracing_subscriber::fmt::init();
+    // tracing_subscriber::fmt::init();
 
     let working_dir = TempDir::new()?;
     let keypair_path = working_dir.child("keypair.bin");
@@ -130,4 +131,31 @@ async fn create_route_and_update_server() -> Result {
     assert_eq!(1, gwmp_protocol.mapping.len());
 
     Ok(())
+}
+
+trait InnerProtocol {
+    fn into_http_inner(&self) -> Result<server::Http>;
+    fn into_gwmp_inner(&self) -> Result<server::Gwmp>;
+}
+
+impl InnerProtocol for server::Protocol {
+    fn into_http_inner(&self) -> Result<server::Http> {
+        match self {
+            server::Protocol::Http(http) => Ok(http.clone()),
+            server::Protocol::Gwmp(_) => Err(anyhow!("Cannot return http for gwmp protocol")),
+            server::Protocol::PacketRouter => {
+                Err(anyhow!("Cannot return http for packet-router protocol"))
+            }
+        }
+    }
+
+    fn into_gwmp_inner(&self) -> Result<server::Gwmp> {
+        match self {
+            server::Protocol::Gwmp(gwmp) => Ok(gwmp.clone()),
+            server::Protocol::Http(_) => Err(anyhow!("Cannot return gwmp for http protocol")),
+            server::Protocol::PacketRouter => {
+                Err(anyhow!("Cannot return gwmp for packet-router protocl"))
+            }
+        }
+    }
 }

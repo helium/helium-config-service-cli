@@ -55,7 +55,7 @@ pub async fn create_helium_org(
 
     let mut org_client = client::OrgClient::new(CONFIG_HOST).await?;
     let org_list = org_client.list().await?;
-    let org = org_list.first().expect("existing org after creation");
+    let org = org_list.orgs.last().expect("existing org after creation");
     // we want the devaddr constraints
     let res = org_client.get(org.oui).await?;
     Ok(res)
@@ -73,7 +73,7 @@ pub async fn ensure_no_routes(oui: u64, keypair_path: PathBuf) -> Result {
 
     let mut route_client = client::RouteClient::new(CONFIG_HOST).await?;
     let route_list = route_client.list(oui, &keypair_path.to_keypair()?).await?;
-    assert!(route_list.is_empty());
+    assert!(route_list.routes.is_empty());
     Ok(())
 }
 
@@ -96,6 +96,7 @@ pub async fn create_empty_route(
     let mut route_client = client::RouteClient::new(CONFIG_HOST).await?;
     let route_list = route_client.list(oui, &keypair_path.to_keypair()?).await?;
     Ok(route_list
+        .routes
         .first()
         .expect("route created through CLI commands")
         .to_owned())

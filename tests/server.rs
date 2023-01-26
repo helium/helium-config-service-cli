@@ -9,7 +9,7 @@ mod common;
 
 #[tokio::test]
 async fn create_route_and_update_server() -> Result {
-    tracing_subscriber::fmt::init();
+    // tracing_subscriber::fmt::init();
 
     let working_dir = TempDir::new()?;
     let keypair_path = working_dir.child("keypair.bin");

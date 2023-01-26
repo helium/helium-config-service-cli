@@ -6,7 +6,7 @@ use tracing::info;
 
 #[tokio::test]
 async fn get_orgs() -> Result {
-    tracing_subscriber::fmt::init();
+    // tracing_subscriber::fmt::init();
 
     let out = cmds::org::list_orgs(ListOrgs {
         // config_host: "http://127.0.0.1:50051".to_string(),

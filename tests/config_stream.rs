@@ -6,7 +6,7 @@ use tracing::{info, warn};
 
 #[tokio::test]
 async fn connect() -> Result {
-    tracing_subscriber::fmt::init();
+    // tracing_subscriber::fmt::init();
 
     let keypair = helium_crypto::Keypair::generate(
         helium_crypto::KeyTag {

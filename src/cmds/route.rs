@@ -282,18 +282,14 @@ pub mod euis {
 
     pub async fn add_eui(args: AddEui) -> Result<Msg> {
         let mut client = client::EuiClient::new(&args.config_host).await?;
-        let eui_pair = Eui::new(args.app_eui, args.dev_eui)?;
+        let eui_pair = Eui::new(args.route_id.clone(), args.app_eui, args.dev_eui)?;
 
         if !args.commit {
             return Msg::dry_run(format!("added {eui_pair:?} to {}", args.route_id));
         }
 
         client
-            .add_euis(
-                args.route_id.clone(),
-                vec![eui_pair.clone()],
-                &args.keypair.to_keypair()?,
-            )
+            .add_euis(vec![eui_pair.clone()], &args.keypair.to_keypair()?)
             .await?;
 
         Msg::ok(format!("added {eui_pair:?} to {}", args.route_id))
@@ -301,18 +297,14 @@ pub mod euis {
 
     pub async fn delete_eui(args: RemoveEui) -> Result<Msg> {
         let mut client = client::EuiClient::new(&args.config_host).await?;
-        let eui_pair = Eui::new(args.app_eui, args.dev_eui)?;
+        let eui_pair = Eui::new(args.route_id.clone(), args.app_eui, args.dev_eui)?;
 
         if !args.commit {
             return Msg::dry_run(format!("removed {eui_pair:?} from {}", args.route_id));
         }
 
         client
-            .remove_euis(
-                args.route_id.clone(),
-                vec![eui_pair.clone()],
-                &args.keypair.to_keypair()?,
-            )
+            .remove_euis(vec![eui_pair.clone()], &args.keypair.to_keypair()?)
             .await?;
 
         Msg::ok(format!("removed {eui_pair:?} from {}", args.route_id))
@@ -361,11 +353,7 @@ pub mod devaddrs {
         }
 
         client
-            .add_devaddrs(
-                args.route_id,
-                vec![devaddr_range.clone()],
-                &args.keypair.to_keypair()?,
-            )
+            .add_devaddrs(vec![devaddr_range.clone()], &args.keypair.to_keypair()?)
             .await?;
 
         Msg::ok(format!("added {devaddr_range:?}"))
@@ -381,11 +369,7 @@ pub mod devaddrs {
         }
 
         client
-            .remove_devaddrs(
-                args.route_id.clone(),
-                vec![devaddr_range.clone()],
-                &args.keypair.to_keypair()?,
-            )
+            .remove_devaddrs(vec![devaddr_range.clone()], &args.keypair.to_keypair()?)
             .await?;
 
         Msg::ok(format!("removed {devaddr_range:?} from {}", args.route_id))

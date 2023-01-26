@@ -11,7 +11,7 @@ mod common;
 
 #[tokio::test]
 async fn create_route_and_add_remove_devadddrs() -> Result {
-    tracing_subscriber::fmt::init();
+    // tracing_subscriber::fmt::init();
 
     let working_dir = TempDir::new()?;
     let keypair_path = working_dir.child("keypair.bin");
@@ -80,7 +80,7 @@ async fn create_route_and_add_remove_devadddrs() -> Result {
         devaddrs.push(range);
     }
     let adding = devaddr_client
-        .add_devaddrs(route.id.clone(), devaddrs, &keypair_path.to_keypair()?)
+        .add_devaddrs(devaddrs, &keypair_path.to_keypair()?)
         .await?;
     info!("bulk adding devaddrs: {adding:?}");
     let _ = common::ensure_num_devaddrs(9, &route.id, keypair_path.clone()).await;

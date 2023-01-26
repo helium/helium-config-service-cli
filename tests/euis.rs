@@ -10,7 +10,7 @@ mod common;
 
 #[tokio::test]
 async fn create_route_and_add_remove_euis() -> Result {
-    tracing_subscriber::fmt::init();
+    // tracing_subscriber::fmt::init();
 
     let working_dir = TempDir::new()?;
     let keypair_path = working_dir.child("keypair.bin");
@@ -58,10 +58,14 @@ async fn create_route_and_add_remove_euis() -> Result {
     let mut eui_client = client::EuiClient::new(common::CONFIG_HOST).await?;
     let mut euis = vec![];
     for e in 0..15 {
-        euis.push(Eui::new(hex_field::eui(e), hex_field::eui(e + 1))?);
+        euis.push(Eui::new(
+            route.id.clone(),
+            hex_field::eui(e),
+            hex_field::eui(e + 1),
+        )?);
     }
     let adding = eui_client
-        .add_euis(route.id.clone(), euis, &keypair_path.to_keypair()?)
+        .add_euis(euis, &keypair_path.to_keypair()?)
         .await?;
     info!("bulk adding euis: {adding:?}");
     let _ = common::ensure_num_euis(15, &route.id, keypair_path.clone()).await?;
