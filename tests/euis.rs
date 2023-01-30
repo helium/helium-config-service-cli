@@ -42,7 +42,7 @@ async fn create_route_and_add_remove_euis() -> Result {
     common::ensure_num_euis(1, &route.id, keypair_path.clone()).await?;
 
     // Remove Eui
-    let out2 = cmds::route::euis::delete_eui(RemoveEui {
+    let out2 = cmds::route::euis::remove_eui(RemoveEui {
         dev_eui: hex_field::eui(1),
         app_eui: hex_field::eui(2),
         route_id: route.id.clone(),

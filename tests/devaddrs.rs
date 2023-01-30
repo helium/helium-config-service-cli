@@ -59,7 +59,7 @@ async fn create_route_and_add_remove_devadddrs() -> Result {
     println!("2: {out2}");
     common::ensure_num_devaddrs(1, &route.id, keypair_path.clone()).await?;
 
-    let out3 = cmds::route::devaddrs::delete_devaddr(DeleteDevaddr {
+    let out3 = cmds::route::devaddrs::remove_devaddr(RemoveDevaddr {
         start_addr: devaddr_range.start_addr,
         end_addr: devaddr_range.end_addr,
         route_id: route.id.clone(),

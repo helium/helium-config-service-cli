@@ -287,7 +287,7 @@ pub enum DevaddrCommands {
     /// Add Devaddr Range to Route
     Add(AddDevaddr),
     /// Remove Devaddr Range from Route
-    Delete(DeleteDevaddr),
+    Remove(RemoveDevaddr),
     /// Print subnet mask for all devaddr ranges in a Route.
     SubnetMask(RouteSubnetMask),
     /// Remove ALL Devaddr Ranges from Route
@@ -391,7 +391,7 @@ pub struct AddDevaddr {
 }
 
 #[derive(Debug, Args)]
-pub struct DeleteDevaddr {
+pub struct RemoveDevaddr {
     #[arg(short, long, value_parser = hex_field::validate_devaddr)]
     pub start_addr: hex_field::HexDevAddr,
     #[arg(short, long, value_parser = hex_field::validate_devaddr)]

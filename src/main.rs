@@ -41,13 +41,13 @@ pub async fn handle_cli(cli: Cli) -> Result<Msg> {
             RouteCommands::Euis { command } => match command {
                 cmds::EuiCommands::List(args) => euis::list_euis(args).await,
                 cmds::EuiCommands::Add(args) => euis::add_eui(args).await,
-                cmds::EuiCommands::Remove(args) => euis::delete_eui(args).await,
+                cmds::EuiCommands::Remove(args) => euis::remove_eui(args).await,
                 cmds::EuiCommands::Clear(args) => euis::clear_euis(args).await,
             },
             RouteCommands::Devaddrs { command } => match command {
                 cmds::DevaddrCommands::List(args) => devaddrs::list_devaddrs(args).await,
                 cmds::DevaddrCommands::Add(args) => devaddrs::add_devaddr(args).await,
-                cmds::DevaddrCommands::Delete(args) => devaddrs::delete_devaddr(args).await,
+                cmds::DevaddrCommands::Remove(args) => devaddrs::remove_devaddr(args).await,
                 cmds::DevaddrCommands::SubnetMask(args) => devaddrs::subnet_mask(args).await,
                 cmds::DevaddrCommands::Clear(args) => devaddrs::clear_devaddrs(args).await,
             },

@@ -295,7 +295,7 @@ pub mod euis {
         Msg::ok(format!("added {eui_pair:?} to {}", args.route_id))
     }
 
-    pub async fn delete_eui(args: RemoveEui) -> Result<Msg> {
+    pub async fn remove_eui(args: RemoveEui) -> Result<Msg> {
         let mut client = client::EuiClient::new(&args.config_host).await?;
         let eui_pair = Eui::new(args.route_id.clone(), args.app_eui, args.dev_eui)?;
 
@@ -328,7 +328,7 @@ pub mod devaddrs {
     use crate::{
         client,
         cmds::{
-            AddDevaddr, ClearDevaddrs, DeleteDevaddr, ListDevaddrs, PathBufKeypair, RouteSubnetMask,
+            AddDevaddr, ClearDevaddrs, ListDevaddrs, PathBufKeypair, RemoveDevaddr, RouteSubnetMask,
         },
         subnet::DevaddrSubnet,
         DevaddrRange, Msg, PrettyJson, Result,
@@ -359,7 +359,7 @@ pub mod devaddrs {
         Msg::ok(format!("added {devaddr_range:?}"))
     }
 
-    pub async fn delete_devaddr(args: DeleteDevaddr) -> Result<Msg> {
+    pub async fn remove_devaddr(args: RemoveDevaddr) -> Result<Msg> {
         let mut client = client::DevaddrClient::new(&args.config_host).await?;
         let devaddr_range =
             DevaddrRange::new(args.route_id.clone(), args.start_addr, args.end_addr)?;
