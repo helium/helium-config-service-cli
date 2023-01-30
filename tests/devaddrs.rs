@@ -10,7 +10,7 @@ use tracing::info;
 mod common;
 
 #[tokio::test]
-async fn create_route_and_add_remove_devadddrs() -> Result {
+async fn create_route_and_add_remove_devaddrs() -> Result {
     // tracing_subscriber::fmt::init();
 
     let working_dir = TempDir::new()?;
