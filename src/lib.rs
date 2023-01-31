@@ -6,20 +6,58 @@ pub mod route;
 pub mod server;
 pub mod subnet;
 
-use anyhow::{anyhow, Context, Error};
+use anyhow::{anyhow, Error};
 use helium_crypto::PublicKey;
-use hex_field::{HexDevAddr, HexNetID};
+use hex_field::HexNetID;
 use route::Route;
 use serde::{Deserialize, Serialize};
-use std::{fs, path::Path};
+use std::fmt::Display;
+use subnet::DevaddrConstraint;
 
 pub mod proto {
     pub use helium_proto::services::iot_config::{
-        DevaddrRangeV1, EuiV1, OrgListResV1, OrgResV1, OrgV1, RouteListResV1,
+        DevaddrConstraintV1, DevaddrRangeV1, EuiPairV1, OrgListResV1, OrgResV1, OrgV1,
+        RouteListResV1,
     };
 }
 
 pub type Result<T = (), E = Error> = anyhow::Result<T, E>;
+
+#[derive(Debug, Serialize)]
+pub enum Msg {
+    DryRun(String),
+    Success(String),
+    Error(String),
+}
+
+impl Msg {
+    pub fn ok(msg: String) -> Result<Self> {
+        Ok(Self::Success(msg))
+    }
+    pub fn err(msg: String) -> Result<Self> {
+        Ok(Self::Error(msg))
+    }
+    pub fn dry_run(msg: String) -> Result<Self> {
+        Ok(Self::DryRun(msg))
+    }
+    pub fn into_inner(self) -> String {
+        match self {
+            Msg::DryRun(s) => s,
+            Msg::Success(s) => s,
+            Msg::Error(s) => s,
+        }
+    }
+}
+
+impl Display for Msg {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Msg::DryRun(msg) => write!(f, "== DRY RUN == (pass `--commit`)\n{}", msg),
+            Msg::Success(msg) => write!(f, "\u{2713} {}", msg),
+            Msg::Error(msg) => write!(f, "\u{2717} {}", msg),
+        }
+    }
+}
 
 pub trait PrettyJson {
     fn print_pretty_json(&self) -> Result;
@@ -41,7 +79,7 @@ impl<S: ?Sized + serde::Serialize> PrettyJson for S {
 pub struct OrgResponse {
     pub org: Org,
     pub net_id: HexNetID,
-    pub devaddr_ranges: Vec<DevaddrRange>,
+    pub devaddr_constraints: Vec<DevaddrConstraint>,
 }
 
 impl From<proto::OrgResV1> for OrgResponse {
@@ -49,14 +87,18 @@ impl From<proto::OrgResV1> for OrgResponse {
         Self {
             org: res.org.expect("no org returned during creation").into(),
             net_id: hex_field::net_id(res.net_id),
-            devaddr_ranges: res.devaddr_ranges.into_iter().map(|d| d.into()).collect(),
+            devaddr_constraints: res
+                .devaddr_constraints
+                .into_iter()
+                .map(|d| d.into())
+                .collect(),
         }
     }
 }
 
 #[derive(Debug, Serialize)]
 pub struct OrgList {
-    orgs: Vec<Org>,
+    pub orgs: Vec<Org>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -69,62 +111,52 @@ pub struct Org {
 
 #[derive(Debug, Serialize)]
 pub struct RouteList {
-    routes: Vec<Route>,
+    pub routes: Vec<Route>,
 }
 
-impl RouteList {
-    pub fn write_all(&self, out_dir: &Path) -> Result {
-        fs::create_dir_all(out_dir).context("route list creating parent directory")?;
-        for route in &self.routes {
-            route.write(out_dir)?;
-        }
-        Ok(())
-    }
-
-    pub fn count(&self) -> usize {
-        self.routes.len()
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Clone, Hash)]
 pub struct DevaddrRange {
-    #[serde(alias = "lower")]
-    start_addr: hex_field::HexDevAddr,
-    #[serde(alias = "upper")]
-    end_addr: hex_field::HexDevAddr,
+    pub route_id: String,
+    pub start_addr: hex_field::HexDevAddr,
+    pub end_addr: hex_field::HexDevAddr,
 }
 
 impl DevaddrRange {
-    pub fn new(start_addr: hex_field::HexDevAddr, end_addr: hex_field::HexDevAddr) -> Result<Self> {
+    pub fn new(
+        route_id: String,
+        start_addr: hex_field::HexDevAddr,
+        end_addr: hex_field::HexDevAddr,
+    ) -> Result<Self> {
         if end_addr < start_addr {
             return Err(anyhow!("start_addr cannot be greater than end_addr"));
         }
 
         Ok(Self {
+            route_id,
             start_addr,
             end_addr,
         })
     }
-
-    pub fn next_start(&self) -> Result<HexDevAddr> {
-        let end: u64 = self.end_addr.into();
-        Ok(hex_field::devaddr(end + 1))
-    }
-
-    pub fn contains(&self, range: &Self) -> bool {
-        self.start_addr <= range.start_addr && self.end_addr >= range.end_addr
-    }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub struct Eui {
-    app_eui: hex_field::HexEui,
-    dev_eui: hex_field::HexEui,
+    pub route_id: String,
+    pub app_eui: hex_field::HexEui,
+    pub dev_eui: hex_field::HexEui,
 }
 
 impl Eui {
-    pub fn new(app_eui: hex_field::HexEui, dev_eui: hex_field::HexEui) -> Result<Self> {
-        Ok(Self { app_eui, dev_eui })
+    pub fn new(
+        route_id: String,
+        app_eui: hex_field::HexEui,
+        dev_eui: hex_field::HexEui,
+    ) -> Result<Self> {
+        Ok(Self {
+            route_id,
+            app_eui,
+            dev_eui,
+        })
     }
 }
 
@@ -150,14 +182,11 @@ impl From<proto::OrgV1> for Org {
 
 impl From<Org> for proto::OrgV1 {
     fn from(org: Org) -> Self {
-        #[allow(deprecated)]
         Self {
             oui: org.oui,
             owner: org.owner.into(),
             payer: org.payer.into(),
             delegate_keys: org.delegate_keys.iter().map(|key| key.into()).collect(),
-            // Deprecated proto field; flagged above to avoid compiler warning
-            nonce: 0,
         }
     }
 }
@@ -173,6 +202,7 @@ impl From<proto::RouteListResV1> for RouteList {
 impl From<proto::DevaddrRangeV1> for DevaddrRange {
     fn from(range: proto::DevaddrRangeV1) -> Self {
         Self {
+            route_id: range.route_id,
             start_addr: range.start_addr.into(),
             end_addr: range.end_addr.into(),
         }
@@ -182,6 +212,7 @@ impl From<proto::DevaddrRangeV1> for DevaddrRange {
 impl From<&proto::DevaddrRangeV1> for DevaddrRange {
     fn from(range: &proto::DevaddrRangeV1) -> Self {
         Self {
+            route_id: range.route_id.to_owned(),
             start_addr: range.start_addr.into(),
             end_addr: range.end_addr.into(),
         }
@@ -191,35 +222,57 @@ impl From<&proto::DevaddrRangeV1> for DevaddrRange {
 impl From<DevaddrRange> for proto::DevaddrRangeV1 {
     fn from(range: DevaddrRange) -> Self {
         Self {
+            route_id: range.route_id,
             start_addr: range.start_addr.into(),
             end_addr: range.end_addr.into(),
         }
     }
 }
 
-impl From<proto::EuiV1> for Eui {
-    fn from(range: proto::EuiV1) -> Self {
+impl From<proto::DevaddrConstraintV1> for DevaddrConstraint {
+    fn from(value: proto::DevaddrConstraintV1) -> Self {
         Self {
-            app_eui: range.app_eui.into(),
-            dev_eui: range.dev_eui.into(),
+            start_addr: value.start_addr.into(),
+            end_addr: value.end_addr.into(),
         }
     }
 }
 
-impl From<&proto::EuiV1> for Eui {
-    fn from(range: &proto::EuiV1) -> Self {
+impl From<DevaddrConstraint> for proto::DevaddrConstraintV1 {
+    fn from(value: DevaddrConstraint) -> Self {
         Self {
-            app_eui: range.app_eui.into(),
-            dev_eui: range.dev_eui.into(),
+            start_addr: value.start_addr.into(),
+            end_addr: value.end_addr.into(),
         }
     }
 }
 
-impl From<Eui> for proto::EuiV1 {
-    fn from(range: Eui) -> Self {
+impl From<proto::EuiPairV1> for Eui {
+    fn from(value: proto::EuiPairV1) -> Self {
         Self {
-            app_eui: range.app_eui.0,
-            dev_eui: range.dev_eui.0,
+            route_id: value.route_id,
+            app_eui: value.app_eui.into(),
+            dev_eui: value.dev_eui.into(),
+        }
+    }
+}
+
+impl From<&proto::EuiPairV1> for Eui {
+    fn from(value: &proto::EuiPairV1) -> Self {
+        Self {
+            route_id: value.route_id.clone(),
+            app_eui: value.app_eui.into(),
+            dev_eui: value.dev_eui.into(),
+        }
+    }
+}
+
+impl From<Eui> for proto::EuiPairV1 {
+    fn from(value: Eui) -> Self {
+        Self {
+            route_id: value.route_id,
+            app_eui: value.app_eui.0,
+            dev_eui: value.dev_eui.0,
         }
     }
 }
@@ -229,11 +282,12 @@ mod tests {
     use crate::{hex_field, DevaddrRange, Eui};
 
     #[test]
-    fn deserialize_devaddr() {
-        let d = r#"{"start_addr": "11223344", "end_addr": "22334455"}"#;
+    fn deserialize_devaddr_range() {
+        let d = r#"{"route_id": "the-route-id", "start_addr": "11223344", "end_addr": "22334455"}"#;
         let val: DevaddrRange = serde_json::from_str(d).unwrap();
         assert_eq!(
             DevaddrRange {
+                route_id: "the-route-id".to_string(),
                 start_addr: hex_field::devaddr(0x11223344),
                 end_addr: hex_field::devaddr(0x22334455)
             },
@@ -243,10 +297,11 @@ mod tests {
 
     #[test]
     fn deserialize_eui() {
-        let d = r#"{"app_eui": "1122334411223344", "dev_eui": "2233445522334455"}"#;
+        let d = r#"{"route_id": "the-route-id", "app_eui": "1122334411223344", "dev_eui": "2233445522334455"}"#;
         let val: Eui = serde_json::from_str(d).unwrap();
         assert_eq!(
             Eui {
+                route_id: "the-route-id".to_string(),
                 app_eui: hex_field::eui(0x1122334411223344),
                 dev_eui: hex_field::eui(0x2233445522334455)
             },

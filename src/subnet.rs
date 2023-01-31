@@ -1,42 +1,23 @@
+use anyhow::anyhow;
 use ipnet;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::net;
 
-use crate::{hex_field::HexDevAddr, route::Route, DevaddrRange};
+use crate::{
+    hex_field::{self, HexDevAddr},
+    DevaddrRange, Result,
+};
 
 #[derive(Debug, Serialize, PartialEq, Eq)]
 pub struct DevaddrSubnet {
-    range: DevaddrRange,
-    subnets: Vec<String>,
+    range: DevaddrConstraint,
+    pub subnets: Vec<String>,
 }
 
-impl DevaddrSubnet {
-    pub fn subnets(&self) -> Option<Vec<String>> {
-        if self.subnets.is_empty() {
-            None
-        } else {
-            Some(self.subnets.clone())
-        }
-    }
-}
-
-#[derive(Debug, Serialize)]
-pub struct RouteSubnets {
-    pub id: String,
-    pub subnets: Vec<DevaddrSubnet>,
-}
-
-impl RouteSubnets {
-    pub fn from_route(route: Route) -> Self {
-        Self {
-            id: route.id.clone(),
-            subnets: route
-                .devaddr_ranges
-                .into_iter()
-                .map(DevaddrRange::to_subnet)
-                .collect(),
-        }
-    }
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub struct DevaddrConstraint {
+    pub start_addr: hex_field::HexDevAddr,
+    pub end_addr: hex_field::HexDevAddr,
 }
 
 /// Convenience to get subnet masks from an existing DevaddrRange.
@@ -46,19 +27,30 @@ impl RouteSubnets {
 /// # Example
 ///
 /// ```
-/// use helium_config_service_cli::DevaddrRange;
+/// use helium_config_service_cli::DevaddrConstraint;
 /// use helium_config_service_cli::hex_field;
 /// use helium_config_service_cli::subnet;
 ///
 /// let start = hex_field::devaddr(0x11_22_33_40);
 /// let end = hex_field::devaddr(0x11_22_33_47);
-/// let range = DevaddrRange::new(start, end).unwrap();
+/// let range = DevaddrConstraint::new(start, end).unwrap();
 /// let subnet = range.to_subnet();
 ///
 /// let expected = vec!["11223340/29".to_string()];
 /// assert_eq!(subnet.subnets().unwrap(), expected);
 /// ```
-impl DevaddrRange {
+impl DevaddrConstraint {
+    pub fn new(start_addr: hex_field::HexDevAddr, end_addr: hex_field::HexDevAddr) -> Result<Self> {
+        if end_addr < start_addr {
+            return Err(anyhow!("start_addr cannot be greater than end_addr"));
+        }
+
+        Ok(Self {
+            start_addr,
+            end_addr,
+        })
+    }
+
     pub fn to_subnet(self) -> DevaddrSubnet {
         let start = net::Ipv4Addr::from(self.start_addr.0 as u32);
         let end = net::Ipv4Addr::from(self.end_addr.0 as u32);
@@ -84,12 +76,27 @@ impl DevaddrRange {
     }
 }
 
+impl From<DevaddrRange> for DevaddrConstraint {
+    fn from(value: DevaddrRange) -> Self {
+        Self {
+            start_addr: value.start_addr,
+            end_addr: value.end_addr,
+        }
+    }
+}
+
+impl DevaddrRange {
+    pub fn to_subnet(self) -> DevaddrSubnet {
+        DevaddrConstraint::from(self).to_subnet()
+    }
+}
+
 impl HexDevAddr {
-    pub fn to_range(self, add: u32) -> DevaddrRange {
+    pub fn to_range(self, add: u32) -> DevaddrConstraint {
         // Range includes starting address
         // (start, end]
         let end = (self.0 + (add - 1) as u64).into();
-        DevaddrRange {
+        DevaddrConstraint {
             start_addr: self,
             end_addr: end,
         }
@@ -106,7 +113,7 @@ impl From<net::Ipv4Addr> for HexDevAddr {
 #[cfg(test)]
 mod tests {
     use super::DevaddrSubnet;
-    use crate::{hex_field, DevaddrRange};
+    use crate::{hex_field, subnet::DevaddrConstraint};
     use pretty_assertions::assert_eq;
 
     #[test]
@@ -127,8 +134,7 @@ mod tests {
                 hex_field::devaddr(0x48_00_08_00)
                     .to_range(block.size)
                     .to_subnet()
-                    .subnets()
-                    .unwrap()
+                    .subnets
             );
         }
     }
@@ -148,7 +154,7 @@ mod tests {
         );
 
         // It's not simple to create a backwards devaddr range.
-        let invalid_range = DevaddrRange {
+        let invalid_range = DevaddrConstraint {
             start_addr: end,
             end_addr: start,
         };
@@ -170,8 +176,7 @@ mod tests {
                 hex_field::devaddr(0x48_00_08_00)
                     .to_range(8)
                     .to_subnet()
-                    .subnets()
-                    .unwrap()
+                    .subnets
             )
         );
 
@@ -182,8 +187,7 @@ mod tests {
                 hex_field::devaddr(0x48_00_07_ff)
                     .to_range(8)
                     .to_subnet()
-                    .subnets()
-                    .unwrap()
+                    .subnets
             )
         );
     }

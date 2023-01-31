@@ -54,6 +54,14 @@ pub enum Protocol {
 }
 
 impl Protocol {
+    pub fn is_gwmp(&self) -> bool {
+        match self {
+            Protocol::Gwmp(_) => true,
+            Protocol::Http(_) => false,
+            Protocol::PacketRouter => false,
+        }
+    }
+
     pub fn default_gwmp() -> Self {
         Protocol::Gwmp(Gwmp::default())
     }
@@ -70,14 +78,9 @@ impl Protocol {
         BTreeMap::from([(region, port)])
     }
 
-    pub fn make_http(
-        flow_type: FlowType,
-        dedupe_timeout: u32,
-        path: String,
-        auth_header: Option<String>,
-    ) -> Self {
+    pub fn make_http(dedupe_timeout: u32, path: String, auth_header: Option<String>) -> Self {
         Self::Http(Http {
-            flow_type,
+            flow_type: FlowType::Async,
             dedupe_timeout,
             path,
             auth_header: auth_header.unwrap_or_default(),
@@ -90,7 +93,7 @@ impl Protocol {
         Ok(gwmp)
     }
 
-    fn gwmp_add_mapping(&mut self, map: GwmpMap) -> Result {
+    pub fn gwmp_add_mapping(&mut self, map: GwmpMap) -> Result {
         match self {
             Protocol::Gwmp(Gwmp { ref mut mapping }) => {
                 mapping.extend(map);
@@ -98,6 +101,17 @@ impl Protocol {
             }
             Protocol::Http(_) => Err(anyhow!("cannot add region mapping to http")),
             Protocol::PacketRouter => Err(anyhow!("cannot add region mapping to packet router")),
+        }
+    }
+
+    pub fn gwmp_remove_mapping(&mut self, region: &Region) -> Result {
+        match self {
+            Protocol::Gwmp(Gwmp { ref mut mapping }) => {
+                mapping.remove(region);
+                Ok(())
+            }
+            Protocol::Http(_) => Err(anyhow!("cannot remove region mapping from http")),
+            Protocol::PacketRouter => Err(anyhow!("cannot remove region from packet router")),
         }
     }
 
@@ -120,10 +134,10 @@ pub struct Gwmp {
 
 #[derive(Serialize, Debug, Deserialize, Clone, PartialEq, Eq, Default)]
 pub struct Http {
-    flow_type: FlowType,
-    dedupe_timeout: u32,
-    path: String,
-    auth_header: String,
+    pub flow_type: FlowType,
+    pub dedupe_timeout: u32,
+    pub path: String,
+    pub auth_header: String,
 }
 
 #[derive(clap::ValueEnum, Clone, Serialize, Debug, Deserialize, PartialEq, Eq, Default)]
