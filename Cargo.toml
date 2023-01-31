@@ -8,14 +8,14 @@ edition = "2021"
 [dependencies]
 prost = "0.11.0"
 tonic = { version = "0.8.2", features = ["tls", "tls-roots"] }
-tokio = { version = "1.19.2", features = ["macros", "rt-multi-thread"] }
-serde = {version = "1.0.145", features = ["derive"]}
+tokio = { version = "1.25.0", features = ["macros", "rt-multi-thread"] }
+serde = { version = "1.0.145", features = ["derive"] }
 serde_json = "1.0.87"
-clap = { version = "4.0.18", features = ["derive", "env"] }
-helium-proto = { git = "https://github.com/helium/proto", branch="macpie/scale_routes", features=["services"]}
+clap = { version = "4.1.4", features = ["derive", "env"] }
+helium-proto = { git = "https://github.com/helium/proto", branch="master", features=["services"]}
 helium-crypto = "0.6.3"
 dialoguer = "0.10.2"
-anyhow = "1.0.66"
+anyhow = "1.0.68"
 serde_test = "1.0.147"
 rand = "0.8.5"
 ipnet = "2.5.1"
