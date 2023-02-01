@@ -1,7 +1,7 @@
 use crate::{
     hex_field::{self, HexNetID},
     region::Region,
-    DevaddrConstraint, Msg, PrettyJson, Result,
+    DevaddrConstraint, Msg, PrettyJson, Result, OUI,
 };
 use anyhow::Context;
 use clap::{Args, Parser, Subcommand};
@@ -112,7 +112,7 @@ pub enum RouteCommands {
 #[derive(Debug, Args)]
 pub struct ListRoutes {
     #[arg(long, env = ENV_OUI)]
-    pub oui: u64,
+    pub oui: OUI,
     #[arg(from_global)]
     pub keypair: PathBuf,
     #[arg(from_global)]
@@ -136,7 +136,7 @@ pub struct NewRoute {
     #[arg(long, env = ENV_NET_ID, default_value = "C00053")]
     pub net_id: HexNetID,
     #[arg(long, env = ENV_OUI)]
-    pub oui: u64,
+    pub oui: OUI,
     #[arg(long, env = ENV_MAX_COPIES, default_value = "5")]
     pub max_copies: u32,
 
@@ -324,7 +324,7 @@ pub enum SessionKeyFilterCommands {
 #[derive(Debug, Args)]
 pub struct ListFilters {
     #[arg(long, env = ENV_OUI)]
-    pub oui: u64,
+    pub oui: OUI,
     #[arg(from_global)]
     pub keypair: PathBuf,
     #[arg(from_global)]
@@ -334,7 +334,7 @@ pub struct ListFilters {
 #[derive(Debug, Args)]
 pub struct GetFilters {
     #[arg(long, env = ENV_OUI)]
-    pub oui: u64,
+    pub oui: OUI,
     #[arg(short, long, value_parser = hex_field::validate_devaddr)]
     pub devaddr: hex_field::HexDevAddr,
     #[arg(from_global)]
@@ -346,7 +346,7 @@ pub struct GetFilters {
 #[derive(Debug, Args)]
 pub struct AddFilter {
     #[arg(long, env = ENV_OUI)]
-    pub oui: u64,
+    pub oui: OUI,
     #[arg(short, long, value_parser = hex_field::validate_devaddr)]
     pub devaddr: hex_field::HexDevAddr,
     #[arg(short, long)]
@@ -363,7 +363,7 @@ pub struct AddFilter {
 #[derive(Debug, Args)]
 pub struct RemoveFilter {
     #[arg(long, env = ENV_OUI)]
-    pub oui: u64,
+    pub oui: OUI,
     #[arg(short, long, value_parser = hex_field::validate_devaddr)]
     pub devaddr: hex_field::HexDevAddr,
     #[arg(short, long)]
@@ -518,7 +518,7 @@ pub struct EnvInfo {
     #[arg(long, env = ENV_NET_ID)]
     pub net_id: Option<HexNetID>,
     #[arg(long, env = ENV_OUI)]
-    pub oui: Option<u64>,
+    pub oui: Option<OUI>,
     #[arg(long, env = ENV_MAX_COPIES)]
     pub max_copies: Option<u32>,
 }
@@ -542,7 +542,7 @@ pub struct ListOrgs {
 #[derive(Debug, Args)]
 pub struct GetOrg {
     #[arg(long, env = "HELIUM_OUI")]
-    pub oui: u64,
+    pub oui: OUI,
     #[arg(from_global)]
     pub config_host: String,
 }

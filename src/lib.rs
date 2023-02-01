@@ -22,6 +22,8 @@ pub mod proto {
 
 pub type Result<T = (), E = Error> = anyhow::Result<T, E>;
 
+type OUI = u64;
+
 #[derive(Debug, Serialize)]
 pub enum Msg {
     DryRun(String),
@@ -102,7 +104,7 @@ pub struct OrgList {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Org {
-    pub oui: u64,
+    pub oui: OUI,
     pub owner: PublicKey,
     pub payer: PublicKey,
     pub delegate_keys: Vec<PublicKey>,
@@ -161,13 +163,13 @@ impl Eui {
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub struct SessionKeyFilter {
-    oui: u64,
+    oui: OUI,
     devaddr: hex_field::HexDevAddr,
     session_key: String,
 }
 
 impl SessionKeyFilter {
-    pub fn new(oui: u64, devaddr: hex_field::HexDevAddr, session_key: String) -> Self {
+    pub fn new(oui: OUI, devaddr: hex_field::HexDevAddr, session_key: String) -> Self {
         Self {
             oui,
             devaddr,

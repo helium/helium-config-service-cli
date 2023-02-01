@@ -1,6 +1,6 @@
 use crate::{
     hex_field, route::Route, DevaddrRange, Eui, OrgList, OrgResponse, Result, RouteList,
-    SessionKeyFilter,
+    SessionKeyFilter, OUI,
 };
 use helium_crypto::{Keypair, PublicKey, Sign};
 use helium_proto::{
@@ -43,7 +43,7 @@ impl OrgClient {
         Ok(self.client.list(request).await?.into_inner().into())
     }
 
-    pub async fn get(&mut self, oui: u64) -> Result<OrgResponse> {
+    pub async fn get(&mut self, oui: OUI) -> Result<OrgResponse> {
         let request = OrgGetReqV1 { oui };
         Ok(self.client.get(request).await?.into_inner().into())
     }
@@ -274,7 +274,7 @@ impl RouteClient {
         })
     }
 
-    pub async fn list(&mut self, oui: u64, keypair: &Keypair) -> Result<RouteList> {
+    pub async fn list(&mut self, oui: OUI, keypair: &Keypair) -> Result<RouteList> {
         let mut request = RouteListReqV1 {
             oui,
             signer: keypair.public_key().into(),
@@ -341,7 +341,7 @@ impl SkfClient {
 
     pub async fn list_filters(
         &mut self,
-        oui: u64,
+        oui: OUI,
         keypair: &Keypair,
     ) -> Result<Vec<SessionKeyFilter>> {
         let mut request = SessionKeyFilterListReqV1 {
@@ -363,7 +363,7 @@ impl SkfClient {
 
     pub async fn get_filters(
         &mut self,
-        oui: u64,
+        oui: OUI,
         devaddr: hex_field::HexDevAddr,
         keypair: &Keypair,
     ) -> Result<Vec<SessionKeyFilter>> {
