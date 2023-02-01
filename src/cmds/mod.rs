@@ -11,6 +11,7 @@ use std::path::PathBuf;
 pub mod env;
 pub mod org;
 pub mod route;
+pub mod session_key_filter;
 
 pub const ENV_CONFIG_HOST: &str = "HELIUM_CONFIG_HOST";
 pub const ENV_KEYPAIR_BIN: &str = "HELIUM_KEYPAIR_BIN";
@@ -60,6 +61,12 @@ pub enum Commands {
     Org {
         #[command(subcommand)]
         command: OrgCommands,
+    },
+    /// Session Key Filter
+    #[command(alias = "skf")]
+    SessionKeyFiler {
+        #[command(subcommand)]
+        command: SessionKeyFilterCommands,
     },
     /// Print a Subnet Mask for a given Devaddr Range
     SubnetMask(SubnetMask),
@@ -304,6 +311,70 @@ pub enum OrgCommands {
     CreateHelium(CreateHelium),
     /// Create a new Roaming Organization (admin only)
     CreateRoaming(CreateRoaming),
+}
+
+#[derive(Debug, Subcommand)]
+pub enum SessionKeyFilterCommands {
+    List(ListFilters),
+    Get(GetFilters),
+    Add(AddFilter),
+    Remove(RemoveFilter),
+}
+
+#[derive(Debug, Args)]
+pub struct ListFilters {
+    #[arg(long, env = ENV_OUI)]
+    pub oui: u64,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+}
+
+#[derive(Debug, Args)]
+pub struct GetFilters {
+    #[arg(long, env = ENV_OUI)]
+    pub oui: u64,
+    #[arg(short, long, value_parser = hex_field::validate_devaddr)]
+    pub devaddr: hex_field::HexDevAddr,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+}
+
+#[derive(Debug, Args)]
+pub struct AddFilter {
+    #[arg(long, env = ENV_OUI)]
+    pub oui: u64,
+    #[arg(short, long, value_parser = hex_field::validate_devaddr)]
+    pub devaddr: hex_field::HexDevAddr,
+    #[arg(short, long)]
+    pub session_key: String,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    /// Add EUI entry to a Route
+    #[arg(short, long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct RemoveFilter {
+    #[arg(long, env = ENV_OUI)]
+    pub oui: u64,
+    #[arg(short, long, value_parser = hex_field::validate_devaddr)]
+    pub devaddr: hex_field::HexDevAddr,
+    #[arg(short, long)]
+    pub session_key: String,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    /// Add EUI entry to a Route
+    #[arg(short, long)]
+    pub commit: bool,
 }
 
 #[derive(Debug, Args)]

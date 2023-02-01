@@ -27,9 +27,8 @@ pub struct DevaddrConstraint {
 /// # Example
 ///
 /// ```
-/// use helium_config_service_cli::DevaddrConstraint;
+/// use helium_config_service_cli::subnet::DevaddrConstraint;
 /// use helium_config_service_cli::hex_field;
-/// use helium_config_service_cli::subnet;
 ///
 /// let start = hex_field::devaddr(0x11_22_33_40);
 /// let end = hex_field::devaddr(0x11_22_33_47);
@@ -37,7 +36,7 @@ pub struct DevaddrConstraint {
 /// let subnet = range.to_subnet();
 ///
 /// let expected = vec!["11223340/29".to_string()];
-/// assert_eq!(subnet.subnets().unwrap(), expected);
+/// assert_eq!(subnet.subnets, expected);
 /// ```
 impl DevaddrConstraint {
     pub fn new(start_addr: hex_field::HexDevAddr, end_addr: hex_field::HexDevAddr) -> Result<Self> {

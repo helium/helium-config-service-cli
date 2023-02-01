@@ -1,5 +1,4 @@
 #![allow(unused)]
-use std::{path::PathBuf, str::FromStr};
 use helium_config_service_cli::{
     client,
     cmds::{self, *},
@@ -8,6 +7,7 @@ use helium_config_service_cli::{
     OrgResponse, Result,
 };
 use helium_crypto::PublicKey;
+use std::{path::PathBuf, str::FromStr};
 use tracing::info;
 
 pub const CONFIG_HOST: &str = "http://127.0.0.1:50051";
@@ -53,7 +53,9 @@ pub async fn create_helium_org(
     info!("{out}");
 
     let mut org_client = client::OrgClient::new(CONFIG_HOST).await?;
-    let org_list = org_client.list().await?;
+    let mut org_list = org_client.list().await?;
+    // Put in creation order
+    org_list.orgs.sort_by_key(|x| x.oui);
     let org = org_list.orgs.last().expect("existing org after creation");
     // we want the devaddr constraints
     let res = org_client.get(org.oui).await?;

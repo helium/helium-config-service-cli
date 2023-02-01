@@ -8,7 +8,6 @@ pub mod subnet;
 
 use anyhow::{anyhow, Error};
 use helium_crypto::PublicKey;
-use hex_field::HexNetID;
 use route::Route;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
@@ -17,7 +16,7 @@ use subnet::DevaddrConstraint;
 pub mod proto {
     pub use helium_proto::services::iot_config::{
         DevaddrConstraintV1, DevaddrRangeV1, EuiPairV1, OrgListResV1, OrgResV1, OrgV1,
-        RouteListResV1,
+        RouteListResV1, SessionKeyFilterV1,
     };
 }
 
@@ -78,7 +77,7 @@ impl<S: ?Sized + serde::Serialize> PrettyJson for S {
 #[derive(Debug, Serialize)]
 pub struct OrgResponse {
     pub org: Org,
-    pub net_id: HexNetID,
+    pub net_id: hex_field::HexNetID,
     pub devaddr_constraints: Vec<DevaddrConstraint>,
 }
 
@@ -157,6 +156,43 @@ impl Eui {
             app_eui,
             dev_eui,
         })
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
+pub struct SessionKeyFilter {
+    oui: u64,
+    devaddr: hex_field::HexDevAddr,
+    session_key: String,
+}
+
+impl SessionKeyFilter {
+    pub fn new(oui: u64, devaddr: hex_field::HexDevAddr, session_key: String) -> Self {
+        Self {
+            oui,
+            devaddr,
+            session_key,
+        }
+    }
+}
+
+impl From<proto::SessionKeyFilterV1> for SessionKeyFilter {
+    fn from(filter: proto::SessionKeyFilterV1) -> Self {
+        Self {
+            oui: filter.oui,
+            devaddr: (filter.devaddr as u64).into(),
+            session_key: String::from_utf8(filter.session_key).unwrap(),
+        }
+    }
+}
+
+impl From<SessionKeyFilter> for proto::SessionKeyFilterV1 {
+    fn from(filter: SessionKeyFilter) -> Self {
+        Self {
+            oui: filter.oui,
+            devaddr: filter.devaddr.0 as u32,
+            session_key: filter.session_key.into(),
+        }
     }
 }
 
