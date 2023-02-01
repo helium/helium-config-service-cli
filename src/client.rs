@@ -1,12 +1,17 @@
-use crate::{route::Route, DevaddrRange, Eui, OrgList, OrgResponse, Result, RouteList};
+use crate::{
+    hex_field, route::Route, DevaddrRange, Eui, OrgList, OrgResponse, Result, RouteList,
+    SessionKeyFilter, OUI,
+};
 use helium_crypto::{Keypair, PublicKey, Sign};
 use helium_proto::{
     services::iot_config::{
-        org_client, route_client, ActionV1, OrgCreateHeliumReqV1, OrgCreateRoamerReqV1,
-        OrgGetReqV1, OrgListReqV1, RouteCreateReqV1, RouteDeleteDevaddrRangesReqV1,
-        RouteDeleteEuisReqV1, RouteDeleteReqV1, RouteDevaddrRangesResV1, RouteEuisResV1,
-        RouteGetDevaddrRangesReqV1, RouteGetEuisReqV1, RouteGetReqV1, RouteListReqV1,
-        RouteUpdateDevaddrRangesReqV1, RouteUpdateEuisReqV1, RouteUpdateReqV1,
+        org_client, route_client, session_key_filter_client, ActionV1, OrgCreateHeliumReqV1,
+        OrgCreateRoamerReqV1, OrgGetReqV1, OrgListReqV1, RouteCreateReqV1,
+        RouteDeleteDevaddrRangesReqV1, RouteDeleteEuisReqV1, RouteDeleteReqV1,
+        RouteDevaddrRangesResV1, RouteEuisResV1, RouteGetDevaddrRangesReqV1, RouteGetEuisReqV1,
+        RouteGetReqV1, RouteListReqV1, RouteUpdateDevaddrRangesReqV1, RouteUpdateEuisReqV1,
+        RouteUpdateReqV1, SessionKeyFilterGetReqV1, SessionKeyFilterListReqV1,
+        SessionKeyFilterUpdateReqV1, SessionKeyFilterUpdateResV1,
     },
     Message,
 };
@@ -17,6 +22,10 @@ pub struct OrgClient {
 }
 pub struct RouteClient {
     client: route_client::RouteClient<tonic::transport::Channel>,
+}
+
+pub struct SkfClient {
+    client: session_key_filter_client::SessionKeyFilterClient<tonic::transport::Channel>,
 }
 
 pub type EuiClient = RouteClient;
@@ -34,7 +43,7 @@ impl OrgClient {
         Ok(self.client.list(request).await?.into_inner().into())
     }
 
-    pub async fn get(&mut self, oui: u64) -> Result<OrgResponse> {
+    pub async fn get(&mut self, oui: OUI) -> Result<OrgResponse> {
         let request = OrgGetReqV1 { oui };
         Ok(self.client.get(request).await?.into_inner().into())
     }
@@ -133,7 +142,7 @@ impl DevaddrClient {
                 Ok(request)
             })
             .collect();
-        let request = futures::prelude::stream::iter(route_devaddrs);
+        let request = futures::stream::iter(route_devaddrs);
         Ok(self
             .client
             .update_devaddr_ranges(request)
@@ -161,7 +170,7 @@ impl DevaddrClient {
                 Ok(request)
             })
             .collect();
-        let request = futures::prelude::stream::iter(route_devaddrs);
+        let request = futures::stream::iter(route_devaddrs);
         Ok(self
             .client
             .update_devaddr_ranges(request)
@@ -217,7 +226,7 @@ impl EuiClient {
                 Ok(request)
             })
             .collect();
-        let request = futures::prelude::stream::iter(route_euis);
+        let request = futures::stream::iter(route_euis);
         Ok(self.client.update_euis(request).await?.into_inner())
     }
 
@@ -241,7 +250,7 @@ impl EuiClient {
                 Ok(request)
             })
             .collect();
-        let request = futures::prelude::stream::iter(route_euis);
+        let request = futures::stream::iter(route_euis);
         Ok(self.client.update_euis(request).await?.into_inner())
     }
 
@@ -265,7 +274,7 @@ impl RouteClient {
         })
     }
 
-    pub async fn list(&mut self, oui: u64, keypair: &Keypair) -> Result<RouteList> {
+    pub async fn list(&mut self, oui: OUI, keypair: &Keypair) -> Result<RouteList> {
         let mut request = RouteListReqV1 {
             oui,
             signer: keypair.public_key().into(),
@@ -322,6 +331,108 @@ impl RouteClient {
     }
 }
 
+impl SkfClient {
+    pub async fn new(host: &str) -> Result<Self> {
+        Ok(Self {
+            client: session_key_filter_client::SessionKeyFilterClient::connect(host.to_owned())
+                .await?,
+        })
+    }
+
+    pub async fn list_filters(
+        &mut self,
+        oui: OUI,
+        keypair: &Keypair,
+    ) -> Result<Vec<SessionKeyFilter>> {
+        let mut request = SessionKeyFilterListReqV1 {
+            oui,
+            timestamp: current_timestamp()?,
+            signer: keypair.public_key().into(),
+            signature: vec![],
+        };
+        request.signature = request.sign(keypair)?;
+        let mut stream = self.client.list(request).await?.into_inner();
+
+        let mut filters = vec![];
+        while let Some(filter) = stream.message().await? {
+            filters.push(filter.into());
+        }
+
+        Ok(filters)
+    }
+
+    pub async fn get_filters(
+        &mut self,
+        oui: OUI,
+        devaddr: hex_field::HexDevAddr,
+        keypair: &Keypair,
+    ) -> Result<Vec<SessionKeyFilter>> {
+        let mut request = SessionKeyFilterGetReqV1 {
+            oui,
+            devaddr: devaddr.into(),
+            timestamp: current_timestamp()?,
+            signer: keypair.public_key().into(),
+            signature: vec![],
+        };
+        request.signature = request.sign(keypair)?;
+        let mut stream = self.client.get(request).await?.into_inner();
+
+        let mut filters = vec![];
+        while let Some(filter) = stream.message().await? {
+            filters.push(filter.into());
+        }
+        Ok(filters)
+    }
+
+    pub async fn add_filters(
+        &mut self,
+        filters: Vec<SessionKeyFilter>,
+        keypair: &Keypair,
+    ) -> Result<SessionKeyFilterUpdateResV1> {
+        let timestamp = current_timestamp()?;
+        let filters: Vec<SessionKeyFilterUpdateReqV1> = filters
+            .into_iter()
+            .flat_map(|filter| -> Result<SessionKeyFilterUpdateReqV1> {
+                let mut request = SessionKeyFilterUpdateReqV1 {
+                    action: ActionV1::Add.into(),
+                    filter: Some(filter.into()),
+                    timestamp,
+                    signer: keypair.public_key().into(),
+                    signature: vec![],
+                };
+                request.signature = request.sign(keypair)?;
+                Ok(request)
+            })
+            .collect();
+        let request = futures::stream::iter(filters);
+        Ok(self.client.update(request).await?.into_inner())
+    }
+
+    pub async fn remove_filters(
+        &mut self,
+        filters: Vec<SessionKeyFilter>,
+        keypair: &Keypair,
+    ) -> Result<SessionKeyFilterUpdateResV1> {
+        let timestamp = current_timestamp()?;
+        let filters: Vec<SessionKeyFilterUpdateReqV1> = filters
+            .into_iter()
+            .flat_map(|filter| -> Result<SessionKeyFilterUpdateReqV1> {
+                let mut request = SessionKeyFilterUpdateReqV1 {
+                    action: ActionV1::Remove.into(),
+                    filter: Some(filter.into()),
+                    timestamp,
+                    signer: keypair.public_key().into(),
+                    signature: vec![],
+                };
+                request.signature = request.sign(keypair)?;
+                Ok(request)
+            })
+            .collect();
+        let request = futures::stream::iter(filters);
+        Ok(self.client.update(request).await?.into_inner())
+    }
+}
+
 fn current_timestamp() -> Result<u64> {
     Ok(SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis() as u64)
 }
@@ -355,5 +466,8 @@ impl_sign!(RouteDeleteEuisReqV1, signature);
 impl_sign!(RouteUpdateEuisReqV1, signature);
 impl_sign!(RouteGetDevaddrRangesReqV1, signature);
 impl_sign!(RouteDeleteDevaddrRangesReqV1, signature);
+impl_sign!(SessionKeyFilterListReqV1, signature);
+impl_sign!(SessionKeyFilterGetReqV1, signature);
+impl_sign!(SessionKeyFilterUpdateReqV1, signature);
 impl_sign!(OrgCreateHeliumReqV1, signature);
 impl_sign!(OrgCreateRoamerReqV1, signature);
