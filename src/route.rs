@@ -1,7 +1,7 @@
 use crate::{
     hex_field,
     server::{GwmpMap, Http, Server},
-    Result, OUI,
+    Oui, Result,
 };
 use helium_proto::services::iot_config::RouteV1 as ProtoRoute;
 use serde::{Deserialize, Serialize};
@@ -10,13 +10,13 @@ use serde::{Deserialize, Serialize};
 pub struct Route {
     pub id: String,
     pub net_id: hex_field::HexNetID,
-    pub oui: OUI,
+    pub oui: Oui,
     pub server: Server,
     pub max_copies: u32,
 }
 
 impl Route {
-    pub fn new(net_id: hex_field::HexNetID, oui: OUI, max_copies: u32) -> Self {
+    pub fn new(net_id: hex_field::HexNetID, oui: Oui, max_copies: u32) -> Self {
         Self {
             id: "".into(),
             net_id,

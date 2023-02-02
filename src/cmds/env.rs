@@ -3,7 +3,7 @@ use std::{env, fs, path::PathBuf};
 use super::{
     EnvInfo, GenerateKeypair, ENV_CONFIG_HOST, ENV_KEYPAIR_BIN, ENV_MAX_COPIES, ENV_NET_ID, ENV_OUI,
 };
-use crate::{hex_field, Msg, PrettyJson, Result, OUI};
+use crate::{hex_field, Msg, Oui, PrettyJson, Result};
 use anyhow::Context;
 use dialoguer::Input;
 use helium_crypto::Keypair;
@@ -27,7 +27,7 @@ pub async fn env_init() -> Result<Msg> {
         .with_initial_text("000000")
         .interact()?;
     println!("----- Enter zero to ignore...");
-    let oui: OUI = Input::new()
+    let oui: Oui = Input::new()
         .with_prompt("Assigned OUI")
         .with_initial_text("0")
         .allow_empty(true)

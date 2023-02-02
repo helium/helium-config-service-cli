@@ -78,7 +78,7 @@ impl<'de, const WIDTH: usize> Deserialize<'de> for HexField<WIDTH> {
             type Value = HexField<IN_WIDTH>;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str(&format!("hex string {} wide", IN_WIDTH))
+                formatter.write_str(&format!("hex string {IN_WIDTH} wide"))
             }
 
             fn visit_str<E>(self, value: &str) -> anyhow::Result<HexField<IN_WIDTH>, E>

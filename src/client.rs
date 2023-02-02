@@ -1,17 +1,17 @@
 use crate::{
-    hex_field, route::Route, DevaddrRange, Eui, OrgList, OrgResponse, Result, RouteList,
-    SessionKeyFilter, OUI,
+    hex_field, region::Region, region_params::RegionParams, route::Route, DevaddrRange, Eui,
+    OrgList, OrgResponse, Oui, Result, RouteList, SessionKeyFilter,
 };
 use helium_crypto::{Keypair, PublicKey, Sign};
 use helium_proto::{
     services::iot_config::{
-        org_client, route_client, session_key_filter_client, ActionV1, OrgCreateHeliumReqV1,
-        OrgCreateRoamerReqV1, OrgGetReqV1, OrgListReqV1, RouteCreateReqV1,
-        RouteDeleteDevaddrRangesReqV1, RouteDeleteEuisReqV1, RouteDeleteReqV1,
-        RouteDevaddrRangesResV1, RouteEuisResV1, RouteGetDevaddrRangesReqV1, RouteGetEuisReqV1,
-        RouteGetReqV1, RouteListReqV1, RouteUpdateDevaddrRangesReqV1, RouteUpdateEuisReqV1,
-        RouteUpdateReqV1, SessionKeyFilterGetReqV1, SessionKeyFilterListReqV1,
-        SessionKeyFilterUpdateReqV1, SessionKeyFilterUpdateResV1,
+        gateway_client, org_client, route_client, session_key_filter_client, ActionV1,
+        LoadRegionReqV1, LoadRegionResV1, OrgCreateHeliumReqV1, OrgCreateRoamerReqV1, OrgGetReqV1,
+        OrgListReqV1, RouteCreateReqV1, RouteDeleteDevaddrRangesReqV1, RouteDeleteEuisReqV1,
+        RouteDeleteReqV1, RouteDevaddrRangesResV1, RouteEuisResV1, RouteGetDevaddrRangesReqV1,
+        RouteGetEuisReqV1, RouteGetReqV1, RouteListReqV1, RouteUpdateDevaddrRangesReqV1,
+        RouteUpdateEuisReqV1, RouteUpdateReqV1, SessionKeyFilterGetReqV1,
+        SessionKeyFilterListReqV1, SessionKeyFilterUpdateReqV1, SessionKeyFilterUpdateResV1,
     },
     Message,
 };
@@ -26,6 +26,10 @@ pub struct RouteClient {
 
 pub struct SkfClient {
     client: session_key_filter_client::SessionKeyFilterClient<tonic::transport::Channel>,
+}
+
+pub struct GatewayClient {
+    client: gateway_client::GatewayClient<tonic::transport::Channel>,
 }
 
 pub type EuiClient = RouteClient;
@@ -43,7 +47,7 @@ impl OrgClient {
         Ok(self.client.list(request).await?.into_inner().into())
     }
 
-    pub async fn get(&mut self, oui: OUI) -> Result<OrgResponse> {
+    pub async fn get(&mut self, oui: Oui) -> Result<OrgResponse> {
         let request = OrgGetReqV1 { oui };
         Ok(self.client.get(request).await?.into_inner().into())
     }
@@ -61,7 +65,6 @@ impl OrgClient {
             devaddrs: devaddr_count,
             timestamp: current_timestamp()?,
             delegate_keys: vec![],
-            signer: keypair.public_key().into(),
             signature: vec![],
         };
         request.signature = request.sign(keypair)?;
@@ -86,7 +89,6 @@ impl OrgClient {
             net_id,
             timestamp: current_timestamp()?,
             delegate_keys: vec![],
-            signer: keypair.public_key().into(),
             signature: vec![],
         };
         request.signature = request.sign(&keypair)?;
@@ -108,7 +110,6 @@ impl DevaddrClient {
         let mut request = RouteGetDevaddrRangesReqV1 {
             route_id: route_id.to_string(),
             timestamp: current_timestamp()?,
-            signer: keypair.public_key().into(),
             signature: vec![],
         };
         request.signature = request.sign(keypair)?;
@@ -134,7 +135,6 @@ impl DevaddrClient {
                 let mut request = RouteUpdateDevaddrRangesReqV1 {
                     action: ActionV1::Add.into(),
                     timestamp,
-                    signer: keypair.public_key().into(),
                     signature: vec![],
                     devaddr_range: Some(devaddr.into()),
                 };
@@ -162,7 +162,6 @@ impl DevaddrClient {
                 let mut request = RouteUpdateDevaddrRangesReqV1 {
                     action: ActionV1::Remove.into(),
                     timestamp,
-                    signer: keypair.public_key().into(),
                     signature: vec![],
                     devaddr_range: Some(devaddr.into()),
                 };
@@ -182,7 +181,6 @@ impl DevaddrClient {
         let mut request = RouteDeleteDevaddrRangesReqV1 {
             route_id,
             timestamp: current_timestamp()?,
-            signer: keypair.public_key().into(),
             signature: vec![],
         };
         request.signature = request.sign(keypair)?;
@@ -196,7 +194,6 @@ impl EuiClient {
         let mut request = RouteGetEuisReqV1 {
             route_id: route_id.to_string(),
             timestamp: current_timestamp()?,
-            signer: keypair.public_key().into(),
             signature: vec![],
         };
         request.signature = request.sign(keypair)?;
@@ -218,7 +215,6 @@ impl EuiClient {
                 let mut request = RouteUpdateEuisReqV1 {
                     action: ActionV1::Add.into(),
                     timestamp,
-                    signer: keypair.public_key().into(),
                     signature: vec![],
                     eui_pair: Some(eui.into()),
                 };
@@ -242,7 +238,6 @@ impl EuiClient {
                 let mut request = RouteUpdateEuisReqV1 {
                     action: ActionV1::Remove.into(),
                     timestamp,
-                    signer: keypair.public_key().into(),
                     signature: vec![],
                     eui_pair: Some(eui.into()),
                 };
@@ -258,7 +253,6 @@ impl EuiClient {
         let mut request = RouteDeleteEuisReqV1 {
             route_id,
             timestamp: current_timestamp()?,
-            signer: keypair.public_key().into(),
             signature: vec![],
         };
         request.signature = request.sign(keypair)?;
@@ -274,10 +268,9 @@ impl RouteClient {
         })
     }
 
-    pub async fn list(&mut self, oui: OUI, keypair: &Keypair) -> Result<RouteList> {
+    pub async fn list(&mut self, oui: Oui, keypair: &Keypair) -> Result<RouteList> {
         let mut request = RouteListReqV1 {
             oui,
-            signer: keypair.public_key().into(),
             timestamp: current_timestamp()?,
             signature: vec![],
         };
@@ -288,7 +281,6 @@ impl RouteClient {
     pub async fn get(&mut self, id: &str, keypair: &Keypair) -> Result<Route> {
         let mut request = RouteGetReqV1 {
             id: id.into(),
-            signer: keypair.public_key().into(),
             signature: vec![],
             timestamp: current_timestamp()?,
         };
@@ -300,7 +292,6 @@ impl RouteClient {
         let mut request = RouteCreateReqV1 {
             oui: route.oui,
             route: Some(route.into()),
-            signer: keypair.public_key().into(),
             timestamp: current_timestamp()?,
             signature: vec![],
         };
@@ -311,7 +302,6 @@ impl RouteClient {
     pub async fn delete(&mut self, id: &str, keypair: &Keypair) -> Result<Route> {
         let mut request = RouteDeleteReqV1 {
             id: id.into(),
-            signer: keypair.public_key().into(),
             timestamp: current_timestamp()?,
             signature: vec![],
         };
@@ -322,7 +312,6 @@ impl RouteClient {
     pub async fn push(&mut self, route: Route, keypair: &Keypair) -> Result<Route> {
         let mut request = RouteUpdateReqV1 {
             route: Some(route.into()),
-            signer: keypair.public_key().into(),
             timestamp: current_timestamp()?,
             signature: vec![],
         };
@@ -341,13 +330,12 @@ impl SkfClient {
 
     pub async fn list_filters(
         &mut self,
-        oui: OUI,
+        oui: Oui,
         keypair: &Keypair,
     ) -> Result<Vec<SessionKeyFilter>> {
         let mut request = SessionKeyFilterListReqV1 {
             oui,
             timestamp: current_timestamp()?,
-            signer: keypair.public_key().into(),
             signature: vec![],
         };
         request.signature = request.sign(keypair)?;
@@ -363,7 +351,7 @@ impl SkfClient {
 
     pub async fn get_filters(
         &mut self,
-        oui: OUI,
+        oui: Oui,
         devaddr: hex_field::HexDevAddr,
         keypair: &Keypair,
     ) -> Result<Vec<SessionKeyFilter>> {
@@ -371,7 +359,6 @@ impl SkfClient {
             oui,
             devaddr: devaddr.into(),
             timestamp: current_timestamp()?,
-            signer: keypair.public_key().into(),
             signature: vec![],
         };
         request.signature = request.sign(keypair)?;
@@ -397,7 +384,6 @@ impl SkfClient {
                     action: ActionV1::Add.into(),
                     filter: Some(filter.into()),
                     timestamp,
-                    signer: keypair.public_key().into(),
                     signature: vec![],
                 };
                 request.signature = request.sign(keypair)?;
@@ -421,7 +407,6 @@ impl SkfClient {
                     action: ActionV1::Remove.into(),
                     filter: Some(filter.into()),
                     timestamp,
-                    signer: keypair.public_key().into(),
                     signature: vec![],
                 };
                 request.signature = request.sign(keypair)?;
@@ -430,6 +415,31 @@ impl SkfClient {
             .collect();
         let request = futures::stream::iter(filters);
         Ok(self.client.update(request).await?.into_inner())
+    }
+}
+
+impl GatewayClient {
+    pub async fn new(host: &str) -> Result<Self> {
+        Ok(Self {
+            client: gateway_client::GatewayClient::connect(host.to_owned()).await?,
+        })
+    }
+
+    pub async fn load_region(
+        &mut self,
+        region: Region,
+        params: RegionParams,
+        indexes: Option<Vec<u8>>,
+        keypair: &Keypair,
+    ) -> Result<LoadRegionResV1> {
+        let mut request = LoadRegionReqV1 {
+            region: region.into(),
+            params: Some(params.into()),
+            hex_indexes: indexes,
+            signature: vec![],
+        };
+        request.signature = request.sign(keypair)?;
+        Ok(self.client.load_region(request).await?.into_inner())
     }
 }
 
@@ -471,3 +481,4 @@ impl_sign!(SessionKeyFilterGetReqV1, signature);
 impl_sign!(SessionKeyFilterUpdateReqV1, signature);
 impl_sign!(OrgCreateHeliumReqV1, signature);
 impl_sign!(OrgCreateRoamerReqV1, signature);
+impl_sign!(LoadRegionReqV1, signature);

@@ -1,10 +1,10 @@
 use clap::Parser;
 use helium_config_service_cli::{
     cmds::{
-        self, env, org,
+        self, env, org, region_params,
         route::{self, devaddrs, euis},
         session_key_filter as skf, Cli, Commands, EnvCommands as Env, OrgCommands as Org,
-        RouteCommands, RouteUpdateCommand,
+        RegionParamsCommands, RouteCommands, RouteUpdateCommand,
     },
     Msg, Result,
 };
@@ -59,12 +59,15 @@ pub async fn handle_cli(cli: Cli) -> Result<Msg> {
             Org::CreateHelium(args) => org::create_helium_org(args).await,
             Org::CreateRoaming(args) => org::create_roaming_org(args).await,
         },
-        Commands::SessionKeyFiler { command } => match command {
+        Commands::SessionKeyFilter { command } => match command {
             cmds::SessionKeyFilterCommands::List(args) => skf::list_filters(args).await,
             cmds::SessionKeyFilterCommands::Get(args) => skf::get_filters(args).await,
             cmds::SessionKeyFilterCommands::Add(args) => skf::add_filter(args).await,
             cmds::SessionKeyFilterCommands::Remove(args) => skf::remove_filter(args).await,
         },
         Commands::SubnetMask(args) => cmds::subnet_mask(args),
+        Commands::RegionParams { command } => match command {
+            RegionParamsCommands::Push(args) => region_params::push_params(args).await,
+        },
     }
 }
