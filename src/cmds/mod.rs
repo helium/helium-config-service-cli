@@ -71,7 +71,7 @@ pub enum Commands {
     },
     /// Print a Subnet Mask for a given Devaddr Range
     SubnetMask(SubnetMask),
-    //. Region Params
+    /// Region Params
     RegionParams {
         #[command(subcommand)]
         command: RegionParamsCommands,
