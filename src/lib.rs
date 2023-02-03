@@ -2,6 +2,7 @@ pub mod client;
 pub mod cmds;
 pub mod hex_field;
 pub mod region;
+pub mod region_params;
 pub mod route;
 pub mod server;
 pub mod subnet;
@@ -22,7 +23,7 @@ pub mod proto {
 
 pub type Result<T = (), E = Error> = anyhow::Result<T, E>;
 
-type OUI = u64;
+type Oui = u64;
 
 #[derive(Debug, Serialize)]
 pub enum Msg {
@@ -53,9 +54,9 @@ impl Msg {
 impl Display for Msg {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Msg::DryRun(msg) => write!(f, "== DRY RUN == (pass `--commit`)\n{}", msg),
-            Msg::Success(msg) => write!(f, "\u{2713} {}", msg),
-            Msg::Error(msg) => write!(f, "\u{2717} {}", msg),
+            Msg::DryRun(msg) => write!(f, "== DRY RUN == (pass `--commit`)\n{msg}"),
+            Msg::Success(msg) => write!(f, "\u{2713} {msg}"),
+            Msg::Error(msg) => write!(f, "\u{2717} {msg}"),
         }
     }
 }
@@ -104,7 +105,7 @@ pub struct OrgList {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Org {
-    pub oui: OUI,
+    pub oui: Oui,
     pub owner: PublicKey,
     pub payer: PublicKey,
     pub delegate_keys: Vec<PublicKey>,
@@ -163,13 +164,13 @@ impl Eui {
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub struct SessionKeyFilter {
-    pub oui: OUI,
+    pub oui: Oui,
     pub devaddr: hex_field::HexDevAddr,
     pub session_key: String,
 }
 
 impl SessionKeyFilter {
-    pub fn new(oui: OUI, devaddr: hex_field::HexDevAddr, session_key: String) -> Self {
+    pub fn new(oui: Oui, devaddr: hex_field::HexDevAddr, session_key: String) -> Self {
         Self {
             oui,
             devaddr,

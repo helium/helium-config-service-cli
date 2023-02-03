@@ -1,7 +1,7 @@
 use crate::{
     hex_field::{self, HexNetID},
     region::Region,
-    DevaddrConstraint, Msg, PrettyJson, Result, OUI,
+    DevaddrConstraint, Msg, Oui, PrettyJson, Result,
 };
 use anyhow::Context;
 use clap::{Args, Parser, Subcommand};
@@ -10,6 +10,7 @@ use std::path::PathBuf;
 
 pub mod env;
 pub mod org;
+pub mod region_params;
 pub mod route;
 pub mod session_key_filter;
 
@@ -64,12 +65,17 @@ pub enum Commands {
     },
     /// Session Key Filter
     #[command(alias = "skf")]
-    SessionKeyFiler {
+    SessionKeyFilter {
         #[command(subcommand)]
         command: SessionKeyFilterCommands,
     },
     /// Print a Subnet Mask for a given Devaddr Range
     SubnetMask(SubnetMask),
+    /// Region Params
+    RegionParams {
+        #[command(subcommand)]
+        command: RegionParamsCommands,
+    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -112,7 +118,7 @@ pub enum RouteCommands {
 #[derive(Debug, Args)]
 pub struct ListRoutes {
     #[arg(long, env = ENV_OUI)]
-    pub oui: OUI,
+    pub oui: Oui,
     #[arg(from_global)]
     pub keypair: PathBuf,
     #[arg(from_global)]
@@ -136,7 +142,7 @@ pub struct NewRoute {
     #[arg(long, env = ENV_NET_ID, default_value = "C00053")]
     pub net_id: HexNetID,
     #[arg(long, env = ENV_OUI)]
-    pub oui: OUI,
+    pub oui: Oui,
     #[arg(long, env = ENV_MAX_COPIES, default_value = "5")]
     pub max_copies: u32,
 
@@ -324,7 +330,7 @@ pub enum SessionKeyFilterCommands {
 #[derive(Debug, Args)]
 pub struct ListFilters {
     #[arg(long, env = ENV_OUI)]
-    pub oui: OUI,
+    pub oui: Oui,
     #[arg(from_global)]
     pub keypair: PathBuf,
     #[arg(from_global)]
@@ -334,7 +340,7 @@ pub struct ListFilters {
 #[derive(Debug, Args)]
 pub struct GetFilters {
     #[arg(long, env = ENV_OUI)]
-    pub oui: OUI,
+    pub oui: Oui,
     #[arg(short, long, value_parser = hex_field::validate_devaddr)]
     pub devaddr: hex_field::HexDevAddr,
     #[arg(from_global)]
@@ -346,7 +352,7 @@ pub struct GetFilters {
 #[derive(Debug, Args)]
 pub struct AddFilter {
     #[arg(long, env = ENV_OUI)]
-    pub oui: OUI,
+    pub oui: Oui,
     #[arg(short, long, value_parser = hex_field::validate_devaddr)]
     pub devaddr: hex_field::HexDevAddr,
     #[arg(short, long)]
@@ -363,7 +369,7 @@ pub struct AddFilter {
 #[derive(Debug, Args)]
 pub struct RemoveFilter {
     #[arg(long, env = ENV_OUI)]
-    pub oui: OUI,
+    pub oui: Oui,
     #[arg(short, long, value_parser = hex_field::validate_devaddr)]
     pub devaddr: hex_field::HexDevAddr,
     #[arg(short, long)]
@@ -518,7 +524,7 @@ pub struct EnvInfo {
     #[arg(long, env = ENV_NET_ID)]
     pub net_id: Option<HexNetID>,
     #[arg(long, env = ENV_OUI)]
-    pub oui: Option<OUI>,
+    pub oui: Option<Oui>,
     #[arg(long, env = ENV_MAX_COPIES)]
     pub max_copies: Option<u32>,
 }
@@ -542,7 +548,7 @@ pub struct ListOrgs {
 #[derive(Debug, Args)]
 pub struct GetOrg {
     #[arg(long, env = "HELIUM_OUI")]
-    pub oui: OUI,
+    pub oui: Oui,
     #[arg(from_global)]
     pub config_host: String,
 }
@@ -571,6 +577,28 @@ pub struct CreateRoaming {
     pub payer: PublicKey,
     #[arg(long)]
     pub net_id: HexNetID,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum RegionParamsCommands {
+    /// Push a region params collection to the config service
+    Push(PushRegionParams),
+}
+
+#[derive(Debug, Args)]
+pub struct PushRegionParams {
+    #[arg(value_enum)]
+    pub region: Region,
+    #[arg(long)]
+    pub params_file: PathBuf,
+    #[arg(long)]
+    pub index_file: Option<PathBuf>,
     #[arg(from_global)]
     pub keypair: PathBuf,
     #[arg(from_global)]
