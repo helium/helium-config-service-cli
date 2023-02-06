@@ -1,4 +1,4 @@
-use crate::{DevaddrConstraint, Result};
+use crate::{DevaddrConstraint, NetId, Result};
 use anyhow::anyhow;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{fmt::Display, str::FromStr};
@@ -122,7 +122,7 @@ pub fn eui(val: u64) -> HexEui {
     val.into()
 }
 
-pub fn net_id(val: u64) -> HexNetID {
+pub fn net_id(val: NetId) -> HexNetID {
     val.into()
 }
 
@@ -236,7 +236,7 @@ mod tests {
 
     use crate::{
         hex_field::{devaddr, eui, net_id},
-        DevaddrConstraint,
+        DevaddrConstraint, NetId,
     };
     use pretty_assertions::assert_eq;
 
@@ -245,7 +245,7 @@ mod tests {
     #[test]
     fn range_from_net_id() {
         struct Test {
-            net_id: u64,
+            net_id: NetId,
             start_addr: u64,
             end_addr: u64,
             netid_type: u32,
