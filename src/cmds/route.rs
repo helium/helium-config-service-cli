@@ -3,8 +3,8 @@ use crate::{
 };
 
 use super::{
-    AddGwmpRegion, DeleteRoute, GetRoute, ListRoutes, NewRoute, RemoveGwmpRegion, UpdateHttp,
-    UpdateMaxCopies, UpdatePacketRouter, UpdateServer,
+    ActivateRoute, AddGwmpRegion, DeactivateRoute, DeleteRoute, GetRoute, ListRoutes, NewRoute,
+    RemoveGwmpRegion, UpdateHttp, UpdateMaxCopies, UpdatePacketRouter, UpdateServer,
 };
 
 pub async fn list_routes(args: ListRoutes) -> Result<Msg> {
@@ -261,6 +261,64 @@ pub async fn update_packet_router(args: UpdatePacketRouter) -> Result<Msg> {
             updated_route.pretty_json()?
         )),
         Err(_) => todo!(),
+    }
+}
+
+pub async fn activate_route(args: ActivateRoute) -> Result<Msg> {
+    let mut client = client::RouteClient::new(&args.config_host).await?;
+    let keypair = args.keypair.to_keypair()?;
+
+    let mut route = client.get(&args.route_id, &keypair).await?;
+    let old_route = route.clone();
+
+    route.active = true;
+
+    if !args.commit {
+        return Msg::dry_run(format!(
+            "Updated {}\n== Old\n{}\n== New\n{}",
+            route.id,
+            old_route.pretty_json()?,
+            route.pretty_json()?
+        ));
+    }
+
+    match client.push(route, &keypair).await {
+        Ok(updated_route) => Msg::ok(format!(
+            "Updated {}\n== Old\n{}\n== New\n{}",
+            updated_route.id,
+            old_route.pretty_json()?,
+            updated_route.pretty_json()?
+        )),
+        Err(err) => Msg::err(format!("Could not activate route: {err}")),
+    }
+}
+
+pub async fn deactivate_route(args: DeactivateRoute) -> Result<Msg> {
+    let mut client = client::RouteClient::new(&args.config_host).await?;
+    let keypair = args.keypair.to_keypair()?;
+
+    let mut route = client.get(&args.route_id, &keypair).await?;
+    let old_route = route.clone();
+
+    route.active = false;
+
+    if !args.commit {
+        return Msg::dry_run(format!(
+            "Updated {}\n== Old\n{}\n== New\n{}",
+            route.id,
+            old_route.pretty_json()?,
+            route.pretty_json()?
+        ));
+    }
+
+    match client.push(route, &keypair).await {
+        Ok(updated_route) => Msg::ok(format!(
+            "Updated {}\n== Old\n{}\n== New\n{}",
+            updated_route.id,
+            old_route.pretty_json()?,
+            updated_route.pretty_json()?
+        )),
+        Err(err) => Msg::err(format!("Could not deactivate route: {err}")),
     }
 }
 

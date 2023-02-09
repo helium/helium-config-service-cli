@@ -113,6 +113,16 @@ pub enum RouteCommands {
     },
     /// Remove Route
     Delete(DeleteRoute),
+    /// Turn on routing for Route.
+    ///
+    /// The route field `locked` supersedes this setting.
+    #[command(alias = "enable")]
+    Activate(ActivateRoute),
+    /// Turn off routing for a Route.
+    ///
+    /// the route field `locked` supersedes this setting.
+    #[command(alias = "disable")]
+    Deactivate(DeactivateRoute),
 }
 
 #[derive(Debug, Args)]
@@ -156,6 +166,30 @@ pub struct NewRoute {
 
 #[derive(Debug, Args)]
 pub struct DeleteRoute {
+    #[arg(short, long)]
+    pub route_id: String,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct ActivateRoute {
+    #[arg(short, long)]
+    pub route_id: String,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct DeactivateRoute {
     #[arg(short, long)]
     pub route_id: String,
     #[arg(from_global)]

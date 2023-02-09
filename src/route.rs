@@ -13,6 +13,8 @@ pub struct Route {
     pub oui: Oui,
     pub server: Server,
     pub max_copies: u32,
+    pub active: bool,
+    pub locked: bool,
 }
 
 impl Route {
@@ -23,6 +25,8 @@ impl Route {
             oui,
             server: Server::default(),
             max_copies,
+            locked: false,
+            active: true,
         }
     }
 
@@ -47,6 +51,8 @@ impl From<ProtoRoute> for Route {
             oui: route.oui,
             server: route.server.map_or_else(Server::default, |s| s.into()),
             max_copies: route.max_copies,
+            locked: route.locked,
+            active: route.active,
         }
     }
 }
@@ -59,6 +65,8 @@ impl From<Route> for ProtoRoute {
             oui: route.oui,
             server: Some(route.server.into()),
             max_copies: route.max_copies,
+            locked: route.locked,
+            active: route.active,
         }
     }
 }
@@ -76,6 +84,8 @@ mod tests {
             oui: 66,
             server: Server::default(),
             max_copies: 999,
+            locked: true,
+            active: true,
         };
 
         let v1 = RouteV1 {
@@ -88,6 +98,8 @@ mod tests {
                 protocol: None,
             }),
             max_copies: 999,
+            locked: true,
+            active: true,
         };
         assert_eq!(route, Route::from(v1.clone()));
         assert_eq!(v1, RouteV1::from(route));

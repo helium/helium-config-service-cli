@@ -52,6 +52,8 @@ pub async fn handle_cli(cli: Cli) -> Result<Msg> {
                 cmds::DevaddrCommands::SubnetMask(args) => devaddrs::subnet_mask(args).await,
                 cmds::DevaddrCommands::Clear(args) => devaddrs::clear_devaddrs(args).await,
             },
+            RouteCommands::Activate(args) => route::activate_route(args).await,
+            RouteCommands::Deactivate(args) => route::deactivate_route(args).await,
         },
         Commands::Org { command } => match command {
             Org::List(args) => org::list_orgs(args).await,

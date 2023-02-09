@@ -24,6 +24,7 @@ pub mod proto {
 pub type Result<T = (), E = Error> = anyhow::Result<T, E>;
 
 type Oui = u64;
+type NetId = u32;
 
 #[derive(Debug, Serialize)]
 pub enum Msg {
@@ -109,6 +110,7 @@ pub struct Org {
     pub owner: PublicKey,
     pub payer: PublicKey,
     pub delegate_keys: Vec<PublicKey>,
+    pub locked: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -215,6 +217,7 @@ impl From<proto::OrgV1> for Org {
             owner: PublicKey::try_from(org.owner).unwrap(),
             payer: PublicKey::try_from(org.payer).unwrap(),
             delegate_keys: d.collect(),
+            locked: org.locked,
         }
     }
 }
@@ -226,6 +229,7 @@ impl From<Org> for proto::OrgV1 {
             owner: org.owner.into(),
             payer: org.payer.into(),
             delegate_keys: org.delegate_keys.iter().map(|key| key.into()).collect(),
+            locked: org.locked,
         }
     }
 }

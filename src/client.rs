@@ -1,5 +1,5 @@
 use crate::{
-    hex_field, region::Region, region_params::RegionParams, route::Route, DevaddrRange, Eui,
+    hex_field, region::Region, region_params::RegionParams, route::Route, DevaddrRange, Eui, NetId,
     OrgList, OrgResponse, Oui, Result, RouteList, SessionKeyFilter,
 };
 use helium_crypto::{Keypair, PublicKey, Sign};
@@ -80,7 +80,7 @@ impl OrgClient {
         &mut self,
         owner: &PublicKey,
         payer: &PublicKey,
-        net_id: u64,
+        net_id: NetId,
         keypair: Keypair,
     ) -> Result<OrgResponse> {
         let mut request = OrgCreateRoamerReqV1 {
