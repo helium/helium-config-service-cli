@@ -74,7 +74,9 @@ impl From<Route> for ProtoRoute {
 #[cfg(test)]
 mod tests {
     use crate::{hex_field, server::Server, Route};
-    use helium_proto::services::iot_config::{RouteV1, ServerV1};
+    use helium_proto::services::iot_config::{
+        server_v1::Protocol, ProtocolPacketRouterV1, RouteV1, ServerV1,
+    };
 
     #[test]
     fn route_to_route_v1_conversion() {
@@ -95,7 +97,7 @@ mod tests {
             server: Some(ServerV1 {
                 host: "".into(),
                 port: 0,
-                protocol: None,
+                protocol: Some(Protocol::PacketRouter(ProtocolPacketRouterV1 {})),
             }),
             max_copies: 999,
             locked: true,
