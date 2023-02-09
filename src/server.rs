@@ -13,11 +13,21 @@ pub mod proto {
 pub type Port = u32;
 pub type GwmpMap = BTreeMap<Region, Port>;
 
-#[derive(Serialize, Clone, Debug, Deserialize, PartialEq, Eq, Default)]
+#[derive(Serialize, Clone, Debug, Deserialize, PartialEq, Eq)]
 pub struct Server {
     pub host: String,
     pub port: Port,
     pub protocol: Option<Protocol>,
+}
+
+impl Default for Server {
+    fn default() -> Self {
+        Self {
+            host: Default::default(),
+            port: Default::default(),
+            protocol: Some(Protocol::default_packet_router()),
+        }
+    }
 }
 
 impl Server {
