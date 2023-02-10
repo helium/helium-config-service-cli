@@ -20,9 +20,9 @@ pub async fn push_params(args: PushRegionParams) -> Result<Msg> {
             .read(&mut byte_buf)
             .context("reading index buffer")?;
 
-        Some(byte_buf)
+        byte_buf
     } else {
-        None
+        vec![]
     };
 
     if !args.commit {
