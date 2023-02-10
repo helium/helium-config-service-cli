@@ -634,9 +634,9 @@ dependencies = [
 
 [[package]]
 name = "helium-crypto"
-version = "0.6.3"
+version = "0.6.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ffbb2b8d00aa39d12669a551275448ecd1ca68f6407c0386dd8de0b35ece653"
+checksum = "e8350f592e44792e955658a58698ef9ce8312887ce517a7ef3b75c1d4c0211ff"
 dependencies = [
  "base64 0.21.0",
  "bs58",
@@ -654,7 +654,7 @@ dependencies = [
 [[package]]
 name = "helium-proto"
 version = "0.1.0"
-source = "git+https://github.com/helium/proto?branch=master#149997d2a74e08679e56c2c892d7e46f2d0d1c46"
+source = "git+https://github.com/helium/proto?branch=master#41c03318556157a7014ffd75d3fa6bb5ed7d3de5"
 dependencies = [
  "bytes",
  "prost",

@@ -6,12 +6,13 @@ use helium_crypto::{Keypair, PublicKey, Sign};
 use helium_proto::{
     services::iot_config::{
         gateway_client, org_client, route_client, session_key_filter_client, ActionV1,
-        LoadRegionReqV1, LoadRegionResV1, OrgCreateHeliumReqV1, OrgCreateRoamerReqV1, OrgGetReqV1,
-        OrgListReqV1, RouteCreateReqV1, RouteDeleteDevaddrRangesReqV1, RouteDeleteEuisReqV1,
-        RouteDeleteReqV1, RouteDevaddrRangesResV1, RouteEuisResV1, RouteGetDevaddrRangesReqV1,
-        RouteGetEuisReqV1, RouteGetReqV1, RouteListReqV1, RouteUpdateDevaddrRangesReqV1,
-        RouteUpdateEuisReqV1, RouteUpdateReqV1, SessionKeyFilterGetReqV1,
-        SessionKeyFilterListReqV1, SessionKeyFilterUpdateReqV1, SessionKeyFilterUpdateResV1,
+        GatewayLoadRegionReqV1, GatewayLoadRegionResV1, OrgCreateHeliumReqV1, OrgCreateRoamerReqV1,
+        OrgGetReqV1, OrgListReqV1, RouteCreateReqV1, RouteDeleteDevaddrRangesReqV1,
+        RouteDeleteEuisReqV1, RouteDeleteReqV1, RouteDevaddrRangesResV1, RouteEuisResV1,
+        RouteGetDevaddrRangesReqV1, RouteGetEuisReqV1, RouteGetReqV1, RouteListReqV1,
+        RouteUpdateDevaddrRangesReqV1, RouteUpdateEuisReqV1, RouteUpdateReqV1,
+        SessionKeyFilterGetReqV1, SessionKeyFilterListReqV1, SessionKeyFilterUpdateReqV1,
+        SessionKeyFilterUpdateResV1,
     },
     Message,
 };
@@ -429,10 +430,10 @@ impl GatewayClient {
         &mut self,
         region: Region,
         params: RegionParams,
-        indexes: Option<Vec<u8>>,
+        indexes: Vec<u8>,
         keypair: &Keypair,
-    ) -> Result<LoadRegionResV1> {
-        let mut request = LoadRegionReqV1 {
+    ) -> Result<GatewayLoadRegionResV1> {
+        let mut request = GatewayLoadRegionReqV1 {
             region: region.into(),
             params: Some(params.into()),
             hex_indexes: indexes,
@@ -481,4 +482,4 @@ impl_sign!(SessionKeyFilterGetReqV1, signature);
 impl_sign!(SessionKeyFilterUpdateReqV1, signature);
 impl_sign!(OrgCreateHeliumReqV1, signature);
 impl_sign!(OrgCreateRoamerReqV1, signature);
-impl_sign!(LoadRegionReqV1, signature);
+impl_sign!(GatewayLoadRegionReqV1, signature);
