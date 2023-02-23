@@ -9,7 +9,7 @@ use std::{
 use super::PushRegionParams;
 
 pub async fn push_params(args: PushRegionParams) -> Result<Msg> {
-    let mut client = client::GatewayClient::new(&args.config_host).await?;
+    let mut client = client::AdminClient::new(&args.config_host).await?;
     let params = RegionParams::from_file(&args.params_file)?;
 
     let index_bytes = if let Some(index_path) = &args.index_file {

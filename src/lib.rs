@@ -1,6 +1,7 @@
 pub mod client;
 pub mod cmds;
 pub mod hex_field;
+pub mod key_type;
 pub mod region;
 pub mod region_params;
 pub mod route;

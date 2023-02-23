@@ -5,8 +5,9 @@ use crate::{
 use helium_crypto::{Keypair, PublicKey, Sign};
 use helium_proto::{
     services::iot_config::{
-        gateway_client, org_client, route_client, session_key_filter_client, ActionV1,
-        GatewayLoadRegionReqV1, GatewayLoadRegionResV1, OrgCreateHeliumReqV1, OrgCreateRoamerReqV1,
+        admin_add_key_req_v1::KeyTypeV1, admin_client, org_client, route_client,
+        session_key_filter_client, ActionV1, AdminAddKeyReqV1, AdminKeyResV1, AdminLoadRegionReqV1,
+        AdminLoadRegionResV1, AdminRemoveKeyReqV1, OrgCreateHeliumReqV1, OrgCreateRoamerReqV1,
         OrgGetReqV1, OrgListReqV1, RouteCreateReqV1, RouteDeleteDevaddrRangesReqV1,
         RouteDeleteEuisReqV1, RouteDeleteReqV1, RouteDevaddrRangesResV1, RouteEuisResV1,
         RouteGetDevaddrRangesReqV1, RouteGetEuisReqV1, RouteGetReqV1, RouteListReqV1,
@@ -29,8 +30,8 @@ pub struct SkfClient {
     client: session_key_filter_client::SessionKeyFilterClient<tonic::transport::Channel>,
 }
 
-pub struct GatewayClient {
-    client: gateway_client::GatewayClient<tonic::transport::Channel>,
+pub struct AdminClient {
+    client: admin_client::AdminClient<tonic::transport::Channel>,
 }
 
 pub type EuiClient = RouteClient;
@@ -419,10 +420,10 @@ impl SkfClient {
     }
 }
 
-impl GatewayClient {
+impl AdminClient {
     pub async fn new(host: &str) -> Result<Self> {
         Ok(Self {
-            client: gateway_client::GatewayClient::connect(host.to_owned()).await?,
+            client: admin_client::AdminClient::connect(host.to_owned()).await?,
         })
     }
 
@@ -432,8 +433,8 @@ impl GatewayClient {
         params: RegionParams,
         indexes: Vec<u8>,
         keypair: &Keypair,
-    ) -> Result<GatewayLoadRegionResV1> {
-        let mut request = GatewayLoadRegionReqV1 {
+    ) -> Result<AdminLoadRegionResV1> {
+        let mut request = AdminLoadRegionReqV1 {
             region: region.into(),
             params: Some(params.into()),
             hex_indexes: indexes,
@@ -441,6 +442,34 @@ impl GatewayClient {
         };
         request.signature = request.sign(keypair)?;
         Ok(self.client.load_region(request).await?.into_inner())
+    }
+
+    pub async fn add_key(
+        &mut self,
+        pubkey: &PublicKey,
+        key_type: KeyTypeV1,
+        keypair: &Keypair,
+    ) -> Result<AdminKeyResV1> {
+        let mut request = AdminAddKeyReqV1 {
+            pubkey: pubkey.into(),
+            key_type: key_type.into(),
+            signature: vec![],
+        };
+        request.signature = request.sign(keypair)?;
+        Ok(self.client.add_key(request).await?.into_inner())
+    }
+
+    pub async fn remove_key(
+        &mut self,
+        pubkey: &PublicKey,
+        keypair: &Keypair,
+    ) -> Result<AdminKeyResV1> {
+        let mut request = AdminRemoveKeyReqV1 {
+            pubkey: pubkey.into(),
+            signature: vec![],
+        };
+        request.signature = request.sign(keypair)?;
+        Ok(self.client.remove_key(request).await?.into_inner())
     }
 }
 
@@ -482,4 +511,6 @@ impl_sign!(SessionKeyFilterGetReqV1, signature);
 impl_sign!(SessionKeyFilterUpdateReqV1, signature);
 impl_sign!(OrgCreateHeliumReqV1, signature);
 impl_sign!(OrgCreateRoamerReqV1, signature);
-impl_sign!(GatewayLoadRegionReqV1, signature);
+impl_sign!(AdminLoadRegionReqV1, signature);
+impl_sign!(AdminAddKeyReqV1, signature);
+impl_sign!(AdminRemoveKeyReqV1, signature);

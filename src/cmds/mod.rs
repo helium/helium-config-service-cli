@@ -1,5 +1,6 @@
 use crate::{
     hex_field::{self, HexNetID},
+    key_type::KeyType,
     region::Region,
     DevaddrConstraint, Msg, Oui, PrettyJson, Result,
 };
@@ -8,6 +9,7 @@ use clap::{Args, Parser, Subcommand};
 use helium_crypto::PublicKey;
 use std::path::PathBuf;
 
+pub mod admin_keys;
 pub mod env;
 pub mod org;
 pub mod region_params;
@@ -75,6 +77,11 @@ pub enum Commands {
     RegionParams {
         #[command(subcommand)]
         command: RegionParamsCommands,
+    },
+    /// Manage signature verifying PublicKeys for auth
+    AdminKeys {
+        #[command(subcommand)]
+        command: AdminKeysCommands,
     },
 }
 
@@ -633,6 +640,40 @@ pub struct PushRegionParams {
     pub params_file: PathBuf,
     #[arg(long)]
     pub index_file: Option<PathBuf>,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum AdminKeysCommands {
+    /// Add a new authorizing admin or network service key to the config service
+    Add(AddAdminKey),
+    /// Remove an authorizing admin or network service key from the config service
+    Remove(RemoveAdminKey),
+}
+
+#[derive(Debug, Args)]
+pub struct AddAdminKey {
+    #[arg(long)]
+    pub pubkey: PublicKey,
+    #[arg(long, value_enum)]
+    pub key_type: KeyType,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct RemoveAdminKey {
+    #[arg(long)]
+    pub pubkey: PublicKey,
     #[arg(from_global)]
     pub keypair: PathBuf,
     #[arg(from_global)]
