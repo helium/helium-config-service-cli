@@ -1,8 +1,7 @@
 use crate::Result;
 use anyhow::anyhow;
 use helium_proto::services::iot_config::admin_add_key_req_v1::KeyTypeV1 as ProtoKeyType;
-use serde::{de, Deserialize, Deserializer, Serialize};
-use std::{fmt, str::FromStr};
+use std::str::FromStr;
 
 #[derive(clap::ValueEnum, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[clap(rename_all = "snake_case")]
@@ -36,42 +35,6 @@ impl FromStr for KeyType {
             "packet_router" => Ok(KeyType::PacketRouter),
             _ => Err(anyhow!("invalid key type {s}")),
         }
-    }
-}
-
-impl Serialize for KeyType {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_str(&format!("{self}"))
-    }
-}
-
-impl<'de> Deserialize<'de> for KeyType {
-    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct KeyTypeVisitor;
-
-        impl<'de> de::Visitor<'de> for KeyTypeVisitor {
-            type Value = KeyType;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("key_type string")
-            }
-
-            fn visit_str<E>(self, value: &str) -> std::result::Result<KeyType, E>
-            where
-                E: de::Error,
-            {
-                KeyType::from_str(value)
-                    .map_err(|_| de::Error::custom(format!("unsupported key type: {value}")))
-            }
-        }
-
-        deserializer.deserialize_str(KeyTypeVisitor)
     }
 }
 
