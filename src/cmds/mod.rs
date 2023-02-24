@@ -701,14 +701,14 @@ impl PathBufKeypair for PathBuf {
 #[derive(clap::ValueEnum, Clone, Debug)]
 #[clap(rename_all = "snake_case")]
 pub enum AdminKeyType {
-    Operator,
+    Administrator,
     PacketRouter,
 }
 
 impl std::fmt::Display for AdminKeyType {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            AdminKeyType::Operator => f.write_str("operator"),
+            AdminKeyType::Administrator => f.write_str("administrator"),
             AdminKeyType::PacketRouter => f.write_str("packet_router"),
         }
     }
@@ -717,7 +717,7 @@ impl std::fmt::Display for AdminKeyType {
 impl From<AdminKeyType> for ProtoAdminKeyType {
     fn from(key_type: AdminKeyType) -> Self {
         match key_type {
-            AdminKeyType::Operator => ProtoAdminKeyType::Operator,
+            AdminKeyType::Administrator => ProtoAdminKeyType::Administrator,
             AdminKeyType::PacketRouter => ProtoAdminKeyType::PacketRouter,
         }
     }
