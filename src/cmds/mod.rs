@@ -1,12 +1,12 @@
 use crate::{
     hex_field::{self, HexNetID},
-    key_type::KeyType,
     region::Region,
     DevaddrConstraint, Msg, Oui, PrettyJson, Result,
 };
 use anyhow::Context;
 use clap::{Args, Parser, Subcommand};
 use helium_crypto::PublicKey;
+use helium_proto::services::iot_config::admin_add_key_req_v1::KeyTypeV1 as ProtoAdminKeyType;
 use std::path::PathBuf;
 
 pub mod admin_keys;
@@ -661,7 +661,7 @@ pub struct AddAdminKey {
     #[arg(long)]
     pub pubkey: PublicKey,
     #[arg(long, value_enum)]
-    pub key_type: KeyType,
+    pub key_type: AdminKeyType,
     #[arg(from_global)]
     pub keypair: PathBuf,
     #[arg(from_global)]
@@ -695,5 +695,30 @@ impl PathBufKeypair for PathBuf {
     fn to_keypair(&self) -> Result<helium_crypto::Keypair> {
         let data = std::fs::read(self).context("reading keypair file")?;
         Ok(helium_crypto::Keypair::try_from(&data[..])?)
+    }
+}
+
+#[derive(clap::ValueEnum, Clone, Debug)]
+#[clap(rename_all = "snake_case")]
+pub enum AdminKeyType {
+    Operator,
+    PacketRouter,
+}
+
+impl std::fmt::Display for AdminKeyType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            AdminKeyType::Operator => f.write_str("operator"),
+            AdminKeyType::PacketRouter => f.write_str("packet_router"),
+        }
+    }
+}
+
+impl From<AdminKeyType> for ProtoAdminKeyType {
+    fn from(key_type: AdminKeyType) -> Self {
+        match key_type {
+            AdminKeyType::Operator => ProtoAdminKeyType::Operator,
+            AdminKeyType::PacketRouter => ProtoAdminKeyType::PacketRouter,
+        }
     }
 }
