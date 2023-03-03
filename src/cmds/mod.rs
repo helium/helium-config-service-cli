@@ -1,16 +1,16 @@
 use crate::{
     hex_field::{self, HexNetID},
     region::Region,
-    DevaddrConstraint, Msg, Oui, PrettyJson, Result,
+    DevaddrConstraint, KeyType, Msg, Oui, PrettyJson, Result,
 };
 use anyhow::Context;
 use clap::{Args, Parser, Subcommand};
 use helium_crypto::PublicKey;
 use std::path::PathBuf;
 
+pub mod admin;
 pub mod env;
 pub mod org;
-pub mod region_params;
 pub mod route;
 pub mod session_key_filter;
 
@@ -71,10 +71,10 @@ pub enum Commands {
     },
     /// Print a Subnet Mask for a given Devaddr Range
     SubnetMask(SubnetMask),
-    /// Region Params
-    RegionParams {
+    /// Admin
+    Admin {
         #[command(subcommand)]
-        command: RegionParamsCommands,
+        command: AdminCommands,
     },
 }
 
@@ -620,19 +620,47 @@ pub struct CreateRoaming {
 }
 
 #[derive(Debug, Subcommand)]
-pub enum RegionParamsCommands {
-    /// Push a region params collection to the config service
-    Push(PushRegionParams),
+pub enum AdminCommands {
+    /// Push a region params collection.
+    LoadRegion(AdminLoadRegionParams),
+    /// Add a pubkey
+    AddKey(AdminAddKey),
+    /// Remove a pubkey
+    RemoveKey(AdminRemoveKey),
 }
 
 #[derive(Debug, Args)]
-pub struct PushRegionParams {
+pub struct AdminLoadRegionParams {
     #[arg(value_enum)]
     pub region: Region,
     #[arg(long)]
     pub params_file: PathBuf,
     #[arg(long)]
     pub index_file: Option<PathBuf>,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct AdminAddKey {
+    #[arg(value_enum)]
+    pub key_type: KeyType,
+    pub pubkey: PublicKey,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct AdminRemoveKey {
+    pub pubkey: PublicKey,
     #[arg(from_global)]
     pub keypair: PathBuf,
     #[arg(from_global)]

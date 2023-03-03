@@ -16,8 +16,8 @@ use subnet::DevaddrConstraint;
 
 pub mod proto {
     pub use helium_proto::services::iot_config::{
-        DevaddrConstraintV1, DevaddrRangeV1, EuiPairV1, OrgListResV1, OrgResV1, OrgV1,
-        RouteListResV1, SessionKeyFilterV1,
+        admin_add_key_req_v1::KeyTypeV1, DevaddrConstraintV1, DevaddrRangeV1, EuiPairV1,
+        OrgListResV1, OrgResV1, OrgV1, RouteListResV1, SessionKeyFilterV1,
     };
 }
 
@@ -177,6 +177,36 @@ impl SessionKeyFilter {
             oui,
             devaddr,
             session_key,
+        }
+    }
+}
+
+#[derive(Debug, clap::ValueEnum, Clone, Copy)]
+pub enum KeyType {
+    Administrator,
+    PacketRouter,
+}
+
+impl From<KeyType> for proto::KeyTypeV1 {
+    fn from(value: KeyType) -> Self {
+        match value {
+            KeyType::Administrator => Self::Administrator,
+            KeyType::PacketRouter => Self::PacketRouter,
+        }
+    }
+}
+
+impl From<KeyType> for i32 {
+    fn from(value: KeyType) -> Self {
+        proto::KeyTypeV1::from(value) as i32
+    }
+}
+
+impl Display for KeyType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            KeyType::Administrator => write!(f, "Administrator"),
+            KeyType::PacketRouter => write!(f, "Packet-Router"),
         }
     }
 }

@@ -6,10 +6,33 @@ use std::{
     io::Read,
 };
 
-use super::PushRegionParams;
+use super::{AdminAddKey, AdminLoadRegionParams, AdminRemoveKey};
 
-pub async fn push_params(args: PushRegionParams) -> Result<Msg> {
-    let mut client = client::GatewayClient::new(&args.config_host).await?;
+pub async fn add_key(args: AdminAddKey) -> Result<Msg> {
+    if args.commit {
+        let mut client = client::AdminClient::new(&args.config_host).await?;
+        client
+            .add_key(&args.pubkey, args.key_type, &args.keypair.to_keypair()?)
+            .await?;
+
+        return Msg::ok(format!("Added {} as {} key", args.pubkey, args.key_type));
+    }
+    Msg::dry_run(format!("Added {} as {} key", args.pubkey, args.key_type))
+}
+
+pub async fn remove_key(args: AdminRemoveKey) -> Result<Msg> {
+    if args.commit {
+        let mut client = client::AdminClient::new(&args.config_host).await?;
+        client
+            .remove_key(&args.pubkey, &args.keypair.to_keypair()?)
+            .await?;
+        return Msg::ok(format!("Removed key {}", args.pubkey));
+    }
+    Msg::dry_run(format!("Removed key {}", args.pubkey))
+}
+
+pub async fn load_region(args: AdminLoadRegionParams) -> Result<Msg> {
+    let mut client = client::AdminClient::new(&args.config_host).await?;
     let params = RegionParams::from_file(&args.params_file)?;
 
     let index_bytes = if let Some(index_path) = &args.index_file {
