@@ -1,18 +1,17 @@
 use crate::{
-    hex_field, region::Region, region_params::RegionParams, route::Route, DevaddrRange, Eui, NetId,
-    OrgList, OrgResponse, Oui, Result, RouteList, SessionKeyFilter,
+    hex_field, region::Region, region_params::RegionParams, route::Route, DevaddrRange, Eui,
+    KeyType, NetId, OrgList, OrgResponse, Oui, Result, RouteList, SessionKeyFilter,
 };
 use helium_crypto::{Keypair, PublicKey, Sign};
 use helium_proto::{
     services::iot_config::{
-        gateway_client, org_client, route_client, session_key_filter_client, ActionV1,
-        GatewayLoadRegionReqV1, GatewayLoadRegionResV1, OrgCreateHeliumReqV1, OrgCreateRoamerReqV1,
-        OrgGetReqV1, OrgListReqV1, RouteCreateReqV1, RouteDeleteDevaddrRangesReqV1,
-        RouteDeleteEuisReqV1, RouteDeleteReqV1, RouteDevaddrRangesResV1, RouteEuisResV1,
-        RouteGetDevaddrRangesReqV1, RouteGetEuisReqV1, RouteGetReqV1, RouteListReqV1,
-        RouteUpdateDevaddrRangesReqV1, RouteUpdateEuisReqV1, RouteUpdateReqV1,
-        SessionKeyFilterGetReqV1, SessionKeyFilterListReqV1, SessionKeyFilterUpdateReqV1,
-        SessionKeyFilterUpdateResV1,
+        admin_client, org_client, route_client, session_key_filter_client, ActionV1,
+        AdminAddKeyReqV1, AdminLoadRegionReqV1, AdminLoadRegionResV1, AdminRemoveKeyReqV1,
+        OrgCreateHeliumReqV1, OrgCreateRoamerReqV1, OrgGetReqV1, OrgListReqV1, RouteCreateReqV1,
+        RouteDeleteReqV1, RouteDevaddrRangesResV1, RouteEuisResV1, RouteGetDevaddrRangesReqV1,
+        RouteGetEuisReqV1, RouteGetReqV1, RouteListReqV1, RouteUpdateDevaddrRangesReqV1,
+        RouteUpdateEuisReqV1, RouteUpdateReqV1, SessionKeyFilterGetReqV1,
+        SessionKeyFilterListReqV1, SessionKeyFilterUpdateReqV1, SessionKeyFilterUpdateResV1,
     },
     Message,
 };
@@ -29,8 +28,8 @@ pub struct SkfClient {
     client: session_key_filter_client::SessionKeyFilterClient<tonic::transport::Channel>,
 }
 
-pub struct GatewayClient {
-    client: gateway_client::GatewayClient<tonic::transport::Channel>,
+pub struct AdminClient {
+    client: admin_client::AdminClient<tonic::transport::Channel>,
 }
 
 pub type EuiClient = RouteClient;
@@ -179,13 +178,8 @@ impl DevaddrClient {
     }
 
     pub async fn delete_devaddrs(&mut self, route_id: String, keypair: &Keypair) -> Result {
-        let mut request = RouteDeleteDevaddrRangesReqV1 {
-            route_id,
-            timestamp: current_timestamp()?,
-            signature: vec![],
-        };
-        request.signature = request.sign(keypair)?;
-        self.client.delete_devaddr_ranges(request).await?;
+        let devaddrs = self.get_devaddrs(&route_id, keypair).await?;
+        self.remove_devaddrs(devaddrs, keypair).await?;
         Ok(())
     }
 }
@@ -251,13 +245,8 @@ impl EuiClient {
     }
 
     pub async fn delete_euis(&mut self, route_id: String, keypair: &Keypair) -> Result {
-        let mut request = RouteDeleteEuisReqV1 {
-            route_id,
-            timestamp: current_timestamp()?,
-            signature: vec![],
-        };
-        request.signature = request.sign(keypair)?;
-        self.client.delete_euis(request).await?;
+        let euis = self.get_euis(&route_id, keypair).await?;
+        self.remove_euis(euis, keypair).await?;
         Ok(())
     }
 }
@@ -419,11 +408,37 @@ impl SkfClient {
     }
 }
 
-impl GatewayClient {
+impl AdminClient {
     pub async fn new(host: &str) -> Result<Self> {
         Ok(Self {
-            client: gateway_client::GatewayClient::connect(host.to_owned()).await?,
+            client: admin_client::AdminClient::connect(host.to_owned()).await?,
         })
+    }
+
+    pub async fn add_key(
+        &mut self,
+        pubkey: &PublicKey,
+        key_type: KeyType,
+        keypair: &Keypair,
+    ) -> Result {
+        let mut request = AdminAddKeyReqV1 {
+            pubkey: pubkey.into(),
+            key_type: key_type.into(),
+            signature: vec![],
+        };
+        request.signature = request.sign(keypair)?;
+        self.client.add_key(request).await?;
+        Ok(())
+    }
+
+    pub async fn remove_key(&mut self, pubkey: &PublicKey, keypair: &Keypair) -> Result {
+        let mut request = AdminRemoveKeyReqV1 {
+            pubkey: pubkey.into(),
+            signature: vec![],
+        };
+        request.signature = request.sign(keypair)?;
+        self.client.remove_key(request).await?;
+        Ok(())
     }
 
     pub async fn load_region(
@@ -432,8 +447,8 @@ impl GatewayClient {
         params: RegionParams,
         indexes: Vec<u8>,
         keypair: &Keypair,
-    ) -> Result<GatewayLoadRegionResV1> {
-        let mut request = GatewayLoadRegionReqV1 {
+    ) -> Result<AdminLoadRegionResV1> {
+        let mut request = AdminLoadRegionReqV1 {
             region: region.into(),
             params: Some(params.into()),
             hex_indexes: indexes,
@@ -473,13 +488,13 @@ impl_sign!(RouteDeleteReqV1, signature);
 impl_sign!(RouteUpdateReqV1, signature);
 impl_sign!(RouteUpdateDevaddrRangesReqV1, signature);
 impl_sign!(RouteGetEuisReqV1, signature);
-impl_sign!(RouteDeleteEuisReqV1, signature);
 impl_sign!(RouteUpdateEuisReqV1, signature);
 impl_sign!(RouteGetDevaddrRangesReqV1, signature);
-impl_sign!(RouteDeleteDevaddrRangesReqV1, signature);
 impl_sign!(SessionKeyFilterListReqV1, signature);
 impl_sign!(SessionKeyFilterGetReqV1, signature);
 impl_sign!(SessionKeyFilterUpdateReqV1, signature);
 impl_sign!(OrgCreateHeliumReqV1, signature);
 impl_sign!(OrgCreateRoamerReqV1, signature);
-impl_sign!(GatewayLoadRegionReqV1, signature);
+impl_sign!(AdminLoadRegionReqV1, signature);
+impl_sign!(AdminAddKeyReqV1, signature);
+impl_sign!(AdminRemoveKeyReqV1, signature);
