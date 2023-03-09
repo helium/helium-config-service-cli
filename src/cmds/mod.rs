@@ -149,7 +149,7 @@ pub struct GetRoute {
 
 #[derive(Debug, Args)]
 pub struct NewRoute {
-    #[arg(long, env = ENV_NET_ID, default_value = "C00053")]
+    #[arg(long, env = ENV_NET_ID, default_value = "000024")]
     pub net_id: HexNetID,
     #[arg(long, env = ENV_OUI)]
     pub oui: Oui,
