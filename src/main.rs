@@ -70,8 +70,8 @@ pub async fn handle_cli(cli: Cli) -> Result<Msg> {
         Commands::SubnetMask(args) => cmds::subnet_mask(args),
         Commands::Admin { command } => match command {
             cmds::AdminCommands::LoadRegion(args) => admin::load_region(args).await,
-            cmds::AdminCommands::AddKey(_) => todo!(),
-            cmds::AdminCommands::RemoveKey(_) => todo!(),
+            cmds::AdminCommands::AddKey(args) => admin::add_key(args).await,
+            cmds::AdminCommands::RemoveKey(args) => admin::remove_key(args).await,
         },
     }
 }
