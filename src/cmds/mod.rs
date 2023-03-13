@@ -389,6 +389,7 @@ pub struct AddFilter {
     pub oui: Oui,
     #[arg(short, long, value_parser = hex_field::validate_devaddr)]
     pub devaddr: hex_field::HexDevAddr,
+    /// Hex encoded session key
     #[arg(short, long)]
     pub session_key: String,
     #[arg(from_global)]
@@ -406,6 +407,7 @@ pub struct RemoveFilter {
     pub oui: Oui,
     #[arg(short, long, value_parser = hex_field::validate_devaddr)]
     pub devaddr: hex_field::HexDevAddr,
+    /// Hex encoded session key
     #[arg(short, long)]
     pub session_key: String,
     #[arg(from_global)]

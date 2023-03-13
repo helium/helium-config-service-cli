@@ -654,7 +654,7 @@ dependencies = [
 [[package]]
 name = "helium-proto"
 version = "0.1.0"
-source = "git+https://github.com/helium/proto?branch=master#e1f810224509ce1c141ae78c8589ab3740231ee1"
+source = "git+https://github.com/helium/proto?branch=jg/skfs-as-hex#f939feae37806068c24315c6f7036ca336510da2"
 dependencies = [
  "bytes",
  "prost",
@@ -1055,9 +1055,9 @@ dependencies = [
 
 [[package]]
 name = "prettyplease"
-version = "0.1.21"
+version = "0.1.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c142c0e46b57171fe0c528bee8c5b7569e80f0c17e377cd0e30ea57dbc11bb51"
+checksum = "4ebcd279d20a4a0a2404a33056388e950504d891c855c7975b9a8fef75f3bf04"
 dependencies = [
  "proc-macro2",
  "syn",
