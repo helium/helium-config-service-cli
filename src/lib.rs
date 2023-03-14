@@ -216,7 +216,7 @@ impl From<proto::SessionKeyFilterV1> for SessionKeyFilter {
         Self {
             oui: filter.oui,
             devaddr: (filter.devaddr as u64).into(),
-            session_key: String::from_utf8(filter.session_key).unwrap(),
+            session_key: filter.session_key,
         }
     }
 }
@@ -226,7 +226,7 @@ impl From<SessionKeyFilter> for proto::SessionKeyFilterV1 {
         Self {
             oui: filter.oui,
             devaddr: filter.devaddr.0 as u32,
-            session_key: filter.session_key.into(),
+            session_key: filter.session_key,
         }
     }
 }
