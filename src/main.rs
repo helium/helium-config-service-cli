@@ -13,6 +13,10 @@ use helium_config_service_cli::{
 async fn main() -> Result {
     let cli = Cli::parse();
 
+    if cli.print_command {
+        println!("{cli:#?}");
+    }
+
     let msg = handle_cli(cli).await?;
     println!("{msg}");
 

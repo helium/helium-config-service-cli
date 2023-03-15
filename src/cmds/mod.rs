@@ -42,6 +42,9 @@ pub struct Cli {
         default_value = "./keypair.bin"
     )]
     pub keypair: PathBuf,
+
+    #[arg(global = true, long)]
+    pub print_command: bool,
 }
 
 #[derive(Debug, Subcommand)]
