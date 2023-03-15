@@ -654,7 +654,7 @@ dependencies = [
 [[package]]
 name = "helium-proto"
 version = "0.1.0"
-source = "git+https://github.com/helium/proto?branch=jg/skfs-as-hex#f939feae37806068c24315c6f7036ca336510da2"
+source = "git+https://github.com/helium/proto?branch=master#4afcaaea25bde4e333f1e57fc32f163910e8ca0a"
 dependencies = [
  "bytes",
  "prost",
