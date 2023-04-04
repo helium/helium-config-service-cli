@@ -1,4 +1,5 @@
 use crate::{
+    cmds::env::NetworkArg,
     hex_field::{self, HexNetID},
     region::Region,
     DevaddrConstraint, KeyType, Msg, Oui, PrettyJson, Result,
@@ -573,6 +574,9 @@ pub struct GenerateKeypair {
     #[arg(default_value = "./keypair.bin")]
     pub out_file: PathBuf,
 
+    /// The helium network for which to issue keys
+    #[arg(long, short, value_enum, default_value = "mainnet")]
+    pub network: NetworkArg,
     /// overwrite <out_file> if it already exists
     #[arg(long)]
     pub commit: bool,

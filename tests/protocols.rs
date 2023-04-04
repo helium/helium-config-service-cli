@@ -79,7 +79,7 @@ async fn create_route_and_update_server() -> Result {
     // Set GWMP protocol
     let out4 = cmds::route::add_gwmp_region(AddGwmpRegion {
         route_id: route.id.clone(),
-        region: helium_config_service_cli::region::Region::As9231a,
+        region: helium_config_service_cli::region::Region::As923_1a,
         region_port: 9001,
         keypair: keypair_path.clone(),
         config_host: config_host.clone(),
@@ -115,7 +115,7 @@ async fn create_route_and_update_server() -> Result {
 
     let out6 = cmds::route::remove_gwmp_region(RemoveGwmpRegion {
         route_id: route.id.clone(),
-        region: helium_config_service_cli::region::Region::As9231a,
+        region: helium_config_service_cli::region::Region::As923_1a,
         keypair: keypair_path.clone(),
         config_host: config_host.clone(),
         commit: true,

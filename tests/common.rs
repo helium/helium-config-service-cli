@@ -27,6 +27,7 @@ pub const CONFIG_HOST: &str = "http://127.0.0.1:50051";
 
 pub fn generate_keypair(path: PathBuf) -> Result<PublicKey> {
     let out = cmds::env::generate_keypair(cmds::GenerateKeypair {
+        network: cmds::env::NetworkArg::Mainnet,
         out_file: path.clone(),
         commit: true,
     })?;
