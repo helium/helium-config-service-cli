@@ -3,54 +3,67 @@ use crate::{
     KeyType, NetId, OrgList, OrgResponse, Oui, Result, RouteList, SessionKeyFilter,
 };
 use anyhow::anyhow;
-use helium_crypto::{Keypair, PublicKey, Sign};
+use helium_crypto::{Keypair, PublicKey, Sign, Verify};
 use helium_proto::{
     services::iot_config::{
         admin_client, org_client, route_client, session_key_filter_client, ActionV1,
-        AdminAddKeyReqV1, AdminLoadRegionReqV1, AdminLoadRegionResV1, AdminRemoveKeyReqV1,
-        OrgCreateHeliumReqV1, OrgCreateRoamerReqV1, OrgGetReqV1, OrgListReqV1, RouteCreateReqV1,
-        RouteDeleteReqV1, RouteDevaddrRangesResV1, RouteEuisResV1, RouteGetDevaddrRangesReqV1,
-        RouteGetEuisReqV1, RouteGetReqV1, RouteListReqV1, RouteUpdateDevaddrRangesReqV1,
+        AdminAddKeyReqV1, AdminKeyResV1, AdminLoadRegionReqV1, AdminLoadRegionResV1,
+        AdminRemoveKeyReqV1, OrgCreateHeliumReqV1, OrgCreateRoamerReqV1, OrgGetReqV1, OrgListReqV1,
+        OrgListResV1, OrgResV1, RouteCreateReqV1, RouteDeleteReqV1, RouteDevaddrRangesResV1,
+        RouteEuisResV1, RouteGetDevaddrRangesReqV1, RouteGetEuisReqV1, RouteGetReqV1,
+        RouteListReqV1, RouteListResV1, RouteResV1, RouteUpdateDevaddrRangesReqV1,
         RouteUpdateEuisReqV1, RouteUpdateReqV1, SessionKeyFilterGetReqV1,
         SessionKeyFilterListReqV1, SessionKeyFilterUpdateReqV1, SessionKeyFilterUpdateResV1,
     },
     Message,
 };
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::{
+    str::FromStr,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 pub struct OrgClient {
     client: org_client::OrgClient<tonic::transport::Channel>,
+    server_pubkey: PublicKey,
 }
 pub struct RouteClient {
     client: route_client::RouteClient<tonic::transport::Channel>,
+    server_pubkey: PublicKey,
 }
 
 pub struct SkfClient {
     client: session_key_filter_client::SessionKeyFilterClient<tonic::transport::Channel>,
+    server_pubkey: PublicKey,
 }
 
 pub struct AdminClient {
     client: admin_client::AdminClient<tonic::transport::Channel>,
+    server_pubkey: PublicKey,
 }
 
 pub type EuiClient = RouteClient;
 pub type DevaddrClient = RouteClient;
 
 impl OrgClient {
-    pub async fn new(host: &str) -> Result<Self> {
+    pub async fn new(host: &str, server_pubkey: &str) -> Result<Self> {
         Ok(Self {
             client: org_client::OrgClient::connect(host.to_owned()).await?,
+            server_pubkey: helium_crypto::PublicKey::from_str(server_pubkey)?,
         })
     }
 
     pub async fn list(&mut self) -> Result<OrgList> {
         let request = OrgListReqV1 {};
-        Ok(self.client.list(request).await?.into_inner().into())
+        let response = self.client.list(request).await?.into_inner();
+        response.verify(&self.server_pubkey)?;
+        Ok(response.into())
     }
 
     pub async fn get(&mut self, oui: Oui) -> Result<OrgResponse> {
         let request = OrgGetReqV1 { oui };
-        Ok(self.client.get(request).await?.into_inner().into())
+        let response = self.client.get(request).await?.into_inner();
+        response.verify(&self.server_pubkey)?;
+        Ok(response.into())
     }
 
     pub async fn create_helium(
@@ -71,12 +84,9 @@ impl OrgClient {
             signature: vec![],
         };
         request.signature = request.sign(keypair)?;
-        Ok(self
-            .client
-            .create_helium(request)
-            .await?
-            .into_inner()
-            .into())
+        let response = self.client.create_helium(request).await?.into_inner();
+        response.verify(&self.server_pubkey)?;
+        Ok(response.into())
     }
 
     pub async fn create_roamer(
@@ -97,12 +107,9 @@ impl OrgClient {
             signature: vec![],
         };
         request.signature = request.sign(&keypair)?;
-        Ok(self
-            .client
-            .create_roamer(request)
-            .await?
-            .into_inner()
-            .into())
+        let response = self.client.create_roamer(request).await?.into_inner();
+        response.verify(&self.server_pubkey)?;
+        Ok(response.into())
     }
 }
 
@@ -151,11 +158,13 @@ impl DevaddrClient {
             })
             .collect();
         let request = futures::stream::iter(route_devaddrs);
-        Ok(self
+        let response = self
             .client
             .update_devaddr_ranges(request)
             .await?
-            .into_inner())
+            .into_inner();
+        response.verify(&self.server_pubkey)?;
+        Ok(response)
     }
 
     pub async fn remove_devaddrs(
@@ -180,11 +189,13 @@ impl DevaddrClient {
             })
             .collect();
         let request = futures::stream::iter(route_devaddrs);
-        Ok(self
+        let response = self
             .client
             .update_devaddr_ranges(request)
             .await?
-            .into_inner())
+            .into_inner();
+        response.verify(&self.server_pubkey)?;
+        Ok(response)
     }
 
     pub async fn delete_devaddrs(&mut self, route_id: String, keypair: &Keypair) -> Result {
@@ -231,7 +242,9 @@ impl EuiClient {
             })
             .collect();
         let request = futures::stream::iter(route_euis);
-        Ok(self.client.update_euis(request).await?.into_inner())
+        let response = self.client.update_euis(request).await?.into_inner();
+        response.verify(&self.server_pubkey)?;
+        Ok(response)
     }
 
     pub async fn remove_euis(
@@ -256,7 +269,9 @@ impl EuiClient {
             })
             .collect();
         let request = futures::stream::iter(route_euis);
-        Ok(self.client.update_euis(request).await?.into_inner())
+        let response = self.client.update_euis(request).await?.into_inner();
+        response.verify(&self.server_pubkey)?;
+        Ok(response)
     }
 
     pub async fn delete_euis(&mut self, route_id: String, keypair: &Keypair) -> Result {
@@ -267,9 +282,10 @@ impl EuiClient {
 }
 
 impl RouteClient {
-    pub async fn new(host: &str) -> Result<Self> {
+    pub async fn new(host: &str, server_pubkey: &str) -> Result<Self> {
         Ok(Self {
             client: route_client::RouteClient::connect(host.to_owned()).await?,
+            server_pubkey: helium_crypto::PublicKey::from_str(server_pubkey)?,
         })
     }
 
@@ -281,7 +297,9 @@ impl RouteClient {
             signature: vec![],
         };
         request.signature = request.sign(keypair)?;
-        Ok(self.client.list(request).await?.into_inner().into())
+        let response = self.client.list(request).await?.into_inner();
+        response.verify(&self.server_pubkey)?;
+        Ok(response.into())
     }
 
     pub async fn get(&mut self, id: &str, keypair: &Keypair) -> Result<Route> {
@@ -292,10 +310,9 @@ impl RouteClient {
             timestamp: current_timestamp()?,
         };
         request.signature = request.sign(keypair)?;
-        self.client
-            .get(request)
-            .await?
-            .into_inner()
+        let response = self.client.get(request).await?.into_inner();
+        response.verify(&self.server_pubkey)?;
+        response
             .route
             .map(Route::from)
             .ok_or(anyhow!("Route get failed"))
@@ -310,10 +327,9 @@ impl RouteClient {
             signature: vec![],
         };
         request.signature = request.sign(keypair)?;
-        self.client
-            .create(request)
-            .await?
-            .into_inner()
+        let response = self.client.create(request).await?.into_inner();
+        response.verify(&self.server_pubkey)?;
+        response
             .route
             .map(Route::from)
             .ok_or(anyhow!("Route create failed"))
@@ -327,10 +343,9 @@ impl RouteClient {
             signature: vec![],
         };
         request.signature = request.sign(keypair)?;
-        self.client
-            .delete(request)
-            .await?
-            .into_inner()
+        let response = self.client.delete(request).await?.into_inner();
+        response.verify(&self.server_pubkey)?;
+        response
             .route
             .map(Route::from)
             .ok_or(anyhow!("Route delete failed"))
@@ -344,10 +359,9 @@ impl RouteClient {
             signature: vec![],
         };
         request.signature = request.sign(keypair)?;
-        self.client
-            .update(request)
-            .await?
-            .into_inner()
+        let response = self.client.update(request).await?.into_inner();
+        response.verify(&self.server_pubkey)?;
+        response
             .route
             .map(Route::from)
             .ok_or(anyhow!("Route update push failed"))
@@ -355,10 +369,11 @@ impl RouteClient {
 }
 
 impl SkfClient {
-    pub async fn new(host: &str) -> Result<Self> {
+    pub async fn new(host: &str, server_pubkey: &str) -> Result<Self> {
         Ok(Self {
             client: session_key_filter_client::SessionKeyFilterClient::connect(host.to_owned())
                 .await?,
+            server_pubkey: helium_crypto::PublicKey::from_str(server_pubkey)?,
         })
     }
 
@@ -429,7 +444,9 @@ impl SkfClient {
             })
             .collect();
         let request = futures::stream::iter(filters);
-        Ok(self.client.update(request).await?.into_inner())
+        let response = self.client.update(request).await?.into_inner();
+        response.verify(&self.server_pubkey)?;
+        Ok(response)
     }
 
     pub async fn remove_filters(
@@ -454,14 +471,17 @@ impl SkfClient {
             })
             .collect();
         let request = futures::stream::iter(filters);
-        Ok(self.client.update(request).await?.into_inner())
+        let response = self.client.update(request).await?.into_inner();
+        response.verify(&self.server_pubkey)?;
+        Ok(response)
     }
 }
 
 impl AdminClient {
-    pub async fn new(host: &str) -> Result<Self> {
+    pub async fn new(host: &str, server_pubkey: &str) -> Result<Self> {
         Ok(Self {
             client: admin_client::AdminClient::connect(host.to_owned()).await?,
+            server_pubkey: helium_crypto::PublicKey::from_str(server_pubkey)?,
         })
     }
 
@@ -478,8 +498,11 @@ impl AdminClient {
             signature: vec![],
         };
         request.signature = request.sign(keypair)?;
-        self.client.add_key(request).await?;
-        Ok(())
+        self.client
+            .add_key(request)
+            .await?
+            .into_inner()
+            .verify(&self.server_pubkey)
     }
 
     pub async fn remove_key(&mut self, pubkey: &PublicKey, keypair: &Keypair) -> Result {
@@ -489,8 +512,11 @@ impl AdminClient {
             signature: vec![],
         };
         request.signature = request.sign(keypair)?;
-        self.client.remove_key(request).await?;
-        Ok(())
+        self.client
+            .remove_key(request)
+            .await?
+            .into_inner()
+            .verify(&self.server_pubkey)
     }
 
     pub async fn load_region(
@@ -499,7 +525,7 @@ impl AdminClient {
         params: RegionParams,
         indexes: Vec<u8>,
         keypair: &Keypair,
-    ) -> Result<AdminLoadRegionResV1> {
+    ) -> Result {
         let mut request = AdminLoadRegionReqV1 {
             region: region.into(),
             params: Some(params.into()),
@@ -508,7 +534,11 @@ impl AdminClient {
             signature: vec![],
         };
         request.signature = request.sign(keypair)?;
-        Ok(self.client.load_region(request).await?.into_inner())
+        self.client
+            .load_region(request)
+            .await?
+            .into_inner()
+            .verify(&self.server_pubkey)
     }
 }
 
@@ -523,12 +553,12 @@ pub trait MsgSign: Message + std::clone::Clone {
 }
 
 macro_rules! impl_sign {
-    ($txn_type:ty, $( $sig: ident ),+ ) => {
-        impl MsgSign for $txn_type {
+    ($msg_type:ty, $( $sig: ident ),+ ) => {
+        impl MsgSign for $msg_type {
             fn sign(&self, keypair: &Keypair) -> Result<Vec<u8>> {
-                let mut txn = self.clone();
-                $(txn.$sig = vec![];)+
-                Ok(keypair.sign(&txn.encode_to_vec())?)
+                let mut msg = self.clone();
+                $(msg.$sig = vec![];)+
+                Ok(keypair.sign(&msg.encode_to_vec())?)
             }
         }
     }
@@ -551,3 +581,35 @@ impl_sign!(OrgCreateRoamerReqV1, signature);
 impl_sign!(AdminLoadRegionReqV1, signature);
 impl_sign!(AdminAddKeyReqV1, signature);
 impl_sign!(AdminRemoveKeyReqV1, signature);
+
+pub trait MsgVerify: Message + std::clone::Clone {
+    fn verify(&self, verifier: &PublicKey) -> Result
+    where
+        Self: std::marker::Sized;
+}
+
+macro_rules! impl_verify {
+    ($msg_type:ty, $sig: ident) => {
+        impl MsgVerify for $msg_type {
+            fn verify(&self, verifier: &PublicKey) -> Result {
+                let mut buf = vec![];
+                let mut msg = self.clone();
+                msg.$sig = vec![];
+                msg.encode(&mut buf)?;
+                verifier
+                    .verify(&buf, &self.$sig)
+                    .map_err(anyhow::Error::from)
+            }
+        }
+    };
+}
+
+impl_verify!(OrgListResV1, signature);
+impl_verify!(OrgResV1, signature);
+impl_verify!(RouteDevaddrRangesResV1, signature);
+impl_verify!(RouteEuisResV1, signature);
+impl_verify!(RouteListResV1, signature);
+impl_verify!(RouteResV1, signature);
+impl_verify!(SessionKeyFilterUpdateResV1, signature);
+impl_verify!(AdminKeyResV1, signature);
+impl_verify!(AdminLoadRegionResV1, signature);

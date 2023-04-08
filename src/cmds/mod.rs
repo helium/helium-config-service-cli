@@ -16,6 +16,7 @@ pub mod route;
 pub mod session_key_filter;
 
 pub const ENV_CONFIG_HOST: &str = "HELIUM_CONFIG_HOST";
+pub const ENV_CONFIG_PUBKEY: &str = "HELIUM_CONFIG_PUBKEY";
 pub const ENV_KEYPAIR_BIN: &str = "HELIUM_KEYPAIR_BIN";
 pub const ENV_NET_ID: &str = "HELIUM_NET_ID";
 pub const ENV_OUI: &str = "HELIUM_OUI";
@@ -32,9 +33,17 @@ pub struct Cli {
         global = true,
         long,
         env = ENV_CONFIG_HOST,
-        default_value = "http://50.18.149.124:50051"
+        default_value = "http://mainnet-config.helium.io:6080"
     )]
     pub config_host: String,
+
+    #[arg(
+        global = true,
+        long,
+        env = ENV_CONFIG_PUBKEY,
+        default_value = "137oJzq1qZpSbzHawaysTGGsRCYTXG1MiTMQNxYSsQJp4YMDdN8"
+    )]
+    pub config_pubkey: String,
 
     #[arg(
         global = true,
@@ -137,6 +146,8 @@ pub struct ListRoutes {
     pub keypair: PathBuf,
     #[arg(from_global)]
     pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
     #[arg(long)]
     pub commit: bool,
 }
@@ -149,6 +160,8 @@ pub struct GetRoute {
     pub keypair: PathBuf,
     #[arg(from_global)]
     pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
 }
 
 #[derive(Debug, Args)]
@@ -164,6 +177,8 @@ pub struct NewRoute {
     pub keypair: PathBuf,
     #[arg(from_global)]
     pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
     #[arg(long)]
     pub commit: bool,
 }
@@ -176,6 +191,8 @@ pub struct DeleteRoute {
     pub keypair: PathBuf,
     #[arg(from_global)]
     pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
     #[arg(long)]
     pub commit: bool,
 }
@@ -188,6 +205,8 @@ pub struct ActivateRoute {
     pub keypair: PathBuf,
     #[arg(from_global)]
     pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
     #[arg(long)]
     pub commit: bool,
 }
@@ -200,6 +219,8 @@ pub struct DeactivateRoute {
     pub keypair: PathBuf,
     #[arg(from_global)]
     pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
     #[arg(long)]
     pub commit: bool,
 }
@@ -233,6 +254,8 @@ pub struct UpdateMaxCopies {
     pub keypair: PathBuf,
     #[arg(from_global)]
     pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
     #[arg(long)]
     pub commit: bool,
 }
@@ -249,6 +272,8 @@ pub struct UpdateServer {
     pub keypair: PathBuf,
     #[arg(from_global)]
     pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
     #[arg(long)]
     pub commit: bool,
 }
@@ -272,6 +297,8 @@ pub struct UpdateHttp {
     pub keypair: PathBuf,
     #[arg(from_global)]
     pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
     #[arg(long)]
     pub commit: bool,
 }
@@ -284,6 +311,8 @@ pub struct UpdatePacketRouter {
     pub keypair: PathBuf,
     #[arg(from_global)]
     pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
     #[arg(long)]
     pub commit: bool,
 }
@@ -300,6 +329,8 @@ pub struct AddGwmpRegion {
     pub keypair: PathBuf,
     #[arg(from_global)]
     pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
     #[arg(long)]
     pub commit: bool,
 }
@@ -315,6 +346,8 @@ pub struct RemoveGwmpRegion {
     pub keypair: PathBuf,
     #[arg(from_global)]
     pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
     #[arg(long)]
     pub commit: bool,
 }
@@ -373,6 +406,8 @@ pub struct ListFilters {
     pub keypair: PathBuf,
     #[arg(from_global)]
     pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
 }
 
 #[derive(Debug, Args)]
@@ -385,6 +420,8 @@ pub struct GetFilters {
     pub keypair: PathBuf,
     #[arg(from_global)]
     pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
 }
 
 #[derive(Debug, Args)]
@@ -398,6 +435,8 @@ pub struct AddFilter {
     pub session_key: String,
     #[arg(from_global)]
     pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
     #[arg(from_global)]
     pub keypair: PathBuf,
     /// Add EUI entry to a Route
@@ -417,6 +456,8 @@ pub struct RemoveFilter {
     #[arg(from_global)]
     pub config_host: String,
     #[arg(from_global)]
+    pub config_pubkey: String,
+    #[arg(from_global)]
     pub keypair: PathBuf,
     /// Add EUI entry to a Route
     #[arg(short, long)]
@@ -431,6 +472,8 @@ pub struct ListEuis {
     pub keypair: PathBuf,
     #[arg(from_global)]
     pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
 }
 
 #[derive(Debug, Args)]
@@ -443,6 +486,8 @@ pub struct AddEui {
     pub route_id: String,
     #[arg(from_global)]
     pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
     #[arg(from_global)]
     pub keypair: PathBuf,
     /// Add EUI entry to a Route
@@ -461,6 +506,8 @@ pub struct RemoveEui {
     #[arg(from_global)]
     pub config_host: String,
     #[arg(from_global)]
+    pub config_pubkey: String,
+    #[arg(from_global)]
     pub keypair: PathBuf,
     /// Remove EUI entry from the Route
     #[arg(short, long)]
@@ -475,6 +522,8 @@ pub struct ClearEuis {
     pub keypair: PathBuf,
     #[arg(from_global)]
     pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
     /// Remove ALL EUIs from a Route
     #[arg(short, long)]
     pub commit: bool,
@@ -488,6 +537,8 @@ pub struct ListDevaddrs {
     pub keypair: PathBuf,
     #[arg(from_global)]
     pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
 }
 
 #[derive(Debug, Args)]
@@ -500,6 +551,8 @@ pub struct AddDevaddr {
     pub route_id: String,
     #[arg(from_global)]
     pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
     #[arg(from_global)]
     pub keypair: PathBuf,
     /// Add Devaddr entry to a Route
@@ -518,6 +571,8 @@ pub struct RemoveDevaddr {
     #[arg(from_global)]
     pub config_host: String,
     #[arg(from_global)]
+    pub config_pubkey: String,
+    #[arg(from_global)]
     pub keypair: PathBuf,
     /// Remove Devaddr entry from a Route
     #[arg(short, long)]
@@ -532,6 +587,8 @@ pub struct ClearDevaddrs {
     pub keypair: PathBuf,
     #[arg(from_global)]
     pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
     /// Remove ALL Devaddrs from a route
     #[arg(short, long)]
     pub commit: bool,
@@ -545,6 +602,8 @@ pub struct RouteSubnetMask {
     pub keypair: PathBuf,
     #[arg(from_global)]
     pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
 }
 
 #[derive(Debug, Args)]
@@ -586,6 +645,8 @@ pub struct GenerateKeypair {
 pub struct ListOrgs {
     #[arg(from_global)]
     pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
 }
 
 #[derive(Debug, Args)]
@@ -594,6 +655,8 @@ pub struct GetOrg {
     pub oui: Oui,
     #[arg(from_global)]
     pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
 }
 
 #[derive(Debug, Args)]
@@ -610,6 +673,8 @@ pub struct CreateHelium {
     pub keypair: PathBuf,
     #[arg(from_global)]
     pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
     #[arg(long)]
     pub commit: bool,
 }
@@ -628,6 +693,8 @@ pub struct CreateRoaming {
     pub keypair: PathBuf,
     #[arg(from_global)]
     pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
     #[arg(long)]
     pub commit: bool,
 }
@@ -654,6 +721,8 @@ pub struct AdminLoadRegionParams {
     pub keypair: PathBuf,
     #[arg(from_global)]
     pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
     #[arg(long)]
     pub commit: bool,
 }
@@ -667,6 +736,8 @@ pub struct AdminAddKey {
     pub keypair: PathBuf,
     #[arg(from_global)]
     pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
     #[arg(long)]
     pub commit: bool,
 }
@@ -678,6 +749,8 @@ pub struct AdminRemoveKey {
     pub keypair: PathBuf,
     #[arg(from_global)]
     pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
     #[arg(long)]
     pub commit: bool,
 }

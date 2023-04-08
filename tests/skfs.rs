@@ -16,8 +16,9 @@ async fn create_org_and_add_remove_session_key_filtesr() -> Result {
     let working_dir = TempDir::new()?;
     let keypair_path = working_dir.child("keypair.bin");
     let config_host = common::CONFIG_HOST.to_string();
+    let config_pubkey = common::CONFIG_PUBKEY.to_string();
 
-    let mut skf_client = client::SkfClient::new(&config_host).await?;
+    let mut skf_client = client::SkfClient::new(&config_host, &config_pubkey).await?;
 
     // Generate keypair
     let public_key = common::generate_keypair(keypair_path.clone())?;
@@ -31,6 +32,7 @@ async fn create_org_and_add_remove_session_key_filtesr() -> Result {
         oui: org_res.org.oui,
         keypair: keypair_path.clone(),
         config_host: config_host.clone(),
+        config_pubkey: config_pubkey.clone(),
     })
     .await?;
     info!("empty list: {out}");
@@ -45,6 +47,7 @@ async fn create_org_and_add_remove_session_key_filtesr() -> Result {
         devaddr: hex_field::devaddr(1),
         session_key: "key-one".to_string(),
         config_host: config_host.clone(),
+        config_pubkey: config_pubkey.clone(),
         keypair: keypair_path.clone(),
         commit: true,
     })
@@ -56,6 +59,7 @@ async fn create_org_and_add_remove_session_key_filtesr() -> Result {
         devaddr: hex_field::devaddr(2),
         session_key: "key-two".to_string(),
         config_host: config_host.clone(),
+        config_pubkey: config_pubkey.clone(),
         keypair: keypair_path.clone(),
         commit: true,
     })
@@ -67,6 +71,7 @@ async fn create_org_and_add_remove_session_key_filtesr() -> Result {
         oui: org_res.org.oui,
         keypair: keypair_path.clone(),
         config_host: config_host.clone(),
+        config_pubkey: config_pubkey.clone(),
     })
     .await?;
     info!("list of 2: {out}");
@@ -81,6 +86,7 @@ async fn create_org_and_add_remove_session_key_filtesr() -> Result {
         devaddr: hex_field::devaddr(1),
         keypair: keypair_path.clone(),
         config_host: config_host.clone(),
+        config_pubkey: config_pubkey.clone(),
     })
     .await?;
     info!("get, list of 1: {out}");
@@ -99,6 +105,7 @@ async fn create_org_and_add_remove_session_key_filtesr() -> Result {
         devaddr: hex_field::devaddr(1),
         session_key: "key-one".to_string(),
         config_host: config_host.clone(),
+        config_pubkey: config_pubkey.clone(),
         keypair: keypair_path.clone(),
         commit: true,
     })
@@ -110,6 +117,7 @@ async fn create_org_and_add_remove_session_key_filtesr() -> Result {
         devaddr: hex_field::devaddr(2),
         session_key: "key-two".to_string(),
         config_host: config_host.clone(),
+        config_pubkey: config_pubkey.clone(),
         keypair: keypair_path.clone(),
         commit: true,
     })
@@ -121,6 +129,7 @@ async fn create_org_and_add_remove_session_key_filtesr() -> Result {
         oui: org_res.org.oui,
         keypair: keypair_path.clone(),
         config_host: config_host.clone(),
+        config_pubkey: config_pubkey.clone(),
     })
     .await?;
     info!("empty list: {out}");

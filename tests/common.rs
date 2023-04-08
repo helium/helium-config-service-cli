@@ -11,6 +11,7 @@ use std::{path::PathBuf, str::FromStr};
 use tracing::info;
 
 pub const CONFIG_HOST: &str = "http://127.0.0.1:50051";
+pub const CONFIG_PUBKEY: &str = "config-server-signing-pubkey";
 
 /// These helpers use the CLI commands _and_ client methods directly.
 ///
@@ -49,12 +50,13 @@ pub async fn create_helium_org(
         devaddr_count,
         keypair: keypair_path,
         config_host: CONFIG_HOST.to_string(),
+        config_pubkey: CONFIG_PUBKEY.to_string(),
         commit: true,
     })
     .await?;
     info!("{out}");
 
-    let mut org_client = client::OrgClient::new(CONFIG_HOST).await?;
+    let mut org_client = client::OrgClient::new(CONFIG_HOST, CONFIG_PUBKEY).await?;
     let mut org_list = org_client.list().await?;
     // Put in creation order
     org_list.orgs.sort_by_key(|x| x.oui);
@@ -69,12 +71,13 @@ pub async fn ensure_no_routes(oui: u64, keypair_path: PathBuf) -> Result {
         oui,
         keypair: keypair_path.clone(),
         config_host: CONFIG_HOST.to_string(),
+        config_pubkey: CONFIG_PUBKEY.to_string(),
         commit: false,
     })
     .await?;
     info!("{out}");
 
-    let mut route_client = client::RouteClient::new(CONFIG_HOST).await?;
+    let mut route_client = client::RouteClient::new(CONFIG_HOST, CONFIG_PUBKEY).await?;
     let route_list = route_client.list(oui, &keypair_path.to_keypair()?).await?;
     assert!(route_list.routes.is_empty());
     Ok(())
@@ -91,12 +94,13 @@ pub async fn create_empty_route(
         max_copies: 5,
         keypair: keypair_path.clone(),
         config_host: CONFIG_HOST.to_string(),
+        config_pubkey: CONFIG_PUBKEY.to_string(),
         commit: true,
     })
     .await?;
     info!("{out1}");
 
-    let mut route_client = client::RouteClient::new(CONFIG_HOST).await?;
+    let mut route_client = client::RouteClient::new(CONFIG_HOST, CONFIG_PUBKEY).await?;
     let route_list = route_client.list(oui, &keypair_path.to_keypair()?).await?;
     Ok(route_list
         .routes
@@ -106,7 +110,7 @@ pub async fn create_empty_route(
 }
 
 pub async fn get_route(route_id: &str, keypair_path: PathBuf) -> Result<Route> {
-    let mut route_client = client::RouteClient::new(CONFIG_HOST).await?;
+    let mut route_client = client::RouteClient::new(CONFIG_HOST, CONFIG_PUBKEY).await?;
     let route = route_client
         .get(route_id, &keypair_path.to_keypair()?)
         .await?;
@@ -126,11 +130,12 @@ pub async fn ensure_num_euis(eui_count: usize, route_id: &str, keypair_path: Pat
         route_id: route_id.to_string(),
         keypair: keypair_path.clone(),
         config_host: CONFIG_HOST.to_string(),
+        config_pubkey: CONFIG_PUBKEY.to_string(),
     })
     .await?;
     info!("{out}");
 
-    let mut eui_client = client::EuiClient::new(CONFIG_HOST).await?;
+    let mut eui_client = client::EuiClient::new(CONFIG_HOST, CONFIG_PUBKEY).await?;
     let euis = eui_client
         .get_euis(route_id, &keypair_path.to_keypair()?)
         .await?;
@@ -147,11 +152,12 @@ pub async fn ensure_num_devaddrs(
         route_id: route_id.to_string(),
         keypair: keypair_path.clone(),
         config_host: CONFIG_HOST.to_string(),
+        config_pubkey: CONFIG_PUBKEY.to_string(),
     })
     .await?;
     info!("{out}");
 
-    let mut devaddr_client = client::DevaddrClient::new(CONFIG_HOST).await?;
+    let mut devaddr_client = client::DevaddrClient::new(CONFIG_HOST, CONFIG_PUBKEY).await?;
     let addrs = devaddr_client
         .get_devaddrs(route_id, &keypair_path.to_keypair()?)
         .await?;
