@@ -16,12 +16,18 @@ pub async fn get_org(args: GetOrg) -> Result<Msg> {
 }
 
 pub async fn create_helium_org(args: CreateHelium) -> Result<Msg> {
+    let delegates = if let Some(ref delegate_keys) = &args.delegate {
+        delegate_keys.to_vec()
+    } else {
+        vec![]
+    };
     if args.commit {
         let mut client = client::OrgClient::new(&args.config_host).await?;
         let org = client
             .create_helium(
                 &args.owner,
                 &args.payer,
+                delegates,
                 args.devaddr_count,
                 &args.keypair.to_keypair()?,
             )
@@ -35,12 +41,18 @@ pub async fn create_helium_org(args: CreateHelium) -> Result<Msg> {
 }
 
 pub async fn create_roaming_org(args: CreateRoaming) -> Result<Msg> {
+    let delegates = if let Some(ref delegate_keys) = &args.delegate {
+        delegate_keys.to_vec()
+    } else {
+        vec![]
+    };
     if args.commit {
         let mut client = client::OrgClient::new(&args.config_host).await?;
         let created_org = client
             .create_roamer(
                 &args.owner,
                 &args.payer,
+                delegates,
                 args.net_id.into(),
                 args.keypair.to_keypair()?,
             )

@@ -35,6 +35,7 @@ pub enum Region {
     As923_1d,
     As923_1e,
     As923_1f,
+    Unknown,
 }
 
 impl Region {
@@ -120,6 +121,7 @@ impl From<&Region> for ProtoRegion {
             Region::As923_1d => ProtoRegion::As9231d,
             Region::As923_1e => ProtoRegion::As9231e,
             Region::As923_1f => ProtoRegion::As9231f,
+            Region::Unknown => ProtoRegion::Unknown,
         }
     }
 }
@@ -155,6 +157,7 @@ impl From<ProtoRegion> for Region {
             ProtoRegion::As9231d => Region::As923_1d,
             ProtoRegion::As9231e => Region::As923_1e,
             ProtoRegion::As9231f => Region::As923_1f,
+            ProtoRegion::Unknown => Region::Unknown,
         }
     }
 }

@@ -2,6 +2,7 @@ use crate::{
     hex_field, region::Region, region_params::RegionParams, route::Route, DevaddrRange, Eui,
     KeyType, NetId, OrgList, OrgResponse, Oui, Result, RouteList, SessionKeyFilter,
 };
+use anyhow::anyhow;
 use helium_crypto::{Keypair, PublicKey, Sign};
 use helium_proto::{
     services::iot_config::{
@@ -56,6 +57,7 @@ impl OrgClient {
         &mut self,
         owner: &PublicKey,
         payer: &PublicKey,
+        delegates: Vec<PublicKey>,
         devaddr_count: u64,
         keypair: &Keypair,
     ) -> Result<OrgResponse> {
@@ -64,7 +66,8 @@ impl OrgClient {
             payer: payer.into(),
             devaddrs: devaddr_count,
             timestamp: current_timestamp()?,
-            delegate_keys: vec![],
+            delegate_keys: delegates.iter().map(|key| key.into()).collect(),
+            signer: keypair.public_key().into(),
             signature: vec![],
         };
         request.signature = request.sign(keypair)?;
@@ -80,6 +83,7 @@ impl OrgClient {
         &mut self,
         owner: &PublicKey,
         payer: &PublicKey,
+        delegates: Vec<PublicKey>,
         net_id: NetId,
         keypair: Keypair,
     ) -> Result<OrgResponse> {
@@ -88,7 +92,8 @@ impl OrgClient {
             payer: payer.into(),
             net_id,
             timestamp: current_timestamp()?,
-            delegate_keys: vec![],
+            delegate_keys: delegates.iter().map(|key| key.into()).collect(),
+            signer: keypair.public_key().into(),
             signature: vec![],
         };
         request.signature = request.sign(&keypair)?;
@@ -110,6 +115,7 @@ impl DevaddrClient {
         let mut request = RouteGetDevaddrRangesReqV1 {
             route_id: route_id.to_string(),
             timestamp: current_timestamp()?,
+            signer: keypair.public_key().into(),
             signature: vec![],
         };
         request.signature = request.sign(keypair)?;
@@ -129,12 +135,14 @@ impl DevaddrClient {
         keypair: &Keypair,
     ) -> Result<RouteDevaddrRangesResV1> {
         let timestamp = current_timestamp()?;
+        let signer: Vec<u8> = keypair.public_key().into();
         let route_devaddrs: Vec<RouteUpdateDevaddrRangesReqV1> = devaddrs
             .into_iter()
             .flat_map(|devaddr| -> Result<RouteUpdateDevaddrRangesReqV1> {
                 let mut request = RouteUpdateDevaddrRangesReqV1 {
                     action: ActionV1::Add.into(),
                     timestamp,
+                    signer: signer.clone(),
                     signature: vec![],
                     devaddr_range: Some(devaddr.into()),
                 };
@@ -156,12 +164,14 @@ impl DevaddrClient {
         keypair: &Keypair,
     ) -> Result<RouteDevaddrRangesResV1> {
         let timestamp = current_timestamp()?;
+        let signer: Vec<u8> = keypair.public_key().into();
         let route_devaddrs: Vec<RouteUpdateDevaddrRangesReqV1> = devaddrs
             .into_iter()
             .flat_map(|devaddr| -> Result<RouteUpdateDevaddrRangesReqV1> {
                 let mut request = RouteUpdateDevaddrRangesReqV1 {
                     action: ActionV1::Remove.into(),
                     timestamp,
+                    signer: signer.clone(),
                     signature: vec![],
                     devaddr_range: Some(devaddr.into()),
                 };
@@ -189,6 +199,7 @@ impl EuiClient {
         let mut request = RouteGetEuisReqV1 {
             route_id: route_id.to_string(),
             timestamp: current_timestamp()?,
+            signer: keypair.public_key().into(),
             signature: vec![],
         };
         request.signature = request.sign(keypair)?;
@@ -204,6 +215,7 @@ impl EuiClient {
 
     pub async fn add_euis(&mut self, euis: Vec<Eui>, keypair: &Keypair) -> Result<RouteEuisResV1> {
         let timestamp = current_timestamp()?;
+        let signer: Vec<u8> = keypair.public_key().into();
         let route_euis: Vec<RouteUpdateEuisReqV1> = euis
             .into_iter()
             .flat_map(|eui| -> Result<RouteUpdateEuisReqV1> {
@@ -211,6 +223,7 @@ impl EuiClient {
                     action: ActionV1::Add.into(),
                     timestamp,
                     signature: vec![],
+                    signer: signer.clone(),
                     eui_pair: Some(eui.into()),
                 };
                 request.signature = request.sign(keypair)?;
@@ -227,6 +240,7 @@ impl EuiClient {
         keypair: &Keypair,
     ) -> Result<RouteEuisResV1> {
         let timestamp = current_timestamp()?;
+        let signer: Vec<u8> = keypair.public_key().into();
         let route_euis: Vec<RouteUpdateEuisReqV1> = euis
             .into_iter()
             .flat_map(|eui| -> Result<RouteUpdateEuisReqV1> {
@@ -234,6 +248,7 @@ impl EuiClient {
                     action: ActionV1::Remove.into(),
                     timestamp,
                     signature: vec![],
+                    signer: signer.clone(),
                     eui_pair: Some(eui.into()),
                 };
                 request.signature = request.sign(keypair)?;
@@ -262,6 +277,7 @@ impl RouteClient {
         let mut request = RouteListReqV1 {
             oui,
             timestamp: current_timestamp()?,
+            signer: keypair.public_key().into(),
             signature: vec![],
         };
         request.signature = request.sign(keypair)?;
@@ -272,10 +288,17 @@ impl RouteClient {
         let mut request = RouteGetReqV1 {
             id: id.into(),
             signature: vec![],
+            signer: keypair.public_key().into(),
             timestamp: current_timestamp()?,
         };
         request.signature = request.sign(keypair)?;
-        Ok(self.client.get(request).await?.into_inner().into())
+        self.client
+            .get(request)
+            .await?
+            .into_inner()
+            .route
+            .map(Route::from)
+            .ok_or(anyhow!("Route get failed"))
     }
 
     pub async fn create_route(&mut self, route: Route, keypair: &Keypair) -> Result<Route> {
@@ -283,30 +306,51 @@ impl RouteClient {
             oui: route.oui,
             route: Some(route.into()),
             timestamp: current_timestamp()?,
+            signer: keypair.public_key().into(),
             signature: vec![],
         };
         request.signature = request.sign(keypair)?;
-        Ok(self.client.create(request).await?.into_inner().into())
+        self.client
+            .create(request)
+            .await?
+            .into_inner()
+            .route
+            .map(Route::from)
+            .ok_or(anyhow!("Route create failed"))
     }
 
     pub async fn delete(&mut self, id: &str, keypair: &Keypair) -> Result<Route> {
         let mut request = RouteDeleteReqV1 {
             id: id.into(),
             timestamp: current_timestamp()?,
+            signer: keypair.public_key().into(),
             signature: vec![],
         };
         request.signature = request.sign(keypair)?;
-        Ok(self.client.delete(request).await?.into_inner().into())
+        self.client
+            .delete(request)
+            .await?
+            .into_inner()
+            .route
+            .map(Route::from)
+            .ok_or(anyhow!("Route delete failed"))
     }
 
     pub async fn push(&mut self, route: Route, keypair: &Keypair) -> Result<Route> {
         let mut request = RouteUpdateReqV1 {
             route: Some(route.into()),
             timestamp: current_timestamp()?,
+            signer: keypair.public_key().into(),
             signature: vec![],
         };
         request.signature = request.sign(keypair)?;
-        Ok(self.client.update(request).await?.into_inner().into())
+        self.client
+            .update(request)
+            .await?
+            .into_inner()
+            .route
+            .map(Route::from)
+            .ok_or(anyhow!("Route update push failed"))
     }
 }
 
@@ -326,6 +370,7 @@ impl SkfClient {
         let mut request = SessionKeyFilterListReqV1 {
             oui,
             timestamp: current_timestamp()?,
+            signer: keypair.public_key().into(),
             signature: vec![],
         };
         request.signature = request.sign(keypair)?;
@@ -349,6 +394,7 @@ impl SkfClient {
             oui,
             devaddr: devaddr.into(),
             timestamp: current_timestamp()?,
+            signer: keypair.public_key().into(),
             signature: vec![],
         };
         request.signature = request.sign(keypair)?;
@@ -367,6 +413,7 @@ impl SkfClient {
         keypair: &Keypair,
     ) -> Result<SessionKeyFilterUpdateResV1> {
         let timestamp = current_timestamp()?;
+        let signer: Vec<u8> = keypair.public_key().into();
         let filters: Vec<SessionKeyFilterUpdateReqV1> = filters
             .into_iter()
             .flat_map(|filter| -> Result<SessionKeyFilterUpdateReqV1> {
@@ -374,6 +421,7 @@ impl SkfClient {
                     action: ActionV1::Add.into(),
                     filter: Some(filter.into()),
                     timestamp,
+                    signer: signer.clone(),
                     signature: vec![],
                 };
                 request.signature = request.sign(keypair)?;
@@ -390,6 +438,7 @@ impl SkfClient {
         keypair: &Keypair,
     ) -> Result<SessionKeyFilterUpdateResV1> {
         let timestamp = current_timestamp()?;
+        let signer: Vec<u8> = keypair.public_key().into();
         let filters: Vec<SessionKeyFilterUpdateReqV1> = filters
             .into_iter()
             .flat_map(|filter| -> Result<SessionKeyFilterUpdateReqV1> {
@@ -397,6 +446,7 @@ impl SkfClient {
                     action: ActionV1::Remove.into(),
                     filter: Some(filter.into()),
                     timestamp,
+                    signer: signer.clone(),
                     signature: vec![],
                 };
                 request.signature = request.sign(keypair)?;
@@ -424,6 +474,7 @@ impl AdminClient {
         let mut request = AdminAddKeyReqV1 {
             pubkey: pubkey.into(),
             key_type: key_type.into(),
+            signer: keypair.public_key().into(),
             signature: vec![],
         };
         request.signature = request.sign(keypair)?;
@@ -434,6 +485,7 @@ impl AdminClient {
     pub async fn remove_key(&mut self, pubkey: &PublicKey, keypair: &Keypair) -> Result {
         let mut request = AdminRemoveKeyReqV1 {
             pubkey: pubkey.into(),
+            signer: keypair.public_key().into(),
             signature: vec![],
         };
         request.signature = request.sign(keypair)?;
@@ -452,6 +504,7 @@ impl AdminClient {
             region: region.into(),
             params: Some(params.into()),
             hex_indexes: indexes,
+            signer: keypair.public_key().into(),
             signature: vec![],
         };
         request.signature = request.sign(keypair)?;

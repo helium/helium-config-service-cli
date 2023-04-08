@@ -603,6 +603,8 @@ pub struct CreateHelium {
     #[arg(long)]
     pub payer: PublicKey,
     #[arg(long)]
+    pub delegate: Option<Vec<PublicKey>>,
+    #[arg(long)]
     pub devaddr_count: u64,
     #[arg(from_global)]
     pub keypair: PathBuf,
@@ -618,6 +620,8 @@ pub struct CreateRoaming {
     pub owner: PublicKey,
     #[arg(long)]
     pub payer: PublicKey,
+    #[arg(long)]
+    pub delegate: Option<Vec<PublicKey>>,
     #[arg(long)]
     pub net_id: HexNetID,
     #[arg(from_global)]

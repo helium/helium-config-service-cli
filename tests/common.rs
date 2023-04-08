@@ -45,6 +45,7 @@ pub async fn create_helium_org(
     let out = cmds::org::create_helium_org(CreateHelium {
         owner: public_key.clone(),
         payer: public_key.clone(),
+        delegate: None,
         devaddr_count,
         keypair: keypair_path,
         config_host: CONFIG_HOST.to_string(),
