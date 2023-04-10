@@ -12,7 +12,7 @@ tokio = { version = "1.25.0", features = ["macros", "rt-multi-thread"] }
 serde = { version = "1.0.145", features = ["derive"] }
 serde_json = "1.0.87"
 clap = { version = "4.1.4", features = ["derive", "env"] }
-helium-proto = { git = "https://github.com/helium/proto", branch="jg/oracle-admin-keys", features=["services"]}
+helium-proto = { git = "https://github.com/helium/proto", branch="master", features=["services"]}
 helium-crypto = "0.6.6"
 dialoguer = "0.10.2"
 anyhow = "1.0.68"
