@@ -15,6 +15,7 @@ async fn create_route_and_update_server() -> Result {
     let working_dir = TempDir::new()?;
     let keypair_path = working_dir.child("keypair.bin");
     let config_host = common::CONFIG_HOST.to_string();
+    let config_pubkey = common::CONFIG_PUBKEY.to_string();
 
     // Generate keypair
     let public_key = common::generate_keypair(keypair_path.clone())?;
@@ -30,6 +31,7 @@ async fn create_route_and_update_server() -> Result {
         route_id: route.id.clone(),
         keypair: keypair_path.clone(),
         config_host: config_host.clone(),
+        config_pubkey: config_pubkey.clone(),
     })
     .await?;
     info!("{out1}");
@@ -40,6 +42,7 @@ async fn create_route_and_update_server() -> Result {
         route_id: route.id.clone(),
         keypair: keypair_path.clone(),
         config_host: config_host.clone(),
+        config_pubkey: config_pubkey.clone(),
         commit: true,
     })
     .await?;
@@ -55,6 +58,7 @@ async fn create_route_and_update_server() -> Result {
         auth_header: Some("test-header".to_string()),
         keypair: keypair_path.clone(),
         config_host: config_host.clone(),
+        config_pubkey: config_pubkey.clone(),
         commit: true,
     })
     .await?;
@@ -79,10 +83,11 @@ async fn create_route_and_update_server() -> Result {
     // Set GWMP protocol
     let out4 = cmds::route::add_gwmp_region(AddGwmpRegion {
         route_id: route.id.clone(),
-        region: helium_config_service_cli::region::Region::As9231a,
+        region: helium_config_service_cli::region::Region::As923_1a,
         region_port: 9001,
         keypair: keypair_path.clone(),
         config_host: config_host.clone(),
+        config_pubkey: config_pubkey.clone(),
         commit: true,
     })
     .await?;
@@ -101,6 +106,7 @@ async fn create_route_and_update_server() -> Result {
         region_port: 9002,
         keypair: keypair_path.clone(),
         config_host: config_host.clone(),
+        config_pubkey: config_pubkey.clone(),
         commit: true,
     })
     .await?;
@@ -115,9 +121,10 @@ async fn create_route_and_update_server() -> Result {
 
     let out6 = cmds::route::remove_gwmp_region(RemoveGwmpRegion {
         route_id: route.id.clone(),
-        region: helium_config_service_cli::region::Region::As9231a,
+        region: helium_config_service_cli::region::Region::As923_1a,
         keypair: keypair_path.clone(),
         config_host: config_host.clone(),
+        config_pubkey: config_pubkey.clone(),
         commit: true,
     })
     .await?;

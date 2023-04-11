@@ -15,6 +15,7 @@ async fn create_route_and_add_remove_euis() -> Result {
     let working_dir = TempDir::new()?;
     let keypair_path = working_dir.child("keypair.bin");
     let config_host = common::CONFIG_HOST.to_string();
+    let config_pubkey = common::CONFIG_PUBKEY.to_string();
 
     // Generate keypair
     let public_key = common::generate_keypair(keypair_path.clone())?;
@@ -34,6 +35,7 @@ async fn create_route_and_add_remove_euis() -> Result {
         app_eui: hex_field::eui(2),
         route_id: route.id.clone(),
         config_host: config_host.clone(),
+        config_pubkey: config_pubkey.clone(),
         keypair: keypair_path.clone(),
         commit: true,
     })
@@ -47,6 +49,7 @@ async fn create_route_and_add_remove_euis() -> Result {
         app_eui: hex_field::eui(2),
         route_id: route.id.clone(),
         config_host: config_host.clone(),
+        config_pubkey: config_pubkey.clone(),
         keypair: keypair_path.clone(),
         commit: true,
     })
@@ -55,7 +58,7 @@ async fn create_route_and_add_remove_euis() -> Result {
     common::ensure_no_euis(&route.id, keypair_path.clone()).await?;
 
     // Add many Euis to delete
-    let mut eui_client = client::EuiClient::new(common::CONFIG_HOST).await?;
+    let mut eui_client = client::EuiClient::new(common::CONFIG_HOST, common::CONFIG_PUBKEY).await?;
     let mut euis = vec![];
     for e in 0..15 {
         euis.push(Eui::new(

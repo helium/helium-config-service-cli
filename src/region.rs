@@ -30,11 +30,12 @@ pub enum Region {
     Eu868F,
     Au915Sb1,
     Au915Sb2,
-    As9231a,
-    As9231c,
-    As9231d,
-    As9231e,
-    As9231f,
+    As923_1a,
+    As923_1c,
+    As923_1d,
+    As923_1e,
+    As923_1f,
+    Unknown,
 }
 
 impl Region {
@@ -115,11 +116,12 @@ impl From<&Region> for ProtoRegion {
             Region::Eu868F => ProtoRegion::Eu868F,
             Region::Au915Sb1 => ProtoRegion::Au915Sb1,
             Region::Au915Sb2 => ProtoRegion::Au915Sb2,
-            Region::As9231a => ProtoRegion::As9231a,
-            Region::As9231c => ProtoRegion::As9231c,
-            Region::As9231d => ProtoRegion::As9231d,
-            Region::As9231e => ProtoRegion::As9231e,
-            Region::As9231f => ProtoRegion::As9231f,
+            Region::As923_1a => ProtoRegion::As9231a,
+            Region::As923_1c => ProtoRegion::As9231c,
+            Region::As923_1d => ProtoRegion::As9231d,
+            Region::As923_1e => ProtoRegion::As9231e,
+            Region::As923_1f => ProtoRegion::As9231f,
+            Region::Unknown => ProtoRegion::Unknown,
         }
     }
 }
@@ -150,11 +152,12 @@ impl From<ProtoRegion> for Region {
             ProtoRegion::Eu868F => Region::Eu868F,
             ProtoRegion::Au915Sb1 => Region::Au915Sb1,
             ProtoRegion::Au915Sb2 => Region::Au915Sb2,
-            ProtoRegion::As9231a => Region::As9231a,
-            ProtoRegion::As9231c => Region::As9231c,
-            ProtoRegion::As9231d => Region::As9231d,
-            ProtoRegion::As9231e => Region::As9231e,
-            ProtoRegion::As9231f => Region::As9231f,
+            ProtoRegion::As9231a => Region::As923_1a,
+            ProtoRegion::As9231c => Region::As923_1c,
+            ProtoRegion::As9231d => Region::As923_1d,
+            ProtoRegion::As9231e => Region::As923_1e,
+            ProtoRegion::As9231f => Region::As923_1f,
+            ProtoRegion::Unknown => Region::Unknown,
         }
     }
 }

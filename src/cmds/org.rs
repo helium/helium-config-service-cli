@@ -2,26 +2,32 @@ use super::{CreateHelium, CreateRoaming, GetOrg, ListOrgs, PathBufKeypair, ENV_N
 use crate::{client, Msg, PrettyJson, Result};
 
 pub async fn list_orgs(args: ListOrgs) -> Result<Msg> {
-    let mut client = client::OrgClient::new(&args.config_host).await?;
+    let mut client = client::OrgClient::new(&args.config_host, &args.config_pubkey).await?;
     let org = client.list().await?;
 
     Msg::ok(org.pretty_json()?)
 }
 
 pub async fn get_org(args: GetOrg) -> Result<Msg> {
-    let mut client = client::OrgClient::new(&args.config_host).await?;
+    let mut client = client::OrgClient::new(&args.config_host, &args.config_pubkey).await?;
     let org = client.get(args.oui).await?;
 
     Msg::ok(org.pretty_json()?)
 }
 
 pub async fn create_helium_org(args: CreateHelium) -> Result<Msg> {
+    let delegates = if let Some(ref delegate_keys) = &args.delegate {
+        delegate_keys.to_vec()
+    } else {
+        vec![]
+    };
     if args.commit {
-        let mut client = client::OrgClient::new(&args.config_host).await?;
+        let mut client = client::OrgClient::new(&args.config_host, &args.config_pubkey).await?;
         let org = client
             .create_helium(
                 &args.owner,
                 &args.payer,
+                delegates,
                 args.devaddr_count,
                 &args.keypair.to_keypair()?,
             )
@@ -35,12 +41,18 @@ pub async fn create_helium_org(args: CreateHelium) -> Result<Msg> {
 }
 
 pub async fn create_roaming_org(args: CreateRoaming) -> Result<Msg> {
+    let delegates = if let Some(ref delegate_keys) = &args.delegate {
+        delegate_keys.to_vec()
+    } else {
+        vec![]
+    };
     if args.commit {
-        let mut client = client::OrgClient::new(&args.config_host).await?;
+        let mut client = client::OrgClient::new(&args.config_host, &args.config_pubkey).await?;
         let created_org = client
             .create_roamer(
                 &args.owner,
                 &args.payer,
+                delegates,
                 args.net_id.into(),
                 args.keypair.to_keypair()?,
             )

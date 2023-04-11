@@ -2,7 +2,7 @@ use super::{AddFilter, GetFilters, ListFilters, PathBufKeypair, RemoveFilter};
 use crate::{client, Msg, PrettyJson, Result, SessionKeyFilter};
 
 pub async fn list_filters(args: ListFilters) -> Result<Msg> {
-    let mut client = client::SkfClient::new(&args.config_host).await?;
+    let mut client = client::SkfClient::new(&args.config_host, &args.config_pubkey).await?;
     let filters = client
         .list_filters(args.oui, &args.keypair.to_keypair()?)
         .await?;
@@ -11,7 +11,7 @@ pub async fn list_filters(args: ListFilters) -> Result<Msg> {
 }
 
 pub async fn get_filters(args: GetFilters) -> Result<Msg> {
-    let mut client = client::SkfClient::new(&args.config_host).await?;
+    let mut client = client::SkfClient::new(&args.config_host, &args.config_pubkey).await?;
     let filters = client
         .get_filters(args.oui, args.devaddr, &args.keypair.to_keypair()?)
         .await?;
@@ -20,7 +20,7 @@ pub async fn get_filters(args: GetFilters) -> Result<Msg> {
 }
 
 pub async fn add_filter(args: AddFilter) -> Result<Msg> {
-    let mut client = client::SkfClient::new(&args.config_host).await?;
+    let mut client = client::SkfClient::new(&args.config_host, &args.config_pubkey).await?;
     let filter = SessionKeyFilter::new(args.oui, args.devaddr, args.session_key);
 
     if !args.commit {
@@ -35,7 +35,7 @@ pub async fn add_filter(args: AddFilter) -> Result<Msg> {
 }
 
 pub async fn remove_filter(args: RemoveFilter) -> Result<Msg> {
-    let mut client = client::SkfClient::new(&args.config_host).await?;
+    let mut client = client::SkfClient::new(&args.config_host, &args.config_pubkey).await?;
     let filter = SessionKeyFilter::new(args.oui, args.devaddr, args.session_key);
 
     if !args.commit {

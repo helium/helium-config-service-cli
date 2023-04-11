@@ -14,6 +14,7 @@ async fn create_route_and_update_server() -> Result {
     let working_dir = TempDir::new()?;
     let keypair_path = working_dir.child("keypair.bin");
     let config_host = common::CONFIG_HOST.to_string();
+    let config_pubkey = common::CONFIG_PUBKEY.to_string();
 
     // Generate keypair
     let public_key = common::generate_keypair(keypair_path.clone())?;
@@ -29,6 +30,7 @@ async fn create_route_and_update_server() -> Result {
         route_id: route.id.clone(),
         keypair: keypair_path.clone(),
         config_host: config_host.clone(),
+        config_pubkey: config_pubkey.clone(),
     })
     .await?;
     info!("{out}");
@@ -39,6 +41,7 @@ async fn create_route_and_update_server() -> Result {
         route_id: route.id.clone(),
         keypair: keypair_path.clone(),
         config_host: config_host.clone(),
+        config_pubkey: config_pubkey.clone(),
         commit: true,
     })
     .await?;
@@ -51,6 +54,7 @@ async fn create_route_and_update_server() -> Result {
         route_id: route.id.clone(),
         keypair: keypair_path.clone(),
         config_host: config_host.clone(),
+        config_pubkey: config_pubkey.clone(),
         commit: true,
     })
     .await?;

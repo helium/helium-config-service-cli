@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use std::{env, fs, path::PathBuf};
 
 use super::{
@@ -88,10 +89,22 @@ pub fn env_info(args: EnvInfo) -> Result<Msg> {
     Msg::ok(output.pretty_json()?)
 }
 
+#[derive(clap::ValueEnum, Clone, Serialize, Debug, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum NetworkArg {
+    #[default]
+    Mainnet,
+    Testnet,
+}
+
 pub fn generate_keypair(args: GenerateKeypair) -> Result<Msg> {
+    let network: helium_crypto::Network = match args.network {
+        NetworkArg::Mainnet => helium_crypto::Network::MainNet,
+        NetworkArg::Testnet => helium_crypto::Network::TestNet,
+    };
     let key = helium_crypto::Keypair::generate(
         helium_crypto::KeyTag {
-            network: helium_crypto::Network::MainNet,
+            network,
             key_type: helium_crypto::KeyType::Ed25519,
         },
         &mut OsRng,
@@ -144,11 +157,13 @@ mod tests {
         let env_keypair = dir.child("env-keypair.bin");
         let arg_keypair = dir.child("arg-keypair.bin");
         generate_keypair(GenerateKeypair {
+            network: cmds::env::NetworkArg::Mainnet,
             out_file: env_keypair.clone(),
             commit: true,
         })
         .unwrap();
         generate_keypair(GenerateKeypair {
+            network: cmds::env::NetworkArg::Testnet,
             out_file: arg_keypair.clone(),
             commit: true,
         })
