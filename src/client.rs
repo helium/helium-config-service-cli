@@ -8,12 +8,13 @@ use helium_proto::{
     services::iot_config::{
         admin_client, org_client, route_client, session_key_filter_client, ActionV1,
         AdminAddKeyReqV1, AdminKeyResV1, AdminLoadRegionReqV1, AdminLoadRegionResV1,
-        AdminRemoveKeyReqV1, OrgCreateHeliumReqV1, OrgCreateRoamerReqV1, OrgGetReqV1, OrgListReqV1,
-        OrgListResV1, OrgResV1, RouteCreateReqV1, RouteDeleteReqV1, RouteDevaddrRangesResV1,
-        RouteEuisResV1, RouteGetDevaddrRangesReqV1, RouteGetEuisReqV1, RouteGetReqV1,
-        RouteListReqV1, RouteListResV1, RouteResV1, RouteUpdateDevaddrRangesReqV1,
-        RouteUpdateEuisReqV1, RouteUpdateReqV1, SessionKeyFilterGetReqV1,
-        SessionKeyFilterListReqV1, SessionKeyFilterUpdateReqV1, SessionKeyFilterUpdateResV1,
+        AdminRemoveKeyReqV1, OrgCreateHeliumReqV1, OrgCreateRoamerReqV1, OrgEnableReqV1,
+        OrgEnableResV1, OrgGetReqV1, OrgListReqV1, OrgListResV1, OrgResV1, RouteCreateReqV1,
+        RouteDeleteReqV1, RouteDevaddrRangesResV1, RouteEuisResV1, RouteGetDevaddrRangesReqV1,
+        RouteGetEuisReqV1, RouteGetReqV1, RouteListReqV1, RouteListResV1, RouteResV1,
+        RouteUpdateDevaddrRangesReqV1, RouteUpdateEuisReqV1, RouteUpdateReqV1,
+        SessionKeyFilterGetReqV1, SessionKeyFilterListReqV1, SessionKeyFilterUpdateReqV1,
+        SessionKeyFilterUpdateResV1,
     },
     Message,
 };
@@ -110,6 +111,19 @@ impl OrgClient {
         let response = self.client.create_roamer(request).await?.into_inner();
         response.verify(&self.server_pubkey)?;
         Ok(response.into())
+    }
+
+    pub async fn enable(&mut self, oui: u64, keypair: Keypair) -> Result<()> {
+        let mut request = OrgEnableReqV1 {
+            oui,
+            timestamp: current_timestamp()?,
+            signer: keypair.public_key().into(),
+            signature: vec![],
+        };
+        request.signature = request.sign(&keypair)?;
+        let response = self.client.enable(request).await?.into_inner();
+        response.verify(&self.server_pubkey)?;
+        Ok(())
     }
 }
 
@@ -578,6 +592,7 @@ impl_sign!(SessionKeyFilterGetReqV1, signature);
 impl_sign!(SessionKeyFilterUpdateReqV1, signature);
 impl_sign!(OrgCreateHeliumReqV1, signature);
 impl_sign!(OrgCreateRoamerReqV1, signature);
+impl_sign!(OrgEnableReqV1, signature);
 impl_sign!(AdminLoadRegionReqV1, signature);
 impl_sign!(AdminAddKeyReqV1, signature);
 impl_sign!(AdminRemoveKeyReqV1, signature);
@@ -606,6 +621,7 @@ macro_rules! impl_verify {
 
 impl_verify!(OrgListResV1, signature);
 impl_verify!(OrgResV1, signature);
+impl_verify!(OrgEnableResV1, signature);
 impl_verify!(RouteDevaddrRangesResV1, signature);
 impl_verify!(RouteEuisResV1, signature);
 impl_verify!(RouteListResV1, signature);

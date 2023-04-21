@@ -64,6 +64,7 @@ pub async fn handle_cli(cli: Cli) -> Result<Msg> {
             Org::Get(args) => org::get_org(args).await,
             Org::CreateHelium(args) => org::create_helium_org(args).await,
             Org::CreateRoaming(args) => org::create_roaming_org(args).await,
+            Org::Enable(args) => org::enable_org(args).await,
         },
         Commands::SessionKeyFilter { command } => match command {
             cmds::SessionKeyFilterCommands::List(args) => skf::list_filters(args).await,
