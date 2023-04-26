@@ -2,9 +2,8 @@ use clap::Parser;
 use helium_config_service_cli::{
     cmds::{
         self, admin, env, org,
-        route::{self, devaddrs, euis},
-        session_key_filter as skf, Cli, Commands, EnvCommands as Env, OrgCommands as Org,
-        RouteCommands, RouteUpdateCommand,
+        route::{self, devaddrs, euis, skfs},
+        Cli, Commands, EnvCommands as Env, OrgCommands as Org, RouteCommands, RouteUpdateCommand,
     },
     Msg, Result,
 };
@@ -58,6 +57,13 @@ pub async fn handle_cli(cli: Cli) -> Result<Msg> {
             },
             RouteCommands::Activate(args) => route::activate_route(args).await,
             RouteCommands::Deactivate(args) => route::deactivate_route(args).await,
+            RouteCommands::Skfs { command } => match command {
+                cmds::SkfCommands::List(args) => skfs::list_filters(args).await,
+                cmds::SkfCommands::Get(args) => skfs::get_filters(args).await,
+                cmds::SkfCommands::Add(args) => skfs::add_filter(args).await,
+                cmds::SkfCommands::Remove(args) => skfs::remove_filter(args).await,
+                cmds::SkfCommands::Update(args) => skfs::update_filters_from_file(args).await,
+            },
         },
         Commands::Org { command } => match command {
             Org::List(args) => org::list_orgs(args).await,
@@ -65,12 +71,6 @@ pub async fn handle_cli(cli: Cli) -> Result<Msg> {
             Org::CreateHelium(args) => org::create_helium_org(args).await,
             Org::CreateRoaming(args) => org::create_roaming_org(args).await,
             Org::Enable(args) => org::enable_org(args).await,
-        },
-        Commands::SessionKeyFilter { command } => match command {
-            cmds::SessionKeyFilterCommands::List(args) => skf::list_filters(args).await,
-            cmds::SessionKeyFilterCommands::Get(args) => skf::get_filters(args).await,
-            cmds::SessionKeyFilterCommands::Add(args) => skf::add_filter(args).await,
-            cmds::SessionKeyFilterCommands::Remove(args) => skf::remove_filter(args).await,
         },
         Commands::SubnetMask(args) => cmds::subnet_mask(args),
         Commands::Admin { command } => match command {

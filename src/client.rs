@@ -1,20 +1,19 @@
 use crate::{
     hex_field, region::Region, region_params::RegionParams, route::Route, DevaddrRange, Eui,
-    KeyType, NetId, OrgList, OrgResponse, Oui, Result, RouteList, SessionKeyFilter,
+    KeyType, NetId, OrgList, OrgResponse, Oui, Result, RouteList, Skf, SkfUpdate,
 };
 use anyhow::anyhow;
 use helium_crypto::{Keypair, PublicKey, Sign, Verify};
 use helium_proto::{
     services::iot_config::{
-        admin_client, org_client, route_client, session_key_filter_client, ActionV1,
-        AdminAddKeyReqV1, AdminKeyResV1, AdminLoadRegionReqV1, AdminLoadRegionResV1,
+        admin_client, org_client, route_client, route_skf_update_req_v1::RouteSkfUpdateV1,
+        ActionV1, AdminAddKeyReqV1, AdminKeyResV1, AdminLoadRegionReqV1, AdminLoadRegionResV1,
         AdminRemoveKeyReqV1, OrgCreateHeliumReqV1, OrgCreateRoamerReqV1, OrgEnableReqV1,
         OrgEnableResV1, OrgGetReqV1, OrgListReqV1, OrgListResV1, OrgResV1, RouteCreateReqV1,
         RouteDeleteReqV1, RouteDevaddrRangesResV1, RouteEuisResV1, RouteGetDevaddrRangesReqV1,
         RouteGetEuisReqV1, RouteGetReqV1, RouteListReqV1, RouteListResV1, RouteResV1,
+        RouteSkfGetReqV1, RouteSkfListReqV1, RouteSkfUpdateReqV1, RouteSkfUpdateResV1,
         RouteUpdateDevaddrRangesReqV1, RouteUpdateEuisReqV1, RouteUpdateReqV1,
-        SessionKeyFilterGetReqV1, SessionKeyFilterListReqV1, SessionKeyFilterUpdateReqV1,
-        SessionKeyFilterUpdateResV1,
     },
     Message,
 };
@@ -32,11 +31,6 @@ pub struct RouteClient {
     server_pubkey: PublicKey,
 }
 
-pub struct SkfClient {
-    client: session_key_filter_client::SessionKeyFilterClient<tonic::transport::Channel>,
-    server_pubkey: PublicKey,
-}
-
 pub struct AdminClient {
     client: admin_client::AdminClient<tonic::transport::Channel>,
     server_pubkey: PublicKey,
@@ -44,6 +38,7 @@ pub struct AdminClient {
 
 pub type EuiClient = RouteClient;
 pub type DevaddrClient = RouteClient;
+pub type SkfClient = RouteClient;
 
 impl OrgClient {
     pub async fn new(host: &str, server_pubkey: &str) -> Result<Self> {
@@ -383,27 +378,15 @@ impl RouteClient {
 }
 
 impl SkfClient {
-    pub async fn new(host: &str, server_pubkey: &str) -> Result<Self> {
-        Ok(Self {
-            client: session_key_filter_client::SessionKeyFilterClient::connect(host.to_owned())
-                .await?,
-            server_pubkey: helium_crypto::PublicKey::from_str(server_pubkey)?,
-        })
-    }
-
-    pub async fn list_filters(
-        &mut self,
-        oui: Oui,
-        keypair: &Keypair,
-    ) -> Result<Vec<SessionKeyFilter>> {
-        let mut request = SessionKeyFilterListReqV1 {
-            oui,
+    pub async fn list_filters(&mut self, route_id: &str, keypair: &Keypair) -> Result<Vec<Skf>> {
+        let mut request = RouteSkfListReqV1 {
+            route_id: route_id.to_string(),
             timestamp: current_timestamp()?,
             signer: keypair.public_key().into(),
             signature: vec![],
         };
         request.signature = request.sign(keypair)?;
-        let mut stream = self.client.list(request).await?.into_inner();
+        let mut stream = self.client.list_skfs(request).await?.into_inner();
 
         let mut filters = vec![];
         while let Some(filter) = stream.message().await? {
@@ -415,19 +398,19 @@ impl SkfClient {
 
     pub async fn get_filters(
         &mut self,
-        oui: Oui,
+        route_id: &str,
         devaddr: hex_field::HexDevAddr,
         keypair: &Keypair,
-    ) -> Result<Vec<SessionKeyFilter>> {
-        let mut request = SessionKeyFilterGetReqV1 {
-            oui,
+    ) -> Result<Vec<Skf>> {
+        let mut request = RouteSkfGetReqV1 {
+            route_id: route_id.to_string(),
             devaddr: devaddr.into(),
             timestamp: current_timestamp()?,
             signer: keypair.public_key().into(),
             signature: vec![],
         };
         request.signature = request.sign(keypair)?;
-        let mut stream = self.client.get(request).await?.into_inner();
+        let mut stream = self.client.get_skfs(request).await?.into_inner();
 
         let mut filters = vec![];
         while let Some(filter) = stream.message().await? {
@@ -436,56 +419,73 @@ impl SkfClient {
         Ok(filters)
     }
 
-    pub async fn add_filters(
+    pub async fn add_filter(
         &mut self,
-        filters: Vec<SessionKeyFilter>,
+        filter: Skf,
         keypair: &Keypair,
-    ) -> Result<SessionKeyFilterUpdateResV1> {
+    ) -> Result<RouteSkfUpdateResV1> {
         let timestamp = current_timestamp()?;
         let signer: Vec<u8> = keypair.public_key().into();
-        let filters: Vec<SessionKeyFilterUpdateReqV1> = filters
-            .into_iter()
-            .flat_map(|filter| -> Result<SessionKeyFilterUpdateReqV1> {
-                let mut request = SessionKeyFilterUpdateReqV1 {
-                    action: ActionV1::Add.into(),
-                    filter: Some(filter.into()),
-                    timestamp,
-                    signer: signer.clone(),
-                    signature: vec![],
-                };
-                request.signature = request.sign(keypair)?;
-                Ok(request)
-            })
-            .collect();
-        let request = futures::stream::iter(filters);
-        let response = self.client.update(request).await?.into_inner();
+        let add_filter = RouteSkfUpdateV1 {
+            devaddr: filter.devaddr.into(),
+            session_key: filter.session_key,
+            action: ActionV1::Add.into(),
+        };
+        let mut request = RouteSkfUpdateReqV1 {
+            route_id: filter.route_id,
+            updates: vec![add_filter],
+            timestamp,
+            signer,
+            signature: vec![],
+        };
+        request.signature = request.sign(keypair)?;
+        let response = self.client.update_skfs(request).await?.into_inner();
         response.verify(&self.server_pubkey)?;
         Ok(response)
     }
 
-    pub async fn remove_filters(
+    pub async fn remove_filter(
         &mut self,
-        filters: Vec<SessionKeyFilter>,
+        filter: Skf,
         keypair: &Keypair,
-    ) -> Result<SessionKeyFilterUpdateResV1> {
+    ) -> Result<RouteSkfUpdateResV1> {
         let timestamp = current_timestamp()?;
         let signer: Vec<u8> = keypair.public_key().into();
-        let filters: Vec<SessionKeyFilterUpdateReqV1> = filters
-            .into_iter()
-            .flat_map(|filter| -> Result<SessionKeyFilterUpdateReqV1> {
-                let mut request = SessionKeyFilterUpdateReqV1 {
-                    action: ActionV1::Remove.into(),
-                    filter: Some(filter.into()),
-                    timestamp,
-                    signer: signer.clone(),
-                    signature: vec![],
-                };
-                request.signature = request.sign(keypair)?;
-                Ok(request)
-            })
-            .collect();
-        let request = futures::stream::iter(filters);
-        let response = self.client.update(request).await?.into_inner();
+        let remove_filter = RouteSkfUpdateV1 {
+            devaddr: filter.devaddr.into(),
+            session_key: filter.session_key,
+            action: ActionV1::Remove.into(),
+        };
+        let mut request = RouteSkfUpdateReqV1 {
+            route_id: filter.route_id,
+            updates: vec![remove_filter],
+            timestamp,
+            signer,
+            signature: vec![],
+        };
+        request.signature = request.sign(keypair)?;
+        let response = self.client.update_skfs(request).await?.into_inner();
+        response.verify(&self.server_pubkey)?;
+        Ok(response)
+    }
+
+    pub async fn update_filters(
+        &mut self,
+        route_id: &str,
+        updates: Vec<SkfUpdate>,
+        keypair: &Keypair,
+    ) -> Result<RouteSkfUpdateResV1> {
+        let timestamp = current_timestamp()?;
+        let signer: Vec<u8> = keypair.public_key().into();
+        let mut request = RouteSkfUpdateReqV1 {
+            route_id: route_id.to_string(),
+            updates: updates.into_iter().map(RouteSkfUpdateV1::from).collect(),
+            timestamp,
+            signer,
+            signature: vec![],
+        };
+        request.signature = request.sign(keypair)?;
+        let response = self.client.update_skfs(request).await?.into_inner();
         response.verify(&self.server_pubkey)?;
         Ok(response)
     }
@@ -587,9 +587,9 @@ impl_sign!(RouteUpdateDevaddrRangesReqV1, signature);
 impl_sign!(RouteGetEuisReqV1, signature);
 impl_sign!(RouteUpdateEuisReqV1, signature);
 impl_sign!(RouteGetDevaddrRangesReqV1, signature);
-impl_sign!(SessionKeyFilterListReqV1, signature);
-impl_sign!(SessionKeyFilterGetReqV1, signature);
-impl_sign!(SessionKeyFilterUpdateReqV1, signature);
+impl_sign!(RouteSkfListReqV1, signature);
+impl_sign!(RouteSkfGetReqV1, signature);
+impl_sign!(RouteSkfUpdateReqV1, signature);
 impl_sign!(OrgCreateHeliumReqV1, signature);
 impl_sign!(OrgCreateRoamerReqV1, signature);
 impl_sign!(OrgEnableReqV1, signature);
@@ -626,6 +626,6 @@ impl_verify!(RouteDevaddrRangesResV1, signature);
 impl_verify!(RouteEuisResV1, signature);
 impl_verify!(RouteListResV1, signature);
 impl_verify!(RouteResV1, signature);
-impl_verify!(SessionKeyFilterUpdateResV1, signature);
+impl_verify!(RouteSkfUpdateResV1, signature);
 impl_verify!(AdminKeyResV1, signature);
 impl_verify!(AdminLoadRegionResV1, signature);
