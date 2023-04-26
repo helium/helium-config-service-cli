@@ -1,4 +1,6 @@
-use super::{CreateHelium, CreateRoaming, GetOrg, ListOrgs, PathBufKeypair, ENV_NET_ID, ENV_OUI};
+use super::{
+    CreateHelium, CreateRoaming, EnableOrg, GetOrg, ListOrgs, PathBufKeypair, ENV_NET_ID, ENV_OUI,
+};
 use crate::{client, Msg, PrettyJson, Result};
 
 pub async fn list_orgs(args: ListOrgs) -> Result<Msg> {
@@ -69,4 +71,13 @@ pub async fn create_roaming_org(args: CreateRoaming) -> Result<Msg> {
         );
     }
     Msg::ok("pass `--commit` to create Roaming organization".to_string())
+}
+
+pub async fn enable_org(args: EnableOrg) -> Result<Msg> {
+    if args.commit {
+        let mut client = client::OrgClient::new(&args.config_host, &args.config_pubkey).await?;
+        client.enable(args.oui, args.keypair.to_keypair()?).await?;
+        return Msg::ok(format!("OUI {} enabled", args.oui));
+    }
+    Msg::ok(format!("pass `--commit` to enable OUI {}", args.oui))
 }

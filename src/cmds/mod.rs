@@ -388,6 +388,8 @@ pub enum OrgCommands {
     CreateHelium(CreateHelium),
     /// Create a new Roaming Organization (admin only)
     CreateRoaming(CreateRoaming),
+    /// Enable a locked Oui
+    Enable(EnableOrg),
 }
 
 #[derive(Debug, Subcommand)]
@@ -689,6 +691,20 @@ pub struct CreateRoaming {
     pub delegate: Option<Vec<PublicKey>>,
     #[arg(long)]
     pub net_id: HexNetID,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
+    #[arg(long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct EnableOrg {
+    #[arg(long)]
+    pub oui: u64,
     #[arg(from_global)]
     pub keypair: PathBuf,
     #[arg(from_global)]
