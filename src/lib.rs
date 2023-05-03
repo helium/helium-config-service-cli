@@ -16,8 +16,9 @@ use subnet::DevaddrConstraint;
 
 pub mod proto {
     pub use helium_proto::services::iot_config::{
-        admin_add_key_req_v1::KeyTypeV1, DevaddrConstraintV1, DevaddrRangeV1, EuiPairV1,
-        OrgEnableResV1, OrgListResV1, OrgResV1, OrgV1, RouteListResV1, SessionKeyFilterV1,
+        admin_add_key_req_v1::KeyTypeV1, route_skf_update_req_v1::RouteSkfUpdateV1, ActionV1,
+        DevaddrConstraintV1, DevaddrRangeV1, EuiPairV1, OrgEnableResV1, OrgListResV1, OrgResV1,
+        OrgV1, RouteListResV1, SkfV1,
     };
 }
 
@@ -165,18 +166,53 @@ impl Eui {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
-pub struct SessionKeyFilter {
-    pub oui: Oui,
+pub struct Skf {
+    pub route_id: String,
     pub devaddr: hex_field::HexDevAddr,
     pub session_key: String,
 }
 
-impl SessionKeyFilter {
-    pub fn new(oui: Oui, devaddr: hex_field::HexDevAddr, session_key: String) -> Self {
-        Self {
-            oui,
+impl Skf {
+    pub fn new(
+        route_id: String,
+        devaddr: hex_field::HexDevAddr,
+        session_key: String,
+    ) -> Result<Self> {
+        Ok(Self {
+            route_id,
             devaddr,
             session_key,
+        })
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub enum UpdateAction {
+    #[serde(alias = "add")]
+    Add,
+    #[serde(alias = "remove")]
+    Remove,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SkfUpdate {
+    pub devaddr: hex_field::HexDevAddr,
+    pub session_key: String,
+    pub action: UpdateAction,
+}
+
+impl From<SkfUpdate> for proto::RouteSkfUpdateV1 {
+    fn from(update: SkfUpdate) -> Self {
+        let action = match update.action {
+            UpdateAction::Add => proto::ActionV1::Add,
+            UpdateAction::Remove => proto::ActionV1::Remove,
+        }
+        .into();
+
+        Self {
+            devaddr: update.devaddr.into(),
+            session_key: update.session_key,
+            action,
         }
     }
 }
@@ -185,6 +221,7 @@ impl SessionKeyFilter {
 pub enum KeyType {
     Administrator,
     PacketRouter,
+    Oracle,
 }
 
 impl From<KeyType> for proto::KeyTypeV1 {
@@ -192,6 +229,7 @@ impl From<KeyType> for proto::KeyTypeV1 {
         match value {
             KeyType::Administrator => Self::Administrator,
             KeyType::PacketRouter => Self::PacketRouter,
+            KeyType::Oracle => Self::Oracle,
         }
     }
 }
@@ -207,24 +245,25 @@ impl Display for KeyType {
         match self {
             KeyType::Administrator => write!(f, "Administrator"),
             KeyType::PacketRouter => write!(f, "Packet-Router"),
+            KeyType::Oracle => write!(f, "Oracle"),
         }
     }
 }
 
-impl From<proto::SessionKeyFilterV1> for SessionKeyFilter {
-    fn from(filter: proto::SessionKeyFilterV1) -> Self {
+impl From<proto::SkfV1> for Skf {
+    fn from(filter: proto::SkfV1) -> Self {
         Self {
-            oui: filter.oui,
+            route_id: filter.route_id,
             devaddr: (filter.devaddr as u64).into(),
             session_key: filter.session_key,
         }
     }
 }
 
-impl From<SessionKeyFilter> for proto::SessionKeyFilterV1 {
-    fn from(filter: SessionKeyFilter) -> Self {
+impl From<Skf> for proto::SkfV1 {
+    fn from(filter: Skf) -> Self {
         Self {
-            oui: filter.oui,
+            route_id: filter.route_id,
             devaddr: filter.devaddr.0 as u32,
             session_key: filter.session_key,
         }

@@ -13,7 +13,6 @@ pub mod admin;
 pub mod env;
 pub mod org;
 pub mod route;
-pub mod session_key_filter;
 
 pub const ENV_CONFIG_HOST: &str = "HELIUM_CONFIG_HOST";
 pub const ENV_CONFIG_PUBKEY: &str = "HELIUM_CONFIG_PUBKEY";
@@ -76,12 +75,6 @@ pub enum Commands {
         #[command(subcommand)]
         command: OrgCommands,
     },
-    /// Session Key Filter
-    #[command(alias = "skf")]
-    SessionKeyFilter {
-        #[command(subcommand)]
-        command: SessionKeyFilterCommands,
-    },
     /// Print a Subnet Mask for a given Devaddr Range
     SubnetMask(SubnetMask),
     /// Admin
@@ -136,6 +129,11 @@ pub enum RouteCommands {
     /// the route field `locked` supersedes this setting.
     #[command(alias = "disable")]
     Deactivate(DeactivateRoute),
+    /// Operate on Session Key Filters for a Route.
+    Skfs {
+        #[command(subcommand)]
+        command: SkfCommands,
+    },
 }
 
 #[derive(Debug, Args)]
@@ -379,6 +377,21 @@ pub enum DevaddrCommands {
 }
 
 #[derive(Debug, Subcommand)]
+pub enum SkfCommands {
+    /// Get all Session Key Filters for a Route
+    List(ListFilters),
+    /// Get all Session Key Filters for a Route and Devaddr
+    Get(GetFilters),
+    /// Update a Route to add a Session Key Filter to a Devaddr
+    Add(AddFilter),
+    /// Update a Route to remove a Session Key Filter from a Devaddr
+    Remove(RemoveFilter),
+    /// Update a Route by reading a list of Session Key Filters from
+    /// a file and adding or removing them
+    Update(UpdateFilters),
+}
+
+#[derive(Debug, Subcommand)]
 pub enum OrgCommands {
     /// Get all Orgs
     List(ListOrgs),
@@ -392,18 +405,10 @@ pub enum OrgCommands {
     Enable(EnableOrg),
 }
 
-#[derive(Debug, Subcommand)]
-pub enum SessionKeyFilterCommands {
-    List(ListFilters),
-    Get(GetFilters),
-    Add(AddFilter),
-    Remove(RemoveFilter),
-}
-
 #[derive(Debug, Args)]
 pub struct ListFilters {
-    #[arg(long, env = ENV_OUI)]
-    pub oui: Oui,
+    #[arg(short, long)]
+    pub route_id: String,
     #[arg(from_global)]
     pub keypair: PathBuf,
     #[arg(from_global)]
@@ -414,8 +419,8 @@ pub struct ListFilters {
 
 #[derive(Debug, Args)]
 pub struct GetFilters {
-    #[arg(long, env = ENV_OUI)]
-    pub oui: Oui,
+    #[arg(short, long)]
+    pub route_id: String,
     #[arg(short, long, value_parser = hex_field::validate_devaddr)]
     pub devaddr: hex_field::HexDevAddr,
     #[arg(from_global)]
@@ -428,8 +433,8 @@ pub struct GetFilters {
 
 #[derive(Debug, Args)]
 pub struct AddFilter {
-    #[arg(long, env = ENV_OUI)]
-    pub oui: Oui,
+    #[arg(short, long)]
+    pub route_id: String,
     #[arg(short, long, value_parser = hex_field::validate_devaddr)]
     pub devaddr: hex_field::HexDevAddr,
     /// Hex encoded session key
@@ -448,8 +453,8 @@ pub struct AddFilter {
 
 #[derive(Debug, Args)]
 pub struct RemoveFilter {
-    #[arg(long, env = ENV_OUI)]
-    pub oui: Oui,
+    #[arg(short, long)]
+    pub route_id: String,
     #[arg(short, long, value_parser = hex_field::validate_devaddr)]
     pub devaddr: hex_field::HexDevAddr,
     /// Hex encoded session key
@@ -462,6 +467,23 @@ pub struct RemoveFilter {
     #[arg(from_global)]
     pub keypair: PathBuf,
     /// Add EUI entry to a Route
+    #[arg(short, long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct UpdateFilters {
+    #[arg(short, long)]
+    pub route_id: String,
+    /// Path to a file containing a json-encoded list of route_skf_update_v1 records
+    #[arg(short, long)]
+    pub update_file: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
     #[arg(short, long)]
     pub commit: bool,
 }

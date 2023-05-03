@@ -1,10 +1,9 @@
-use crate::{
-    client, cmds::PathBufKeypair, route::Route, server::Protocol, Msg, PrettyJson, Result,
-};
-
 use super::{
     ActivateRoute, AddGwmpRegion, DeactivateRoute, DeleteRoute, GetRoute, ListRoutes, NewRoute,
     RemoveGwmpRegion, UpdateHttp, UpdateMaxCopies, UpdatePacketRouter, UpdateServer,
+};
+use crate::{
+    client, cmds::PathBufKeypair, route::Route, server::Protocol, Msg, PrettyJson, Result,
 };
 
 pub async fn list_routes(args: ListRoutes) -> Result<Msg> {
@@ -319,6 +318,89 @@ pub async fn deactivate_route(args: DeactivateRoute) -> Result<Msg> {
             updated_route.pretty_json()?
         )),
         Err(err) => Msg::err(format!("Could not deactivate route: {err}")),
+    }
+}
+
+pub mod skfs {
+    use crate::{
+        client,
+        cmds::{AddFilter, GetFilters, ListFilters, PathBufKeypair, RemoveFilter, UpdateFilters},
+        Msg, PrettyJson, Result, Skf, SkfUpdate,
+    };
+    use anyhow::Context;
+
+    pub async fn list_filters(args: ListFilters) -> Result<Msg> {
+        let mut client = client::SkfClient::new(&args.config_host, &args.config_pubkey).await?;
+        let filters = client
+            .list_filters(&args.route_id, &args.keypair.to_keypair()?)
+            .await?;
+
+        Msg::ok(filters.pretty_json()?)
+    }
+
+    pub async fn get_filters(args: GetFilters) -> Result<Msg> {
+        let mut client = client::SkfClient::new(&args.config_host, &args.config_pubkey).await?;
+        let filters = client
+            .get_filters(&args.route_id, args.devaddr, &args.keypair.to_keypair()?)
+            .await?;
+
+        Msg::ok(filters.pretty_json()?)
+    }
+
+    pub async fn add_filter(args: AddFilter) -> Result<Msg> {
+        let mut client = client::SkfClient::new(&args.config_host, &args.config_pubkey).await?;
+        let filter = Skf::new(args.route_id.clone(), args.devaddr, args.session_key)?;
+
+        if !args.commit {
+            return Msg::dry_run(format!("added {filter:?}"));
+        }
+
+        client
+            .add_filter(filter.clone(), &args.keypair.to_keypair()?)
+            .await?;
+
+        Msg::ok(format!("added {filter:?}"))
+    }
+
+    pub async fn remove_filter(args: RemoveFilter) -> Result<Msg> {
+        let mut client = client::SkfClient::new(&args.config_host, &args.config_pubkey).await?;
+        let filter = Skf::new(args.route_id.clone(), args.devaddr, args.session_key)?;
+
+        if !args.commit {
+            return Msg::dry_run(format!("removed {filter:?}"));
+        }
+
+        client
+            .remove_filter(filter.clone(), &args.keypair.to_keypair()?)
+            .await?;
+
+        Msg::ok(format!("removed {filter:?}"))
+    }
+
+    pub async fn update_filters_from_file(args: UpdateFilters) -> Result<Msg> {
+        let mut client = client::SkfClient::new(&args.config_host, &args.config_pubkey).await?;
+
+        let data = std::fs::read_to_string(&args.update_file)
+            .context("reading session key filter updates json file")?;
+        let updates: Vec<SkfUpdate> = serde_json::from_str(&data).context(format!(
+            "parsing session key filter update file {}",
+            &args.update_file.display()
+        ))?;
+
+        let update_count = updates.len();
+        if update_count > 100 {
+            return Msg::err("exceeds max 100 update limit per request".to_string());
+        }
+
+        if !args.commit {
+            return Msg::dry_run(format!("updated filters applied {update_count}"));
+        }
+
+        client
+            .update_filters(&args.route_id, updates, &args.keypair.to_keypair()?)
+            .await?;
+
+        Msg::ok("updated filters".to_string())
     }
 }
 
