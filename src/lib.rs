@@ -57,7 +57,7 @@ impl Display for Msg {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Msg::DryRun(msg) => write!(f, "== DRY RUN == (pass `--commit`)\n{msg}"),
-            Msg::Success(msg) => write!(f, "\u{2713} {msg}"),
+            Msg::Success(msg) => write!(f, "{msg}"),
             Msg::Error(msg) => write!(f, "\u{2717} {msg}"),
         }
     }

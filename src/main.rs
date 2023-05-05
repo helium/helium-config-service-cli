@@ -80,6 +80,7 @@ pub async fn handle_cli(cli: Cli) -> Result<Msg> {
         },
         Commands::Gateway { command } => match command {
             cmds::GatewayCommands::Location(args) => gateway::location(args).await,
+            cmds::GatewayCommands::Info(args) => gateway::info(args).await,
         },
     }
 }
