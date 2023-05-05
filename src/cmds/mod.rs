@@ -102,7 +102,9 @@ pub enum EnvCommands {
 #[derive(Debug, Subcommand)]
 pub enum GatewayCommands {
     /// Retrieve H3 index location for the given hotspot
-    Location(GetLocation),
+    Location(GetHotspot),
+    /// Retrieve the on-chain registered info for the hotspot
+    Info(GetHotspot),
 }
 
 #[derive(Debug, Subcommand)]
@@ -148,7 +150,7 @@ pub enum RouteCommands {
 }
 
 #[derive(Debug, Args)]
-pub struct GetLocation {
+pub struct GetHotspot {
     #[arg(long)]
     pub hotspot: PublicKey,
     #[arg(from_global)]
