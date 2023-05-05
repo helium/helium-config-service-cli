@@ -6,9 +6,10 @@ use anyhow::anyhow;
 use helium_crypto::{Keypair, PublicKey, Sign, Verify};
 use helium_proto::{
     services::iot_config::{
-        admin_client, org_client, route_client, route_skf_update_req_v1::RouteSkfUpdateV1,
-        ActionV1, AdminAddKeyReqV1, AdminKeyResV1, AdminLoadRegionReqV1, AdminLoadRegionResV1,
-        AdminRemoveKeyReqV1, OrgCreateHeliumReqV1, OrgCreateRoamerReqV1, OrgEnableReqV1,
+        admin_client, gateway_client, org_client, route_client,
+        route_skf_update_req_v1::RouteSkfUpdateV1, ActionV1, AdminAddKeyReqV1, AdminKeyResV1,
+        AdminLoadRegionReqV1, AdminLoadRegionResV1, AdminRemoveKeyReqV1, GatewayLocationReqV1,
+        GatewayLocationResV1, OrgCreateHeliumReqV1, OrgCreateRoamerReqV1, OrgEnableReqV1,
         OrgEnableResV1, OrgGetReqV1, OrgListReqV1, OrgListResV1, OrgResV1, RouteCreateReqV1,
         RouteDeleteReqV1, RouteDevaddrRangesResV1, RouteEuisResV1, RouteGetDevaddrRangesReqV1,
         RouteGetEuisReqV1, RouteGetReqV1, RouteListReqV1, RouteListResV1, RouteResV1,
@@ -23,22 +24,52 @@ use std::{
 };
 
 pub struct OrgClient {
-    client: org_client::OrgClient<tonic::transport::Channel>,
+    client: org_client::OrgClient<helium_proto::services::Channel>,
     server_pubkey: PublicKey,
 }
 pub struct RouteClient {
-    client: route_client::RouteClient<tonic::transport::Channel>,
+    client: route_client::RouteClient<helium_proto::services::Channel>,
     server_pubkey: PublicKey,
 }
 
 pub struct AdminClient {
-    client: admin_client::AdminClient<tonic::transport::Channel>,
+    client: admin_client::AdminClient<helium_proto::services::Channel>,
+    server_pubkey: PublicKey,
+}
+
+pub struct GatewayClient {
+    client: gateway_client::GatewayClient<helium_proto::services::Channel>,
     server_pubkey: PublicKey,
 }
 
 pub type EuiClient = RouteClient;
 pub type DevaddrClient = RouteClient;
 pub type SkfClient = RouteClient;
+
+impl GatewayClient {
+    pub async fn new(host: &str, server_pubkey: &str) -> Result<Self> {
+        Ok(Self {
+            client: gateway_client::GatewayClient::connect(host.to_owned()).await?,
+            server_pubkey: helium_crypto::PublicKey::from_str(server_pubkey)?,
+        })
+    }
+
+    pub async fn location(
+        &mut self,
+        hotspot: &PublicKey,
+        keypair: &Keypair,
+    ) -> Result<GatewayLocationResV1> {
+        let mut request = GatewayLocationReqV1 {
+            gateway: hotspot.into(),
+            signer: keypair.public_key().into(),
+            signature: vec![],
+        };
+        request.signature = request.sign(keypair)?;
+        let response = self.client.location(request).await?.into_inner();
+        response.verify(&self.server_pubkey)?;
+        Ok(response)
+    }
+}
 
 impl OrgClient {
     pub async fn new(host: &str, server_pubkey: &str) -> Result<Self> {
@@ -596,6 +627,7 @@ impl_sign!(OrgEnableReqV1, signature);
 impl_sign!(AdminLoadRegionReqV1, signature);
 impl_sign!(AdminAddKeyReqV1, signature);
 impl_sign!(AdminRemoveKeyReqV1, signature);
+impl_sign!(GatewayLocationReqV1, signature);
 
 pub trait MsgVerify: Message + std::clone::Clone {
     fn verify(&self, verifier: &PublicKey) -> Result
@@ -629,3 +661,4 @@ impl_verify!(RouteResV1, signature);
 impl_verify!(RouteSkfUpdateResV1, signature);
 impl_verify!(AdminKeyResV1, signature);
 impl_verify!(AdminLoadRegionResV1, signature);
+impl_verify!(GatewayLocationResV1, signature);
