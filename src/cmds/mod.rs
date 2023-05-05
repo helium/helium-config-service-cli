@@ -11,6 +11,7 @@ use std::path::PathBuf;
 
 pub mod admin;
 pub mod env;
+pub mod gateway;
 pub mod org;
 pub mod route;
 
@@ -82,6 +83,10 @@ pub enum Commands {
         #[command(subcommand)]
         command: AdminCommands,
     },
+    Gateway {
+        #[command(subcommand)]
+        command: GatewayCommands,
+    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -92,6 +97,12 @@ pub enum EnvCommands {
     Info(EnvInfo),
     /// Make a new keypair
     GenerateKeypair(GenerateKeypair),
+}
+
+#[derive(Debug, Subcommand)]
+pub enum GatewayCommands {
+    /// Retrieve H3 index location for the given hotspot
+    Location(GetLocation),
 }
 
 #[derive(Debug, Subcommand)]
@@ -134,6 +145,18 @@ pub enum RouteCommands {
         #[command(subcommand)]
         command: SkfCommands,
     },
+}
+
+#[derive(Debug, Args)]
+pub struct GetLocation {
+    #[arg(long)]
+    pub hotspot: PublicKey,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
 }
 
 #[derive(Debug, Args)]

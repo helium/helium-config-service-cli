@@ -1,7 +1,7 @@
 use clap::Parser;
 use helium_config_service_cli::{
     cmds::{
-        self, admin, env, org,
+        self, admin, env, gateway, org,
         route::{self, devaddrs, euis, skfs},
         Cli, Commands, EnvCommands as Env, OrgCommands as Org, RouteCommands, RouteUpdateCommand,
     },
@@ -77,6 +77,9 @@ pub async fn handle_cli(cli: Cli) -> Result<Msg> {
             cmds::AdminCommands::LoadRegion(args) => admin::load_region(args).await,
             cmds::AdminCommands::AddKey(args) => admin::add_key(args).await,
             cmds::AdminCommands::RemoveKey(args) => admin::remove_key(args).await,
+        },
+        Commands::Gateway { command } => match command {
+            cmds::GatewayCommands::Location(args) => gateway::location(args).await,
         },
     }
 }

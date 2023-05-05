@@ -17,8 +17,8 @@ use subnet::DevaddrConstraint;
 pub mod proto {
     pub use helium_proto::services::iot_config::{
         admin_add_key_req_v1::KeyTypeV1, route_skf_update_req_v1::RouteSkfUpdateV1, ActionV1,
-        DevaddrConstraintV1, DevaddrRangeV1, EuiPairV1, OrgEnableResV1, OrgListResV1, OrgResV1,
-        OrgV1, RouteListResV1, SkfV1,
+        DevaddrConstraintV1, DevaddrRangeV1, EuiPairV1, GatewayLocationResV1, OrgEnableResV1,
+        OrgListResV1, OrgResV1, OrgV1, RouteListResV1, SkfV1,
     };
 }
 
