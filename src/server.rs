@@ -88,12 +88,18 @@ impl Protocol {
         BTreeMap::from([(region, port)])
     }
 
-    pub fn make_http(dedupe_timeout: u32, path: String, auth_header: Option<String>) -> Self {
+    pub fn make_http(
+        dedupe_timeout: u32,
+        path: String,
+        auth_header: Option<String>,
+        receiver_nsid: Option<String>,
+    ) -> Self {
         Self::Http(Http {
             flow_type: FlowType::Async,
             dedupe_timeout,
             path,
             auth_header: auth_header.unwrap_or_default(),
+            receiver_nsid: receiver_nsid.unwrap_or_default(),
         })
     }
 
@@ -148,6 +154,7 @@ pub struct Http {
     pub dedupe_timeout: u32,
     pub path: String,
     pub auth_header: String,
+    pub receiver_nsid: String,
 }
 
 #[derive(clap::ValueEnum, Clone, Serialize, Debug, Deserialize, PartialEq, Eq, Default)]
@@ -222,6 +229,7 @@ impl From<Protocol> for proto::Protocol {
                 dedupe_timeout: http.dedupe_timeout,
                 path: http.path,
                 auth_header: http.auth_header,
+                receiver_nsid: http.receiver_nsid,
             }),
             Protocol::PacketRouter => {
                 proto::Protocol::PacketRouter(proto::ProtocolPacketRouterV1 {})
@@ -246,6 +254,7 @@ impl From<proto::Protocol> for Protocol {
                 dedupe_timeout: http.dedupe_timeout,
                 path: http.path,
                 auth_header: http.auth_header,
+                receiver_nsid: http.receiver_nsid,
             }),
             proto::Protocol::PacketRouter(_args) => Protocol::PacketRouter,
         }

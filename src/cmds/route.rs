@@ -129,7 +129,12 @@ pub async fn update_http(args: UpdateHttp) -> Result<Msg> {
     let mut route = client.get(&args.route_id, &keypair).await?;
     let old_route = route.clone();
 
-    let http = Protocol::make_http(args.dedupe_timeout, args.path, args.auth_header);
+    let http = Protocol::make_http(
+        args.dedupe_timeout,
+        args.path,
+        args.auth_header,
+        args.receiver_nsid,
+    );
     route.server.protocol = Some(http);
 
     if !args.commit {

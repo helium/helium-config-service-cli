@@ -315,6 +315,9 @@ pub struct UpdateHttp {
     /// Authorization Header
     #[arg(short, long)]
     pub auth_header: Option<String>,
+    /// Receiver NSID
+    #[arg(long)]
+    pub receiver_nsid: Option<String>,
 
     #[arg(from_global)]
     pub keypair: PathBuf,
