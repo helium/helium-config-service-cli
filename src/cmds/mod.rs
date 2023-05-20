@@ -398,6 +398,8 @@ pub enum DevaddrCommands {
     Add(AddDevaddr),
     /// Remove Devaddr Range from Route
     Remove(RemoveDevaddr),
+    /// Copy Devaddr Constraint from Org to Route
+    FromOrg(CopyDevaddrFromOrg),
     /// Print subnet mask for all devaddr ranges in a Route.
     SubnetMask(RouteSubnetMask),
     /// Remove ALL Devaddr Ranges from Route
@@ -627,6 +629,21 @@ pub struct RemoveDevaddr {
     #[arg(from_global)]
     pub keypair: PathBuf,
     /// Remove Devaddr entry from a Route
+    #[arg(short, long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct CopyDevaddrFromOrg {
+    #[arg(long)]
+    pub route_id: String,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    /// Copy Devaddr from Org to Route
     #[arg(short, long)]
     pub commit: bool,
 }

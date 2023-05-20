@@ -473,7 +473,8 @@ pub mod devaddrs {
     use crate::{
         client,
         cmds::{
-            AddDevaddr, ClearDevaddrs, ListDevaddrs, PathBufKeypair, RemoveDevaddr, RouteSubnetMask,
+            AddDevaddr, ClearDevaddrs, CopyDevaddrFromOrg, ListDevaddrs, PathBufKeypair,
+            RemoveDevaddr, RouteSubnetMask,
         },
         subnet::DevaddrSubnet,
         DevaddrRange, Msg, PrettyJson, Result,
@@ -518,6 +519,39 @@ pub mod devaddrs {
             .await?;
 
         Msg::ok(format!("removed {devaddr_range:?} from {}", args.route_id))
+    }
+
+    pub async fn from_org(args: CopyDevaddrFromOrg) -> Result<Msg> {
+        let mut route_client =
+            client::RouteClient::new(&args.config_host, &args.config_pubkey).await?;
+        let mut org_client = client::OrgClient::new(&args.config_host, &args.config_pubkey).await?;
+        let mut addr_client =
+            client::DevaddrClient::new(&args.config_host, &args.config_pubkey).await?;
+
+        let route = route_client
+            .get(&args.route_id, &args.keypair.to_keypair()?)
+            .await?;
+        let org = org_client.get(route.oui).await?;
+
+        let constraints = org.devaddr_constraints;
+        let mut ranges = vec![];
+        for c in constraints {
+            ranges.push(DevaddrRange::new(
+                args.route_id.clone(),
+                c.start_addr,
+                c.end_addr,
+            )?);
+        }
+
+        if !args.commit {
+            return Msg::dry_run(format!("added {ranges:?} to {}", args.route_id));
+        }
+
+        addr_client
+            .add_devaddrs(ranges.clone(), &args.keypair.to_keypair()?)
+            .await?;
+
+        Msg::ok(format!("added {ranges:?} to {}", args.route_id))
     }
 
     pub async fn clear_devaddrs(args: ClearDevaddrs) -> Result<Msg> {

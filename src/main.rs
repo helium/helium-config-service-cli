@@ -52,6 +52,7 @@ pub async fn handle_cli(cli: Cli) -> Result<Msg> {
                 cmds::DevaddrCommands::List(args) => devaddrs::list_devaddrs(args).await,
                 cmds::DevaddrCommands::Add(args) => devaddrs::add_devaddr(args).await,
                 cmds::DevaddrCommands::Remove(args) => devaddrs::remove_devaddr(args).await,
+                cmds::DevaddrCommands::FromOrg(args) => devaddrs::from_org(args).await,
                 cmds::DevaddrCommands::SubnetMask(args) => devaddrs::subnet_mask(args).await,
                 cmds::DevaddrCommands::Clear(args) => devaddrs::clear_devaddrs(args).await,
             },
