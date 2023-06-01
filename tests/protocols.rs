@@ -55,6 +55,7 @@ async fn create_route_and_update_server() -> Result {
         route_id: route.id.clone(),
         dedupe_timeout: 234,
         path: "path".to_string(),
+        receiver_nsid: None,
         auth_header: Some("test-header".to_string()),
         keypair: keypair_path.clone(),
         config_host: config_host.clone(),
@@ -75,7 +76,8 @@ async fn create_route_and_update_server() -> Result {
             flow_type: server::FlowType::Async,
             dedupe_timeout: 234,
             path: "path".to_string(),
-            auth_header: "test-header".to_string()
+            auth_header: "test-header".to_string(),
+            receiver_nsid: "".to_string(),
         },
         http_protocol
     );

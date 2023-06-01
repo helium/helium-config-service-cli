@@ -1,7 +1,8 @@
 use super::{
-    CreateHelium, CreateRoaming, EnableOrg, GetOrg, ListOrgs, PathBufKeypair, ENV_NET_ID, ENV_OUI,
+    CreateHelium, CreateRoaming, DevaddrAddSlab, DevaddrUpdateConstraint, EnableOrg, GetOrg,
+    ListOrgs, OrgUpdateKey, PathBufKeypair, ENV_NET_ID, ENV_OUI,
 };
-use crate::{client, Msg, PrettyJson, Result};
+use crate::{client, subnet::DevaddrConstraint, Msg, PrettyJson, Result};
 
 pub async fn list_orgs(args: ListOrgs) -> Result<Msg> {
     let mut client = client::OrgClient::new(&args.config_host, &args.config_pubkey).await?;
@@ -31,6 +32,7 @@ pub async fn create_helium_org(args: CreateHelium) -> Result<Msg> {
                 &args.payer,
                 delegates,
                 args.devaddr_count,
+                args.net_id,
                 &args.keypair.to_keypair()?,
             )
             .await?;
@@ -39,7 +41,10 @@ pub async fn create_helium_org(args: CreateHelium) -> Result<Msg> {
             org.pretty_json()?
         ));
     }
-    Msg::ok("pass `--commit` to create Helium organization".to_string())
+    Msg::dry_run(format!(
+        "create Helium organization for NetId {:?} with {} devaddrs",
+        args.net_id, args.devaddr_count
+    ))
 }
 
 pub async fn create_roaming_org(args: CreateRoaming) -> Result<Msg> {
@@ -70,7 +75,10 @@ pub async fn create_roaming_org(args: CreateRoaming) -> Result<Msg> {
             .join("\n"),
         );
     }
-    Msg::ok("pass `--commit` to create Roaming organization".to_string())
+    Msg::dry_run(format!(
+        "create Roaming organization for NetId {}",
+        args.net_id
+    ))
 }
 
 pub async fn enable_org(args: EnableOrg) -> Result<Msg> {
@@ -79,5 +87,147 @@ pub async fn enable_org(args: EnableOrg) -> Result<Msg> {
         client.enable(args.oui, args.keypair.to_keypair()?).await?;
         return Msg::ok(format!("OUI {} enabled", args.oui));
     }
-    Msg::ok(format!("pass `--commit` to enable OUI {}", args.oui))
+    Msg::dry_run(format!("enable OUI {}", args.oui))
+}
+
+pub async fn update_owner(args: OrgUpdateKey) -> Result<Msg> {
+    if args.commit {
+        let mut client = client::OrgClient::new(&args.config_host, &args.config_pubkey).await?;
+        let updated_org = client
+            .update_owner(args.oui, &args.pubkey, args.keypair.to_keypair()?)
+            .await?;
+        return Msg::ok(
+            [
+                "== Organization Updated ==".to_string(),
+                updated_org.pretty_json()?,
+            ]
+            .join("\n"),
+        );
+    }
+    Msg::dry_run(format!(
+        "update organization: owner pubkey {}",
+        &args.pubkey
+    ))
+}
+
+pub async fn update_payer(args: OrgUpdateKey) -> Result<Msg> {
+    if args.commit {
+        let mut client = client::OrgClient::new(&args.config_host, &args.config_pubkey).await?;
+        let updated_org = client
+            .update_payer(args.oui, &args.pubkey, args.keypair.to_keypair()?)
+            .await?;
+        return Msg::ok(
+            [
+                "== Organization Updated ==".to_string(),
+                updated_org.pretty_json()?,
+            ]
+            .join("\n"),
+        );
+    }
+    Msg::dry_run(format!(
+        "update organization: payer pubkey {}",
+        &args.pubkey
+    ))
+}
+
+pub async fn add_delegate_key(args: OrgUpdateKey) -> Result<Msg> {
+    if args.commit {
+        let mut client = client::OrgClient::new(&args.config_host, &args.config_pubkey).await?;
+        let updated_org = client
+            .add_delegate_key(args.oui, &args.pubkey, args.keypair.to_keypair()?)
+            .await?;
+        return Msg::ok(
+            [
+                "== Organization Updated ==".to_string(),
+                updated_org.pretty_json()?,
+            ]
+            .join("\n"),
+        );
+    }
+    Msg::dry_run(format!(
+        "update organization: add delegate key {}",
+        &args.pubkey
+    ))
+}
+
+pub async fn remove_delegate_key(args: OrgUpdateKey) -> Result<Msg> {
+    if args.commit {
+        let mut client = client::OrgClient::new(&args.config_host, &args.config_pubkey).await?;
+        let updated_org = client
+            .remove_delegate_key(args.oui, &args.pubkey, args.keypair.to_keypair()?)
+            .await?;
+        return Msg::ok(
+            [
+                "== Organization Updated ==".to_string(),
+                updated_org.pretty_json()?,
+            ]
+            .join("\n"),
+        );
+    }
+    Msg::dry_run(format!(
+        "update organization: remove delegate key {}",
+        &args.pubkey
+    ))
+}
+
+pub async fn add_devaddr_slab(args: DevaddrAddSlab) -> Result<Msg> {
+    if args.commit {
+        let mut client = client::OrgClient::new(&args.config_host, &args.config_pubkey).await?;
+        let updated_org = client
+            .add_devaddr_slab(args.oui, args.devaddr_count, args.keypair.to_keypair()?)
+            .await?;
+        return Msg::ok(
+            [
+                "== Organization Updated ==".to_string(),
+                updated_org.pretty_json()?,
+            ]
+            .join("\n"),
+        );
+    }
+    Msg::dry_run(format!(
+        "update organization: add {} new devaddrs",
+        args.devaddr_count
+    ))
+}
+
+pub async fn add_devaddr_constraint(args: DevaddrUpdateConstraint) -> Result<Msg> {
+    let constraint = DevaddrConstraint::new(args.start_addr, args.end_addr)?;
+    if args.commit {
+        let mut client = client::OrgClient::new(&args.config_host, &args.config_pubkey).await?;
+        let updated_org = client
+            .add_devaddr_constraint(args.oui, constraint, args.keypair.to_keypair()?)
+            .await?;
+        return Msg::ok(
+            [
+                "== Organization Updated ==".to_string(),
+                updated_org.pretty_json()?,
+            ]
+            .join("\n"),
+        );
+    }
+    Msg::dry_run(format!(
+        "update organization: add devaddr constraint {} - {}",
+        constraint.start_addr, constraint.end_addr
+    ))
+}
+
+pub async fn remove_devaddr_constraint(args: DevaddrUpdateConstraint) -> Result<Msg> {
+    let constraint = DevaddrConstraint::new(args.start_addr, args.end_addr)?;
+    if args.commit {
+        let mut client = client::OrgClient::new(&args.config_host, &args.config_pubkey).await?;
+        let updated_org = client
+            .remove_devaddr_constraint(args.oui, constraint, args.keypair.to_keypair()?)
+            .await?;
+        return Msg::ok(
+            [
+                "== Organization Updated ==".to_string(),
+                updated_org.pretty_json()?,
+            ]
+            .join("\n"),
+        );
+    }
+    Msg::dry_run(format!(
+        "update organization: remove devaddr constraint {} - {}",
+        constraint.start_addr, constraint.end_addr
+    ))
 }

@@ -16,9 +16,10 @@ use subnet::DevaddrConstraint;
 
 pub mod proto {
     pub use helium_proto::services::iot_config::{
-        admin_add_key_req_v1::KeyTypeV1, route_skf_update_req_v1::RouteSkfUpdateV1, ActionV1,
-        DevaddrConstraintV1, DevaddrRangeV1, EuiPairV1, GatewayLocationResV1, OrgEnableResV1,
-        OrgListResV1, OrgResV1, OrgV1, RouteListResV1, SkfV1,
+        admin_add_key_req_v1::KeyTypeV1, org_create_helium_req_v1::HeliumNetId,
+        route_skf_update_req_v1::RouteSkfUpdateV1, ActionV1, DevaddrConstraintV1, DevaddrRangeV1,
+        EuiPairV1, GatewayLocationResV1, OrgEnableResV1, OrgListResV1, OrgResV1, OrgV1,
+        RouteListResV1, SkfV1,
     };
 }
 
@@ -76,6 +77,26 @@ impl<S: ?Sized + serde::Serialize> PrettyJson for S {
 
     fn pretty_json(&self) -> Result<String> {
         serde_json::to_string_pretty(&self).map_err(|e| e.into())
+    }
+}
+
+#[derive(clap::ValueEnum, Clone, Debug)]
+pub enum HeliumNetId {
+    #[value(alias("0x00003c"))]
+    Type0_0x00003c,
+    #[value(alias("0x60002d"))]
+    Type3_0x60002d,
+    #[value(alias("0xc00053"))]
+    Type6_0xc00053,
+}
+
+impl From<HeliumNetId> for proto::HeliumNetId {
+    fn from(id: HeliumNetId) -> Self {
+        match id {
+            HeliumNetId::Type0_0x00003c => proto::HeliumNetId::Type00x00003c,
+            HeliumNetId::Type3_0x60002d => proto::HeliumNetId::Type30x60002d,
+            HeliumNetId::Type6_0xc00053 => proto::HeliumNetId::Type60xc00053,
+        }
     }
 }
 

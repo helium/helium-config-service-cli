@@ -2,7 +2,7 @@ use crate::{
     cmds::env::NetworkArg,
     hex_field::{self, HexNetID},
     region::Region,
-    DevaddrConstraint, KeyType, Msg, Oui, PrettyJson, Result,
+    DevaddrConstraint, HeliumNetId, KeyType, Msg, Oui, PrettyJson, Result,
 };
 use anyhow::Context;
 use clap::{Args, Parser, Subcommand};
@@ -431,6 +431,11 @@ pub enum OrgCommands {
     CreateRoaming(CreateRoaming),
     /// Enable a locked Oui
     Enable(EnableOrg),
+    /// Update Org record
+    Update {
+        #[command(subcommand)]
+        command: OrgUpdateCommand,
+    },
 }
 
 #[derive(Debug, Args)]
@@ -721,6 +726,8 @@ pub struct CreateHelium {
     pub delegate: Option<Vec<PublicKey>>,
     #[arg(long)]
     pub devaddr_count: u64,
+    #[arg(long, value_enum)]
+    pub net_id: HeliumNetId,
     #[arg(from_global)]
     pub keypair: PathBuf,
     #[arg(from_global)]
@@ -741,6 +748,74 @@ pub struct CreateRoaming {
     pub delegate: Option<Vec<PublicKey>>,
     #[arg(long)]
     pub net_id: HexNetID,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
+    #[arg(long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum OrgUpdateCommand {
+    /// Update the org owner pubkey
+    Owner(OrgUpdateKey),
+    /// Update the org payer pubkey
+    Payer(OrgUpdateKey),
+    /// Add delegate key to org
+    DelegateAdd(OrgUpdateKey),
+    /// Remove delegate key from org
+    DelegateRemove(OrgUpdateKey),
+    /// Add devaddr constraint to org
+    DevaddrConstraintAdd(DevaddrUpdateConstraint),
+    /// Remove devaddr constraint from org
+    DevaddrConstraintRemove(DevaddrUpdateConstraint),
+    /// Add an even-numbered Devaddr slab to org
+    DevaddrAddSlab(DevaddrAddSlab),
+}
+
+#[derive(Debug, Args)]
+pub struct OrgUpdateKey {
+    #[arg(long, short)]
+    pub oui: u64,
+    #[arg(long, short)]
+    pub pubkey: PublicKey,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
+    #[arg(long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct DevaddrAddSlab {
+    #[arg(long, short)]
+    pub oui: u64,
+    #[arg(long, short)]
+    pub devaddr_count: u64,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
+    #[arg(long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct DevaddrUpdateConstraint {
+    #[arg(long, short)]
+    pub oui: u64,
+    #[arg(short, long, value_parser = hex_field::validate_devaddr)]
+    pub start_addr: hex_field::HexDevAddr,
+    #[arg(short, long, value_parser = hex_field::validate_devaddr)]
+    pub end_addr: hex_field::HexDevAddr,
     #[arg(from_global)]
     pub keypair: PathBuf,
     #[arg(from_global)]
