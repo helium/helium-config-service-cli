@@ -78,7 +78,7 @@ pub async fn handle_cli(cli: Cli) -> Result<Msg> {
                 cmds::OrgUpdateCommand::DelegateRemove(args) => {
                     org::remove_delegate_key(args).await
                 }
-                cmds::OrgUpdateCommand::DevaddrAddSlab(args) => org::add_devaddr_slab(args).await,
+                cmds::OrgUpdateCommand::DevaddrSlabAdd(args) => org::add_devaddr_slab(args).await,
                 cmds::OrgUpdateCommand::DevaddrConstraintAdd(args) => {
                     org::add_devaddr_constraint(args).await
                 }

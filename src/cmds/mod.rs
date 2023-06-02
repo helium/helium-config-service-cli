@@ -773,7 +773,7 @@ pub enum OrgUpdateCommand {
     /// Remove devaddr constraint from org
     DevaddrConstraintRemove(DevaddrUpdateConstraint),
     /// Add an even-numbered Devaddr slab to org
-    DevaddrAddSlab(DevaddrAddSlab),
+    DevaddrSlabAdd(DevaddrSlabAdd),
 }
 
 #[derive(Debug, Args)]
@@ -793,7 +793,7 @@ pub struct OrgUpdateKey {
 }
 
 #[derive(Debug, Args)]
-pub struct DevaddrAddSlab {
+pub struct DevaddrSlabAdd {
     #[arg(long, short)]
     pub oui: u64,
     #[arg(long, short)]

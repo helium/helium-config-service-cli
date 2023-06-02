@@ -1,5 +1,5 @@
 use super::{
-    CreateHelium, CreateRoaming, DevaddrAddSlab, DevaddrUpdateConstraint, EnableOrg, GetOrg,
+    CreateHelium, CreateRoaming, DevaddrSlabAdd, DevaddrUpdateConstraint, EnableOrg, GetOrg,
     ListOrgs, OrgUpdateKey, PathBufKeypair, ENV_NET_ID, ENV_OUI,
 };
 use crate::{client, subnet::DevaddrConstraint, Msg, PrettyJson, Result};
@@ -170,7 +170,7 @@ pub async fn remove_delegate_key(args: OrgUpdateKey) -> Result<Msg> {
     ))
 }
 
-pub async fn add_devaddr_slab(args: DevaddrAddSlab) -> Result<Msg> {
+pub async fn add_devaddr_slab(args: DevaddrSlabAdd) -> Result<Msg> {
     if args.commit {
         let mut client = client::OrgClient::new(&args.config_host, &args.config_pubkey).await?;
         let updated_org = client
