@@ -1,4 +1,4 @@
-use crate::{client, cmds::PathBufKeypair, region_params::RegionParams, Msg, PrettyJson, Result};
+use crate::{client, cmds::PathBufKeypair, region_params::RegionParams, Msg, Result};
 use anyhow::Context;
 use helium_proto::Region as ProtoRegion;
 use std::{
@@ -49,7 +49,10 @@ pub async fn load_region(args: AdminLoadRegionParams) -> Result<Msg> {
     };
 
     if !args.commit {
-        return Msg::dry_run(params.pretty_json()?);
+        return Msg::dry_run(format!(
+            "params loaded for region {}",
+            ProtoRegion::from(args.region)
+        ));
     }
 
     match client
@@ -62,9 +65,8 @@ pub async fn load_region(args: AdminLoadRegionParams) -> Result<Msg> {
         .await
     {
         Ok(_) => Msg::ok(format!(
-            "created region params {}\n{}",
-            ProtoRegion::from(args.region),
-            params.pretty_json()?
+            "params loaded for region {}",
+            ProtoRegion::from(args.region)
         )),
         Err(err) => Msg::err(format!("region params not created: {err}")),
     }

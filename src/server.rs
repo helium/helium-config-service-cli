@@ -335,13 +335,14 @@ mod tests {
             dedupe_timeout: 777,
             path: "/fns".into(),
             auth_header: "auth-header".to_string(),
+            receiver_nsid: "".to_string(),
         });
         assert_ser_tokens(
             &http,
             &[
                 Token::Struct {
                     name: "Http",
-                    len: 5,
+                    len: 6,
                 },
                 Token::Str("type"),
                 Token::Str("http"),
@@ -356,6 +357,8 @@ mod tests {
                 Token::Str("/fns"),
                 Token::Str("auth_header"),
                 Token::Str("auth-header"),
+                Token::Str("receiver_nsid"),
+                Token::Str(""),
                 Token::StructEnd,
             ],
         );

@@ -4,7 +4,7 @@ use helium_config_service_cli::{
     cmds::{self, *},
     hex_field,
     route::Route,
-    OrgResponse, Result,
+    HeliumNetId, OrgResponse, Result,
 };
 use helium_crypto::PublicKey;
 use std::{path::PathBuf, str::FromStr};
@@ -48,6 +48,7 @@ pub async fn create_helium_org(
         payer: public_key.clone(),
         delegate: None,
         devaddr_count,
+        net_id: HeliumNetId::Type0_0x00003c,
         keypair: keypair_path,
         config_host: CONFIG_HOST.to_string(),
         config_pubkey: CONFIG_PUBKEY.to_string(),

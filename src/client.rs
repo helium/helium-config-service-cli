@@ -1,22 +1,26 @@
 use crate::{
     cmds::gateway::GatewayInfo, hex_field, region::Region, region_params::RegionParams,
-    route::Route, DevaddrRange, Eui, KeyType, NetId, OrgList, OrgResponse, Oui, Result, RouteList,
-    Skf, SkfUpdate,
+    route::Route, DevaddrConstraint, DevaddrRange, Eui, HeliumNetId, KeyType, NetId, OrgList,
+    OrgResponse, Oui, Result, RouteList, Skf, SkfUpdate,
 };
 use anyhow::anyhow;
 use helium_crypto::{Keypair, PublicKey, Sign, Verify};
 use helium_proto::{
     services::iot_config::{
-        admin_client, gateway_client, org_client, route_client,
-        route_skf_update_req_v1::RouteSkfUpdateV1, ActionV1, AdminAddKeyReqV1, AdminKeyResV1,
-        AdminLoadRegionReqV1, AdminLoadRegionResV1, AdminRemoveKeyReqV1, GatewayInfoReqV1,
-        GatewayInfoResV1, GatewayLocationReqV1, GatewayLocationResV1, OrgCreateHeliumReqV1,
-        OrgCreateRoamerReqV1, OrgEnableReqV1, OrgEnableResV1, OrgGetReqV1, OrgListReqV1,
-        OrgListResV1, OrgResV1, RouteCreateReqV1, RouteDeleteReqV1, RouteDevaddrRangesResV1,
-        RouteEuisResV1, RouteGetDevaddrRangesReqV1, RouteGetEuisReqV1, RouteGetReqV1,
-        RouteListReqV1, RouteListResV1, RouteResV1, RouteSkfGetReqV1, RouteSkfListReqV1,
-        RouteSkfUpdateReqV1, RouteSkfUpdateResV1, RouteUpdateDevaddrRangesReqV1,
-        RouteUpdateEuisReqV1, RouteUpdateReqV1,
+        admin_client, gateway_client, org_client,
+        org_update_req_v1::{
+            update_v1::Update, DelegateKeyUpdateV1, DevaddrConstraintUpdateV1, UpdateV1,
+        },
+        route_client,
+        route_skf_update_req_v1::RouteSkfUpdateV1,
+        ActionV1, AdminAddKeyReqV1, AdminKeyResV1, AdminLoadRegionReqV1, AdminLoadRegionResV1,
+        AdminRemoveKeyReqV1, GatewayInfoReqV1, GatewayInfoResV1, GatewayLocationReqV1,
+        GatewayLocationResV1, OrgCreateHeliumReqV1, OrgCreateRoamerReqV1, OrgEnableReqV1,
+        OrgEnableResV1, OrgGetReqV1, OrgListReqV1, OrgListResV1, OrgResV1, OrgUpdateReqV1,
+        RouteCreateReqV1, RouteDeleteReqV1, RouteDevaddrRangesResV1, RouteEuisResV1,
+        RouteGetDevaddrRangesReqV1, RouteGetEuisReqV1, RouteGetReqV1, RouteListReqV1,
+        RouteListResV1, RouteResV1, RouteSkfGetReqV1, RouteSkfListReqV1, RouteSkfUpdateReqV1,
+        RouteSkfUpdateResV1, RouteUpdateDevaddrRangesReqV1, RouteUpdateEuisReqV1, RouteUpdateReqV1,
     },
     Message,
 };
@@ -114,11 +118,13 @@ impl OrgClient {
         payer: &PublicKey,
         delegates: Vec<PublicKey>,
         devaddr_count: u64,
+        net_id: HeliumNetId,
         keypair: &Keypair,
     ) -> Result<OrgResponse> {
         let mut request = OrgCreateHeliumReqV1 {
             owner: owner.into(),
             payer: payer.into(),
+            net_id: net_id as i32,
             devaddrs: devaddr_count,
             timestamp: current_timestamp()?,
             delegate_keys: delegates.iter().map(|key| key.into()).collect(),
@@ -165,6 +171,121 @@ impl OrgClient {
         let response = self.client.enable(request).await?.into_inner();
         response.verify(&self.server_pubkey)?;
         Ok(())
+    }
+
+    async fn request_update(
+        &mut self,
+        oui: u64,
+        update: UpdateV1,
+        keypair: Keypair,
+    ) -> Result<OrgResponse> {
+        let mut request = OrgUpdateReqV1 {
+            oui,
+            updates: vec![update],
+            timestamp: current_timestamp()?,
+            signer: keypair.public_key().into(),
+            signature: vec![],
+        };
+        request.signature = request.sign(&keypair)?;
+        let response = self.client.update(request).await?.into_inner();
+        response.verify(&self.server_pubkey)?;
+        Ok(response.into())
+    }
+
+    pub async fn update_owner(
+        &mut self,
+        oui: u64,
+        owner: &PublicKey,
+        keypair: Keypair,
+    ) -> Result<OrgResponse> {
+        let update = UpdateV1 {
+            update: Some(Update::Owner(owner.into())),
+        };
+        self.request_update(oui, update, keypair).await
+    }
+
+    pub async fn update_payer(
+        &mut self,
+        oui: u64,
+        payer: &PublicKey,
+        keypair: Keypair,
+    ) -> Result<OrgResponse> {
+        let update = UpdateV1 {
+            update: Some(Update::Payer(payer.into())),
+        };
+        self.request_update(oui, update, keypair).await
+    }
+
+    pub async fn add_delegate_key(
+        &mut self,
+        oui: u64,
+        delegate_key: &PublicKey,
+        keypair: Keypair,
+    ) -> Result<OrgResponse> {
+        let update = UpdateV1 {
+            update: Some(Update::DelegateKey(DelegateKeyUpdateV1 {
+                delegate_key: delegate_key.into(),
+                action: ActionV1::Add as i32,
+            })),
+        };
+        self.request_update(oui, update, keypair).await
+    }
+
+    pub async fn remove_delegate_key(
+        &mut self,
+        oui: u64,
+        delegate_key: &PublicKey,
+        keypair: Keypair,
+    ) -> Result<OrgResponse> {
+        let update = UpdateV1 {
+            update: Some(Update::DelegateKey(DelegateKeyUpdateV1 {
+                delegate_key: delegate_key.into(),
+                action: ActionV1::Remove as i32,
+            })),
+        };
+        self.request_update(oui, update, keypair).await
+    }
+
+    pub async fn add_devaddr_constraint(
+        &mut self,
+        oui: u64,
+        constraint: DevaddrConstraint,
+        keypair: Keypair,
+    ) -> Result<OrgResponse> {
+        let update = UpdateV1 {
+            update: Some(Update::Constraint(DevaddrConstraintUpdateV1 {
+                constraint: Some(constraint.into()),
+                action: ActionV1::Add as i32,
+            })),
+        };
+        self.request_update(oui, update, keypair).await
+    }
+
+    pub async fn remove_devaddr_constraint(
+        &mut self,
+        oui: u64,
+        constraint: DevaddrConstraint,
+        keypair: Keypair,
+    ) -> Result<OrgResponse> {
+        let update = UpdateV1 {
+            update: Some(Update::Constraint(DevaddrConstraintUpdateV1 {
+                constraint: Some(constraint.into()),
+                action: ActionV1::Remove as i32,
+            })),
+        };
+        self.request_update(oui, update, keypair).await
+    }
+
+    pub async fn add_devaddr_slab(
+        &mut self,
+        oui: u64,
+        slab_count: u64,
+        keypair: Keypair,
+    ) -> Result<OrgResponse> {
+        let update = UpdateV1 {
+            update: Some(Update::Devaddrs(slab_count)),
+        };
+        self.request_update(oui, update, keypair).await
     }
 }
 
@@ -639,6 +760,7 @@ impl_sign!(RouteSkfUpdateReqV1, signature);
 impl_sign!(OrgCreateHeliumReqV1, signature);
 impl_sign!(OrgCreateRoamerReqV1, signature);
 impl_sign!(OrgEnableReqV1, signature);
+impl_sign!(OrgUpdateReqV1, signature);
 impl_sign!(AdminLoadRegionReqV1, signature);
 impl_sign!(AdminAddKeyReqV1, signature);
 impl_sign!(AdminRemoveKeyReqV1, signature);
