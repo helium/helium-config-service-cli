@@ -354,14 +354,19 @@ pub mod skfs {
 
     pub async fn add_filter(args: AddFilter) -> Result<Msg> {
         let mut client = client::SkfClient::new(&args.config_host, &args.config_pubkey).await?;
-        let filter = Skf::new(args.route_id.clone(), args.devaddr, args.session_key)?;
+        let filter = Skf::new(
+            args.route_id.clone(),
+            args.devaddr,
+            args.session_key,
+            args.max_copies,
+        )?;
 
         if !args.commit {
             return Msg::dry_run(format!("added {filter:?}"));
         }
 
         client
-            .add_filter(filter.clone(), &args.keypair.to_keypair()?)
+            .add_filter(filter.clone(), &args.keypair.to_keypair()?, args.max_copies)
             .await?;
 
         Msg::ok(format!("added {filter:?}"))
@@ -369,7 +374,7 @@ pub mod skfs {
 
     pub async fn remove_filter(args: RemoveFilter) -> Result<Msg> {
         let mut client = client::SkfClient::new(&args.config_host, &args.config_pubkey).await?;
-        let filter = Skf::new(args.route_id.clone(), args.devaddr, args.session_key)?;
+        let filter = Skf::new(args.route_id.clone(), args.devaddr, args.session_key, 0)?;
 
         if !args.commit {
             return Msg::dry_run(format!("removed {filter:?}"));

@@ -54,6 +54,7 @@ async fn create_org_and_add_remove_session_key_filtesr() -> Result {
         config_pubkey: config_pubkey.clone(),
         keypair: keypair_path.clone(),
         commit: true,
+        max_copies: 1,
     })
     .await?;
     info!("add 1: {out}");
@@ -66,6 +67,7 @@ async fn create_org_and_add_remove_session_key_filtesr() -> Result {
         config_pubkey: config_pubkey.clone(),
         keypair: keypair_path.clone(),
         commit: true,
+        max_copies: 1,
     })
     .await?;
     info!("add 2: {out}");

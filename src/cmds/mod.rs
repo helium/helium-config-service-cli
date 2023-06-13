@@ -470,6 +470,10 @@ pub struct AddFilter {
     pub route_id: String,
     #[arg(short, long, value_parser = hex_field::validate_devaddr)]
     pub devaddr: hex_field::HexDevAddr,
+    /// How many copies to purchase for packets matching this filter.
+    /// If the value is 0 (zero) the max_copies value will fall back to the route.
+    #[arg(short, long)]
+    pub max_copies: u32,
     /// Hex encoded session key
     #[arg(short, long)]
     pub session_key: String,
