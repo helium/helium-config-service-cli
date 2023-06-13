@@ -1,7 +1,6 @@
 use super::{GetHotspot, PathBufKeypair};
 use crate::{client, region::Region, Msg, PrettyJson, Result};
 use angry_purple_tiger::AnimalName;
-use h3ron::ToCoordinate;
 use helium_crypto::PublicKey;
 use helium_proto::services::iot_config::{
     GatewayInfo as GatewayInfoProto, GatewayLocationResV1, GatewayMetadata as GatewayMetadataProto,
@@ -53,16 +52,16 @@ impl Location {
     fn from_proto_resp(
         pubkey: PublicKey,
         res: GatewayLocationResV1,
-    ) -> Result<Location, h3ron::Error> {
+    ) -> Result<Location, h3o::error::InvalidCellIndex> {
         let hex = res.location;
-        let (lat, lon) = h3ron::H3Cell::from_str(&hex)?.to_coordinate()?.x_y();
+        let latlng: h3o::LatLng = h3o::CellIndex::from_str(&hex)?.into();
         let name: AnimalName = pubkey.clone().into();
         Ok(Self {
             name: name.to_string(),
             pubkey,
             hex,
-            lat,
-            lon,
+            lat: latlng.lat(),
+            lon: latlng.lng(),
         })
     }
 }
@@ -106,17 +105,15 @@ impl TryFrom<GatewayInfoProto> for GatewayInfo {
 }
 
 impl TryFrom<GatewayMetadataProto> for GatewayMetadata {
-    type Error = h3ron::Error;
+    type Error = h3o::error::InvalidCellIndex;
 
     fn try_from(md: GatewayMetadataProto) -> Result<Self, Self::Error> {
         let location = md.clone().location;
-        let (lat, lon) = h3ron::H3Cell::from_str(&md.location)?
-            .to_coordinate()?
-            .x_y();
+        let latlng: h3o::LatLng = h3o::CellIndex::from_str(&md.location)?.into();
         Ok(Self {
             location,
-            lat,
-            lon,
+            lat: latlng.lat(),
+            lon: latlng.lng(),
             region: md.region().into(),
             gain: md.gain,
             elevation: md.elevation,

@@ -12,8 +12,8 @@ dialoguer = "0.10.2"
 clap = { version = "4.2.7", features = ["derive", "env"] }
 futures = "0.3.28"
 helium-crypto = "0.6.9"
-helium-proto = { git = "https://github.com/helium/proto", branch="master", features=["services"]}
-h3ron = "0.17.0"
+helium-proto = { git = "https://github.com/helium/proto", branch="macpie/skf_max_copies", features=["services"]}
+h3o = "0"
 ipnet = "2.7.2"
 prost = "0.11.9"
 rand = "0.8.5"
