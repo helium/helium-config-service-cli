@@ -2,7 +2,7 @@ name: Releases
 
 on:
   push:
-    tags: "*"
+    tags: ["*"]
 
 jobs:
   release-linux:
@@ -20,6 +20,9 @@ jobs:
         uses: styfle/cancel-workflow-action@0.5.0
         with:
           access_token: ${{ github.token }}
+
+      - name: Install protoc
+        run: sudo apt-get install -y protobuf-compiler
 
       - name: Build
         run: cargo build --release
@@ -67,6 +70,9 @@ jobs:
         uses: styfle/cancel-workflow-action@0.5.0
         with:
           access_token: ${{ github.token }}
+
+      - name: Install protoc
+        run: brew install protobuf
 
       - name: Build
         run: cargo build --release
@@ -128,6 +134,9 @@ jobs:
         uses: styfle/cancel-workflow-action@0.5.0
         with:
           access_token: ${{ github.token }}
+
+      - name: Install protoc
+        run: choco install protoc
 
       - name: Build
         run: cargo build --release
