@@ -191,7 +191,7 @@ pub struct Skf {
     pub route_id: String,
     pub devaddr: hex_field::HexDevAddr,
     pub session_key: String,
-    pub max_copies: u32,
+    pub max_copies: Option<u32>,
 }
 
 impl Skf {
@@ -199,7 +199,7 @@ impl Skf {
         route_id: String,
         devaddr: hex_field::HexDevAddr,
         session_key: String,
-        max_copies: u32,
+        max_copies: Option<u32>,
     ) -> Result<Self> {
         Ok(Self {
             route_id,
@@ -223,7 +223,7 @@ pub struct SkfUpdate {
     pub devaddr: hex_field::HexDevAddr,
     pub session_key: String,
     pub action: UpdateAction,
-    pub max_copies: u32,
+    pub max_copies: Option<u32>,
 }
 
 impl From<SkfUpdate> for proto::RouteSkfUpdateV1 {
@@ -238,7 +238,7 @@ impl From<SkfUpdate> for proto::RouteSkfUpdateV1 {
             devaddr: update.devaddr.into(),
             session_key: update.session_key,
             action,
-            max_copies: update.max_copies,
+            max_copies: update.max_copies.unwrap_or(1),
         }
     }
 }
@@ -282,7 +282,7 @@ impl From<proto::SkfV1> for Skf {
             route_id: filter.route_id,
             devaddr: (filter.devaddr as u64).into(),
             session_key: filter.session_key,
-            max_copies: filter.max_copies,
+            max_copies: Some(filter.max_copies),
         }
     }
 }
@@ -293,7 +293,7 @@ impl From<Skf> for proto::SkfV1 {
             route_id: filter.route_id,
             devaddr: filter.devaddr.0 as u32,
             session_key: filter.session_key,
-            max_copies: filter.max_copies,
+            max_copies: filter.max_copies.unwrap_or(1),
         }
     }
 }

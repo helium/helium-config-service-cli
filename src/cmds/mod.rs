@@ -473,8 +473,8 @@ pub struct AddFilter {
     /// Hex encoded session key
     #[arg(short, long)]
     pub session_key: String,
-    #[arg(short, long, default_value = "1")]
-    pub max_copies: u32,
+    #[arg(short, long)]
+    pub max_copies: Option<u32>,
     #[arg(from_global)]
     pub config_host: String,
     #[arg(from_global)]
