@@ -597,7 +597,7 @@ impl SkfClient {
             devaddr: filter.devaddr.into(),
             session_key: filter.session_key,
             action: ActionV1::Add.into(),
-            max_copies: filter.max_copies,
+            max_copies: filter.max_copies.unwrap_or(1),
         };
         let mut request = RouteSkfUpdateReqV1 {
             route_id: filter.route_id,

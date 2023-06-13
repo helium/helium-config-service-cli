@@ -374,7 +374,7 @@ pub mod skfs {
 
     pub async fn remove_filter(args: RemoveFilter) -> Result<Msg> {
         let mut client = client::SkfClient::new(&args.config_host, &args.config_pubkey).await?;
-        let filter = Skf::new(args.route_id.clone(), args.devaddr, args.session_key, 0)?;
+        let filter = Skf::new(args.route_id.clone(), args.devaddr, args.session_key, None)?;
 
         if !args.commit {
             return Msg::dry_run(format!("removed {filter:?}"));
