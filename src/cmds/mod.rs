@@ -33,7 +33,7 @@ pub struct Cli {
         global = true,
         long,
         env = ENV_CONFIG_HOST,
-        default_value = "http://mainnet-config.helium.io:6080"
+        default_value = "https://config.iot.mainnet.helium.io:6080"
     )]
     pub config_host: String,
 
