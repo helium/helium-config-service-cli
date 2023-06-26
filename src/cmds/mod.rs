@@ -265,6 +265,8 @@ pub enum RouteUpdateCommand {
     RemoveGwmpRegion(RemoveGwmpRegion),
     /// Set the Route Protocol to PacketRouter (GRPC)
     PacketRouter(UpdatePacketRouter),
+    /// Set route `ignore_empty_skf` boolean
+    IgnoreEmptySkf(SetIgnoreEmptySkf),
 }
 
 #[derive(Debug, Args)]
@@ -368,6 +370,22 @@ pub struct RemoveGwmpRegion {
     #[arg(value_enum)]
     pub region: Region,
 
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
+    #[arg(long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct SetIgnoreEmptySkf {
+    #[arg(short, long)]
+    pub route_id: String,
+    #[arg(short, long)]
+    pub ignore: bool,
     #[arg(from_global)]
     pub keypair: PathBuf,
     #[arg(from_global)]
