@@ -15,6 +15,7 @@ pub struct Route {
     pub max_copies: u32,
     pub active: bool,
     pub locked: bool,
+    pub ignore_empty_skf: bool,
 }
 
 impl Route {
@@ -27,6 +28,7 @@ impl Route {
             max_copies,
             locked: false,
             active: true,
+            ignore_empty_skf: false,
         }
     }
 
@@ -41,6 +43,10 @@ impl Route {
     pub fn http_update(&mut self, http: Http) -> Result {
         self.server.http_update(http)
     }
+
+    pub fn set_ignore_empty_skf(&mut self, ignore: bool) {
+        self.ignore_empty_skf = ignore;
+    }
 }
 
 impl From<ProtoRoute> for Route {
@@ -53,6 +59,7 @@ impl From<ProtoRoute> for Route {
             max_copies: route.max_copies,
             locked: route.locked,
             active: route.active,
+            ignore_empty_skf: route.ignore_empty_skf,
         }
     }
 }
@@ -67,6 +74,7 @@ impl From<Route> for ProtoRoute {
             max_copies: route.max_copies,
             locked: route.locked,
             active: route.active,
+            ignore_empty_skf: route.ignore_empty_skf,
         }
     }
 }
@@ -88,6 +96,7 @@ mod tests {
             max_copies: 999,
             locked: true,
             active: true,
+            ignore_empty_skf: false,
         };
 
         let v1 = RouteV1 {
@@ -102,6 +111,7 @@ mod tests {
             max_copies: 999,
             locked: true,
             active: true,
+            ignore_empty_skf: false,
         };
         assert_eq!(route, Route::from(v1.clone()));
         assert_eq!(v1, RouteV1::from(route));
