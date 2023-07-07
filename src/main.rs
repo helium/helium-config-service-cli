@@ -65,6 +65,7 @@ pub async fn handle_cli(cli: Cli) -> Result<Msg> {
                 cmds::SkfCommands::Get(args) => skfs::get_filters(args).await,
                 cmds::SkfCommands::Add(args) => skfs::add_filter(args).await,
                 cmds::SkfCommands::Remove(args) => skfs::remove_filter(args).await,
+                cmds::SkfCommands::Clear(args) => skfs::clear_filters(args).await,
                 cmds::SkfCommands::Update(args) => skfs::update_filters_from_file(args).await,
             },
         },
