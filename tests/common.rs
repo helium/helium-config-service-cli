@@ -132,6 +132,8 @@ pub async fn ensure_num_euis(eui_count: usize, route_id: &str, keypair_path: Pat
         keypair: keypair_path.clone(),
         config_host: CONFIG_HOST.to_string(),
         config_pubkey: CONFIG_PUBKEY.to_string(),
+        app_eui: None,
+        dev_eui: None,
     })
     .await?;
     info!("{out}");

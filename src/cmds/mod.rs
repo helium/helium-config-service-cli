@@ -179,6 +179,8 @@ pub struct ListRoutes {
 pub struct GetRoute {
     #[arg(short, long)]
     pub route_id: String,
+    #[arg(short, long)]
+    pub stats: bool,
     #[arg(from_global)]
     pub keypair: PathBuf,
     #[arg(from_global)]
@@ -307,6 +309,7 @@ pub struct UpdateServer {
 pub struct UpdateHttp {
     #[arg(short, long)]
     pub route_id: String,
+    /// Dedupe timeout in ms
     #[arg(short, long, default_value = "250")]
     pub dedupe_timeout: u32,
     /// Just the path part of the Server URL
@@ -561,6 +564,12 @@ pub struct UpdateFilters {
 pub struct ListEuis {
     #[arg(short, long)]
     pub route_id: String,
+    /// Filter the list of EUIs by provided app_eui.
+    #[arg(short, long, value_parser = hex_field::validate_eui)]
+    pub app_eui: Option<hex_field::HexEui>,
+    /// Filter the list of EUIS by provided dev_eui.
+    #[arg(short, long, value_parser = hex_field::validate_eui)]
+    pub dev_eui: Option<hex_field::HexEui>,
     #[arg(from_global)]
     pub keypair: PathBuf,
     #[arg(from_global)]
