@@ -179,6 +179,8 @@ pub struct ListRoutes {
 pub struct GetRoute {
     #[arg(short, long)]
     pub route_id: String,
+    #[arg(short, long)]
+    pub stats: bool,
     #[arg(from_global)]
     pub keypair: PathBuf,
     #[arg(from_global)]
@@ -307,6 +309,7 @@ pub struct UpdateServer {
 pub struct UpdateHttp {
     #[arg(short, long)]
     pub route_id: String,
+    /// Dedupe timeout in ms
     #[arg(short, long, default_value = "250")]
     pub dedupe_timeout: u32,
     /// Just the path part of the Server URL
@@ -432,6 +435,8 @@ pub enum SkfCommands {
     Add(AddFilter),
     /// Update a Route to remove a Session Key Filter from a Devaddr
     Remove(RemoveFilter),
+    /// Remove ALL Session Key Filters from a Route
+    Clear(ClearFilters),
     /// Update a Route by reading a list of Session Key Filters from
     /// a file and adding or removing them
     Update(UpdateFilters),
@@ -525,6 +530,20 @@ pub struct RemoveFilter {
 }
 
 #[derive(Debug, Args)]
+pub struct ClearFilters {
+    #[arg(short, long)]
+    pub route_id: String,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(short, long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
 pub struct UpdateFilters {
     #[arg(short, long)]
     pub route_id: String,
@@ -545,6 +564,12 @@ pub struct UpdateFilters {
 pub struct ListEuis {
     #[arg(short, long)]
     pub route_id: String,
+    /// Filter the list of EUIs by provided app_eui.
+    #[arg(short, long, value_parser = hex_field::validate_eui)]
+    pub app_eui: Option<hex_field::HexEui>,
+    /// Filter the list of EUIS by provided dev_eui.
+    #[arg(short, long, value_parser = hex_field::validate_eui)]
+    pub dev_eui: Option<hex_field::HexEui>,
     #[arg(from_global)]
     pub keypair: PathBuf,
     #[arg(from_global)]

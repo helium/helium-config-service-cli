@@ -638,6 +638,34 @@ impl SkfClient {
         Ok(response)
     }
 
+    pub async fn delete_filters(&mut self, route_id: String, keypair: &Keypair) -> Result {
+        let skfs = self.list_filters(&route_id, keypair).await?;
+        let total = skfs.len() / 100;
+        for (idx, chunk) in skfs.chunks(100).enumerate() {
+            let mut request = RouteSkfUpdateReqV1 {
+                route_id: route_id.clone(),
+                updates: chunk
+                    .iter()
+                    .map(|skf| RouteSkfUpdateV1 {
+                        devaddr: skf.devaddr.into(),
+                        session_key: skf.session_key.to_owned(),
+                        action: ActionV1::Remove.into(),
+                        max_copies: 0
+                    })
+                    .collect(),
+                timestamp: current_timestamp()?,
+                signer: keypair.public_key().into(),
+                signature: vec![],
+            };
+            request.signature = request.sign(keypair)?;
+            let response = self.client.update_skfs(request).await?.into_inner();
+            response.verify(&self.server_pubkey)?;
+            println!("Removed page: {idx}/{total}");
+        }
+
+        Ok(())
+    }
+
     pub async fn update_filters(
         &mut self,
         route_id: &str,

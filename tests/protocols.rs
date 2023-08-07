@@ -32,6 +32,7 @@ async fn create_route_and_update_server() -> Result {
         keypair: keypair_path.clone(),
         config_host: config_host.clone(),
         config_pubkey: config_pubkey.clone(),
+        stats: false,
     })
     .await?;
     info!("{out1}");

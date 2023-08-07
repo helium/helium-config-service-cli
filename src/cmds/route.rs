@@ -1,3 +1,5 @@
+use helium_crypto::Keypair;
+
 use super::{
     ActivateRoute, AddGwmpRegion, DeactivateRoute, DeleteRoute, GetRoute, ListRoutes, NewRoute,
     RemoveGwmpRegion, SetIgnoreEmptySkf, UpdateHttp, UpdateMaxCopies, UpdatePacketRouter,
@@ -17,13 +19,66 @@ pub async fn list_routes(args: ListRoutes) -> Result<Msg> {
 
 pub async fn get_route(args: GetRoute) -> Result<Msg> {
     let mut client = client::RouteClient::new(&args.config_host, &args.config_pubkey).await?;
+    let stats_str = if args.stats {
+        let RouteStats {
+            devaddr_count,
+            eui_count,
+            skf_count,
+        } = counts_for_route(
+            &args.config_host,
+            &args.config_pubkey,
+            &args.route_id,
+            &args.keypair.to_keypair()?,
+        )
+        .await?;
+        format!(
+            "\nDevAddr Range: {}\nEUI Count: {}\nSKF Count: {}",
+            devaddr_count, eui_count, skf_count
+        )
+    } else {
+        "".to_string()
+    };
     match client
         .get(&args.route_id, &args.keypair.to_keypair()?)
         .await
     {
-        Ok(route) => Msg::ok(route.pretty_json()?),
+        Ok(route) => Msg::ok(format!("{}{}", route.pretty_json()?, stats_str)),
         Err(err) => Msg::err(format!("could not get route: {err}")),
     }
+}
+
+struct RouteStats {
+    devaddr_count: usize,
+    eui_count: usize,
+    skf_count: usize,
+}
+
+async fn counts_for_route(
+    config_host: &str,
+    config_pubkey: &str,
+    route_id: &str,
+    keypair: &Keypair,
+) -> Result<RouteStats> {
+    let devaddr_count = client::DevaddrClient::new(config_host, config_pubkey)
+        .await?
+        .get_devaddrs(route_id, keypair)
+        .await?
+        .len();
+    let skf_count = client::SkfClient::new(config_host, config_pubkey)
+        .await?
+        .list_filters(route_id, keypair)
+        .await?
+        .len();
+    let eui_count = client::EuiClient::new(config_host, config_pubkey)
+        .await?
+        .get_euis(route_id, keypair)
+        .await?
+        .len();
+    Ok(RouteStats {
+        devaddr_count,
+        eui_count,
+        skf_count,
+    })
 }
 
 pub async fn new_route(args: NewRoute) -> Result<Msg> {
@@ -361,7 +416,10 @@ pub async fn deactivate_route(args: DeactivateRoute) -> Result<Msg> {
 pub mod skfs {
     use crate::{
         client,
-        cmds::{AddFilter, GetFilters, ListFilters, PathBufKeypair, RemoveFilter, UpdateFilters},
+        cmds::{
+            AddFilter, ClearFilters, GetFilters, ListFilters, PathBufKeypair, RemoveFilter,
+            UpdateFilters,
+        },
         Msg, PrettyJson, Result, Skf, SkfUpdate,
     };
     use anyhow::Context;
@@ -419,6 +477,25 @@ pub mod skfs {
         Msg::ok(format!("removed {filter:?}"))
     }
 
+    pub async fn clear_filters(args: ClearFilters) -> Result<Msg> {
+        let mut client = client::SkfClient::new(&args.config_host, &args.config_pubkey).await?;
+
+        if !args.commit {
+            return Msg::dry_run(format!(
+                "All Session Key Filters removed from {}",
+                args.route_id
+            ));
+        }
+
+        client
+            .delete_filters(args.route_id.clone(), &args.keypair.to_keypair()?)
+            .await?;
+        Msg::ok(format!(
+            "All Session Key Filters removed from {}",
+            args.route_id
+        ))
+    }
+
     pub async fn update_filters_from_file(args: UpdateFilters) -> Result<Msg> {
         let mut client = client::SkfClient::new(&args.config_host, &args.config_pubkey).await?;
 
@@ -455,9 +532,16 @@ pub mod euis {
 
     pub async fn list_euis(args: ListEuis) -> Result<Msg> {
         let mut client = client::EuiClient::new(&args.config_host, &args.config_pubkey).await?;
-        let euis_for_route = client
+        let mut euis_for_route = client
             .get_euis(&args.route_id, &args.keypair.to_keypair()?)
             .await?;
+
+        if let Some(app_eui) = args.app_eui {
+            euis_for_route.retain(|eui| eui.app_eui == app_eui);
+        }
+        if let Some(dev_eui) = args.dev_eui {
+            euis_for_route.retain(|eui| eui.dev_eui == dev_eui);
+        }
 
         Msg::ok(euis_for_route.pretty_json()?)
     }
