@@ -113,14 +113,35 @@ pub fn generate_keypair(args: GenerateKeypair) -> Result<Msg> {
         },
         &mut OsRng,
     );
-    if let Some(parent) = args.out_file.parent() {
-        fs::create_dir_all(parent)?;
+
+    let do_write = |msg: String| -> Result<Msg> {
+        if let Some(parent) = args.out_file.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        fs::write(&args.out_file, key.to_vec())?;
+        Msg::ok(msg)
+    };
+
+    if args.out_file.exists() {
+        if args.commit {
+            do_write(format!(
+                "New Keypair created and overwritten to {:?}\npubkey: {}",
+                args.out_file.display(),
+                key.public_key().to_string()
+            ))
+        } else {
+            Msg::err(format!(
+                "{} already exists. Pass `--commit` to overwrite.",
+                args.out_file.display()
+            ))
+        }
+    } else {
+        do_write(format!(
+            "New Keypair created and written to {:?}\n pubkey: {}",
+            args.out_file.display(),
+            key.public_key().to_string()
+        ))
     }
-    fs::write(&args.out_file, key.to_vec())?;
-    Msg::ok(format!(
-        "New Keypair created and written to {:?}",
-        args.out_file.display()
-    ))
 }
 
 pub fn get_public_key_from_path(path: Option<PathBuf>) -> (String, String, String) {
