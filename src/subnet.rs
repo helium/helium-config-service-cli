@@ -10,7 +10,7 @@ use crate::{
 
 #[derive(Debug, Serialize, PartialEq, Eq)]
 pub struct DevaddrSubnet {
-    range: DevaddrConstraint,
+    pub range: DevaddrConstraint,
     pub subnets: Vec<String>,
 }
 
