@@ -267,7 +267,13 @@ pub enum RouteUpdateCommand {
     RemoveGwmpRegion(RemoveGwmpRegion),
     /// Set the Route Protocol to PacketRouter (GRPC)
     PacketRouter(UpdatePacketRouter),
-    /// Set route `ignore_empty_skf` boolean
+    /// Permissive: set `ignore_empty_skf` to false (default)
+    ///
+    /// A Packet with no Session Key Filters for it's DevAddr WILL be routed.
+    AllowEmptySkf(SetIgnoreEmptySkf),
+    /// Restrictive: set `ignore_empty_skf` to true
+    ///
+    /// A Packet with no Session Key Filter for it's DevAddr WILL NOT be routed.
     IgnoreEmptySkf(SetIgnoreEmptySkf),
 }
 
@@ -387,8 +393,6 @@ pub struct RemoveGwmpRegion {
 pub struct SetIgnoreEmptySkf {
     #[arg(short, long)]
     pub route_id: String,
-    #[arg(short, long)]
-    pub ignore: bool,
     #[arg(from_global)]
     pub keypair: PathBuf,
     #[arg(from_global)]

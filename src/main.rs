@@ -41,9 +41,8 @@ pub async fn handle_cli(cli: Cli) -> Result<Msg> {
                 RouteUpdateCommand::AddGwmpRegion(args) => route::add_gwmp_region(args).await,
                 RouteUpdateCommand::RemoveGwmpRegion(args) => route::remove_gwmp_region(args).await,
                 RouteUpdateCommand::PacketRouter(args) => route::update_packet_router(args).await,
-                RouteUpdateCommand::IgnoreEmptySkf(args) => {
-                    route::update_ignore_empty_skf(args).await
-                }
+                RouteUpdateCommand::AllowEmptySkf(args) => route::allow_empty_skf(args).await,
+                RouteUpdateCommand::IgnoreEmptySkf(args) => route::ignore_empty_skf(args).await,
             },
             RouteCommands::Euis { command } => match command {
                 cmds::EuiCommands::List(args) => euis::list_euis(args).await,
