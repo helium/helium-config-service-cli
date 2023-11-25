@@ -1,6 +1,6 @@
 # Helium Config Service CLI
 
-Cli tool to interact with [Helium Config Service](https://github.com/helium/helium-config-service).
+Cli tool to interact with [Helium Config Service](https://github.com/helium/oracles/tree/main/iot_config).
 
 ## Installation
 
