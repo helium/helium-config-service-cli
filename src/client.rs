@@ -650,7 +650,7 @@ impl SkfClient {
                         devaddr: skf.devaddr.into(),
                         session_key: skf.session_key.to_owned(),
                         action: ActionV1::Remove.into(),
-                        max_copies: 0
+                        max_copies: 0,
                     })
                     .collect(),
                 timestamp: current_timestamp()?,
@@ -757,6 +757,24 @@ fn current_timestamp() -> Result<u64> {
     Ok(SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis() as u64)
 }
 
+pub fn verify_keypair(keypair: &Keypair) -> Result<bool> {
+    let mut req = RouteListReqV1 {
+        oui: 0,
+        timestamp: current_timestamp()?,
+        signer: keypair.public_key().to_vec(),
+        signature: vec![],
+    };
+    req.signature = req
+        .sign(keypair)
+        .map_err(|e| anyhow!("failed to sign: {e:?}"))?;
+
+    let _verified = req
+        .verify(&keypair.public_key())
+        .map_err(|e| anyhow!("keypair corrupted: {e:?}"))?;
+
+    Ok(true)
+}
+
 pub trait MsgSign: Message + std::clone::Clone {
     fn sign(&self, keypair: &Keypair) -> Result<Vec<u8>>
     where
@@ -819,6 +837,7 @@ macro_rules! impl_verify {
     };
 }
 
+impl_verify!(RouteListReqV1, signature);
 impl_verify!(OrgListResV1, signature);
 impl_verify!(OrgResV1, signature);
 impl_verify!(OrgEnableResV1, signature);

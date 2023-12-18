@@ -4,7 +4,7 @@ use std::{env, fs, path::PathBuf};
 use super::{
     EnvInfo, GenerateKeypair, ENV_CONFIG_HOST, ENV_KEYPAIR_BIN, ENV_MAX_COPIES, ENV_NET_ID, ENV_OUI,
 };
-use crate::{hex_field, Msg, Oui, PrettyJson, Result};
+use crate::{client::verify_keypair, hex_field, Msg, Oui, PrettyJson, Result};
 use anyhow::Context;
 use dialoguer::Input;
 use helium_crypto::Keypair;
@@ -65,10 +65,10 @@ pub async fn env_init() -> Result<Msg> {
 
 pub fn env_info(args: EnvInfo) -> Result<Msg> {
     let env_keypair = env::var(ENV_KEYPAIR_BIN).ok().map(|i| i.into());
-    let (env_keypair_location, env_public_key, env_key_type) =
-        get_public_key_from_path(env_keypair);
-    let (arg_keypair_location, arg_public_key, arg_key_type) =
-        get_public_key_from_path(args.keypair);
+    let (env_keypair_location, env_public_key, env_key_type, env_verifies) =
+        get_public_key_from_path(&env_keypair);
+    let (arg_keypair_location, arg_public_key, arg_key_type, arg_verifies) =
+        get_public_key_from_path(&args.keypair);
 
     let output = json!({
         "environment": {
@@ -79,6 +79,7 @@ pub fn env_info(args: EnvInfo) -> Result<Msg> {
             ENV_KEYPAIR_BIN:  env_keypair_location,
             "public_key_from_keypair": env_public_key,
             "key_type_from_keypair": env_key_type,
+            "keypair_verifies_own_sig": env_verifies,
         },
         "arguments": {
             "config_host": args.config_host,
@@ -87,7 +88,8 @@ pub fn env_info(args: EnvInfo) -> Result<Msg> {
             "max_copies": args.max_copies,
             "keypair": arg_keypair_location,
             "public_key_from_keypair": arg_public_key,
-            "key_type_from_keypair": arg_key_type
+            "key_type_from_keypair": arg_key_type,
+            "keypair_verifies_own_sig": arg_verifies,
         }
     });
     Msg::ok(output.pretty_json()?)
@@ -129,9 +131,10 @@ pub fn generate_keypair(args: GenerateKeypair) -> Result<Msg> {
     ))
 }
 
-pub fn get_public_key_from_path(path: Option<PathBuf>) -> (String, String, String) {
+pub fn get_public_key_from_path(path: &Option<PathBuf>) -> (String, String, String, String) {
     match path {
         None => (
+            "unset".to_string(),
             "unset".to_string(),
             "unset".to_string(),
             "unset".to_string(),
@@ -139,14 +142,27 @@ pub fn get_public_key_from_path(path: Option<PathBuf>) -> (String, String, Strin
         Some(path) => {
             let display_path = path.as_path().display().to_string();
             match fs::read(path).with_context(|| format!("path does not exist: {display_path}")) {
-                Err(e) => (e.to_string(), "".to_string(), "".to_string()),
+                Err(e) => (
+                    e.to_string(),
+                    "".to_string(),
+                    "".to_string(),
+                    "".to_string(),
+                ),
                 Ok(data) => match Keypair::try_from(&data[..]) {
-                    Err(e) => (display_path, e.to_string(), "".to_string()),
-                    Ok(keypair) => (
-                        display_path,
-                        keypair.public_key().to_string(),
-                        keypair.key_tag().key_type.to_string(),
-                    ),
+                    Err(e) => (display_path, e.to_string(), "".to_string(), "".to_string()),
+                    Ok(keypair) => {
+                        let verified = match verify_keypair(&keypair) {
+                            Err(e) => format!("failed to verify: {e:?}"),
+                            Ok(_) => "verified".to_string(),
+                        };
+
+                        (
+                            display_path,
+                            keypair.public_key().to_string(),
+                            keypair.key_tag().key_type.to_string(),
+                            verified,
+                        )
+                    }
                 },
             }
         }
@@ -232,10 +248,12 @@ mod tests {
 
     #[test]
     fn get_keypair_does_not_exist() {
-        let (location, pubkey, key_type) = get_public_key_from_path(Some("./nowhere.bin".into()));
+        let (location, pubkey, key_type, verified) =
+            get_public_key_from_path(&Some("./nowhere.bin".into()));
         assert_eq!(location, "path does not exist: ./nowhere.bin");
         assert!(pubkey.is_empty());
         assert!(key_type.is_empty());
+        assert!(verified.is_empty());
     }
 
     #[test]
@@ -246,17 +264,20 @@ mod tests {
         fs::write(arg_keypair.clone(), "invalid key").unwrap();
 
         // =======
-        let (location, pubkey, key_type) = get_public_key_from_path(Some(arg_keypair.clone()));
+        let (location, pubkey, key_type, verified) =
+            get_public_key_from_path(&Some(arg_keypair.clone()));
         assert_eq!(location, arg_keypair.display().to_string());
         assert_eq!(pubkey, "decode error");
         assert_eq!(key_type, "");
+        assert_eq!(verified, "");
     }
 
     #[test]
     fn get_keypair_not_provided() {
-        let (location, pubkey, key_type) = get_public_key_from_path(None);
+        let (location, pubkey, key_type, verified) = get_public_key_from_path(&None);
         assert_eq!(location, "unset");
         assert_eq!(pubkey, "unset");
         assert_eq!(key_type, "unset");
+        assert_eq!(verified, "unset");
     }
 }
