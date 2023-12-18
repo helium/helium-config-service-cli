@@ -48,7 +48,7 @@ async fn create_route_and_add_remove_devaddrs() -> Result {
     common::ensure_no_devaddrs(&route.id, keypair_path.clone()).await?;
 
     // Construct a devaddr within the org contraint, add and remove
-    let devaddr_range = constraint.start_addr.to_range(3);
+    let devaddr_range = constraint.range.start_addr.to_range(3);
     let out2 = cmds::route::devaddrs::add_devaddr(AddDevaddr {
         start_addr: devaddr_range.start_addr,
         end_addr: devaddr_range.end_addr,
@@ -78,7 +78,7 @@ async fn create_route_and_add_remove_devaddrs() -> Result {
     // Add many devaddrs to delete
     let mut devaddrs = vec![];
     for d in 1..10 {
-        let range = constraint.start_addr.to_range(d);
+        let range = constraint.range.start_addr.to_range(d);
         let range = DevaddrRange::new(route.id.clone(), range.start_addr, range.end_addr)?;
 
         devaddrs.push(range);

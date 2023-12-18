@@ -12,7 +12,7 @@ use helium_crypto::PublicKey;
 use route::Route;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
-use subnet::DevaddrConstraint;
+use subnet::{DevaddrConstraint, DevaddrSubnet};
 
 pub mod proto {
     pub use helium_proto::services::iot_config::{
@@ -104,19 +104,20 @@ impl From<HeliumNetId> for proto::HeliumNetId {
 pub struct OrgResponse {
     pub org: Org,
     pub net_id: hex_field::HexNetID,
-    pub devaddr_constraints: Vec<DevaddrConstraint>,
+    pub devaddr_constraints: Vec<DevaddrSubnet>,
 }
 
 impl From<proto::OrgResV1> for OrgResponse {
     fn from(res: proto::OrgResV1) -> Self {
+        let constraints: Vec<DevaddrConstraint> = res
+            .devaddr_constraints
+            .into_iter()
+            .map(|d| d.into())
+            .collect();
         Self {
             org: res.org.expect("no org returned during creation").into(),
             net_id: hex_field::net_id(res.net_id),
-            devaddr_constraints: res
-                .devaddr_constraints
-                .into_iter()
-                .map(|d| d.into())
-                .collect(),
+            devaddr_constraints: constraints.into_iter().map(|c| c.to_subnet()).collect(),
         }
     }
 }
