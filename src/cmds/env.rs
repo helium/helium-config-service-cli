@@ -116,7 +116,13 @@ pub fn generate_keypair(args: GenerateKeypair) -> Result<Msg> {
     if let Some(parent) = args.out_file.parent() {
         fs::create_dir_all(parent)?;
     }
-    fs::write(&args.out_file, key.to_vec())?;
+
+    // NOTE: Write the Secret & Public key.
+    // https://github.com/helium/libp2p-crypto/blob/master/src/libp2p_crypto.erl#L241-L245
+    let mut enc = key.to_vec();
+    enc.extend(key.public_key().to_vec());
+    fs::write(&args.out_file, enc)?;
+
     Msg::ok(format!(
         "New Keypair created and written to {:?}",
         args.out_file.display()
