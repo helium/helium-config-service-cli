@@ -650,7 +650,7 @@ impl SkfClient {
                         devaddr: skf.devaddr.into(),
                         session_key: skf.session_key.to_owned(),
                         action: ActionV1::Remove.into(),
-                        max_copies: 0
+                        max_copies: 0,
                     })
                     .collect(),
                 timestamp: current_timestamp()?,
