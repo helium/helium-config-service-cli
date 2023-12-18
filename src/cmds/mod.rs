@@ -191,11 +191,11 @@ pub struct GetRoute {
 
 #[derive(Debug, Args)]
 pub struct NewRoute {
-    #[arg(long, env = ENV_NET_ID, default_value = "000024")]
+    #[arg(long, env = ENV_NET_ID)]
     pub net_id: HexNetID,
     #[arg(long, env = ENV_OUI)]
     pub oui: Oui,
-    #[arg(long, env = ENV_MAX_COPIES, default_value = "5")]
+    #[arg(long, env = ENV_MAX_COPIES)]
     pub max_copies: u32,
 
     #[arg(from_global)]
