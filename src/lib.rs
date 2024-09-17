@@ -8,9 +8,11 @@ pub mod server;
 pub mod subnet;
 
 use anyhow::{anyhow, Error};
-use helium_crypto::PublicKey;
 use route::Route;
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
+use serde_with::DisplayFromStr;
+use solana_sdk::pubkey::Pubkey;
 use std::fmt::Display;
 use subnet::DevaddrConstraint;
 
@@ -126,12 +128,15 @@ pub struct OrgList {
     pub orgs: Vec<Org>,
 }
 
+#[serde_as]
 #[derive(Debug, Clone, Serialize)]
 pub struct Org {
     pub oui: Oui,
-    pub owner: PublicKey,
-    pub payer: PublicKey,
-    pub delegate_keys: Vec<PublicKey>,
+    #[serde_as(as = "DisplayFromStr")]
+    pub owner: Pubkey,
+    pub escrow_key: String,
+    #[serde_as(as = "Vec<DisplayFromStr>")]
+    pub delegate_keys: Vec<Pubkey>,
     pub locked: bool,
 }
 
@@ -308,11 +313,12 @@ impl From<proto::OrgListResV1> for OrgList {
 
 impl From<proto::OrgV1> for Org {
     fn from(org: proto::OrgV1) -> Self {
-        let d = org.delegate_keys.into_iter().flat_map(PublicKey::try_from);
+        let d = org.delegate_keys.into_iter().flat_map(Pubkey::try_from);
+
         Self {
             oui: org.oui,
-            owner: PublicKey::try_from(org.owner).unwrap(),
-            payer: PublicKey::try_from(org.payer).unwrap(),
+            owner: Pubkey::try_from(org.owner).expect("Invalid owner public key"),
+            escrow_key: org.escrow_key,
             delegate_keys: d.collect(),
             locked: org.locked,
         }
@@ -323,9 +329,13 @@ impl From<Org> for proto::OrgV1 {
     fn from(org: Org) -> Self {
         Self {
             oui: org.oui,
-            owner: org.owner.into(),
-            payer: org.payer.into(),
-            delegate_keys: org.delegate_keys.iter().map(|key| key.into()).collect(),
+            owner: org.owner.to_bytes().to_vec(),
+            escrow_key: org.escrow_key,
+            delegate_keys: org
+                .delegate_keys
+                .iter()
+                .map(|key| key.to_bytes().to_vec())
+                .collect(),
             locked: org.locked,
         }
     }

@@ -1,6 +1,6 @@
 use super::{
     CreateHelium, CreateRoaming, DevaddrSlabAdd, DevaddrUpdateConstraint, EnableOrg, GetOrg,
-    ListOrgs, OrgUpdateKey, PathBufKeypair, ENV_NET_ID, ENV_OUI,
+    ListOrgs, OrgUpdateEscrowKey, OrgUpdateKey, PathBufKeypair, ENV_NET_ID, ENV_OUI,
 };
 use crate::{client, subnet::DevaddrConstraint, Msg, PrettyJson, Result};
 
@@ -29,7 +29,7 @@ pub async fn create_helium_org(args: CreateHelium) -> Result<Msg> {
         let org = client
             .create_helium(
                 &args.owner,
-                &args.payer,
+                args.escrow_key,
                 delegates,
                 args.devaddr_count,
                 args.net_id,
@@ -58,7 +58,7 @@ pub async fn create_roaming_org(args: CreateRoaming) -> Result<Msg> {
         let created_org = client
             .create_roamer(
                 &args.owner,
-                &args.payer,
+                args.escrow_key,
                 delegates,
                 args.net_id.into(),
                 args.keypair.to_keypair()?,
@@ -110,11 +110,11 @@ pub async fn update_owner(args: OrgUpdateKey) -> Result<Msg> {
     ))
 }
 
-pub async fn update_payer(args: OrgUpdateKey) -> Result<Msg> {
+pub async fn update_escrow_key(args: OrgUpdateEscrowKey) -> Result<Msg> {
     if args.commit {
         let mut client = client::OrgClient::new(&args.config_host, &args.config_pubkey).await?;
         let updated_org = client
-            .update_payer(args.oui, &args.pubkey, args.keypair.to_keypair()?)
+            .update_escrow_key(args.oui, args.escrow_key, args.keypair.to_keypair()?)
             .await?;
         return Msg::ok(
             [
@@ -125,8 +125,8 @@ pub async fn update_payer(args: OrgUpdateKey) -> Result<Msg> {
         );
     }
     Msg::dry_run(format!(
-        "update organization: payer pubkey {}",
-        &args.pubkey
+        "update organization: escrow key {}",
+        &args.escrow_key
     ))
 }
 

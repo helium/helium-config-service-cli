@@ -24,6 +24,7 @@ use helium_proto::{
     },
     Message,
 };
+use solana_sdk::pubkey::Pubkey;
 use std::{
     str::FromStr,
     time::{SystemTime, UNIX_EPOCH},
@@ -114,20 +115,23 @@ impl OrgClient {
 
     pub async fn create_helium(
         &mut self,
-        owner: &PublicKey,
-        payer: &PublicKey,
-        delegates: Vec<PublicKey>,
+        owner: &Pubkey,
+        escrow_key: String,
+        delegates: Vec<Pubkey>,
         devaddr_count: u64,
         net_id: HeliumNetId,
         keypair: &Keypair,
     ) -> Result<OrgResponse> {
         let mut request = OrgCreateHeliumReqV1 {
-            owner: owner.into(),
-            payer: payer.into(),
+            owner: owner.to_bytes().to_vec(),
+            escrow_key,
             net_id: net_id as i32,
             devaddrs: devaddr_count,
             timestamp: current_timestamp()?,
-            delegate_keys: delegates.iter().map(|key| key.into()).collect(),
+            delegate_keys: delegates
+                .iter()
+                .map(|key| key.to_bytes().to_vec())
+                .collect(),
             signer: keypair.public_key().into(),
             signature: vec![],
         };
@@ -139,18 +143,21 @@ impl OrgClient {
 
     pub async fn create_roamer(
         &mut self,
-        owner: &PublicKey,
-        payer: &PublicKey,
-        delegates: Vec<PublicKey>,
+        owner: &Pubkey,
+        escrow_key: String,
+        delegates: Vec<Pubkey>,
         net_id: NetId,
         keypair: Keypair,
     ) -> Result<OrgResponse> {
         let mut request = OrgCreateRoamerReqV1 {
-            owner: owner.into(),
-            payer: payer.into(),
+            owner: owner.to_bytes().to_vec(),
+            escrow_key,
             net_id,
             timestamp: current_timestamp()?,
-            delegate_keys: delegates.iter().map(|key| key.into()).collect(),
+            delegate_keys: delegates
+                .iter()
+                .map(|key| key.to_bytes().to_vec())
+                .collect(),
             signer: keypair.public_key().into(),
             signature: vec![],
         };
@@ -195,23 +202,23 @@ impl OrgClient {
     pub async fn update_owner(
         &mut self,
         oui: u64,
-        owner: &PublicKey,
+        owner: &Pubkey,
         keypair: Keypair,
     ) -> Result<OrgResponse> {
         let update = UpdateV1 {
-            update: Some(Update::Owner(owner.into())),
+            update: Some(Update::Owner(owner.to_bytes().to_vec())),
         };
         self.request_update(oui, update, keypair).await
     }
 
-    pub async fn update_payer(
+    pub async fn update_escrow_key(
         &mut self,
         oui: u64,
-        payer: &PublicKey,
+        escrow_key: String,
         keypair: Keypair,
     ) -> Result<OrgResponse> {
         let update = UpdateV1 {
-            update: Some(Update::Payer(payer.into())),
+            update: Some(Update::EscrowKey(escrow_key)),
         };
         self.request_update(oui, update, keypair).await
     }
@@ -219,12 +226,12 @@ impl OrgClient {
     pub async fn add_delegate_key(
         &mut self,
         oui: u64,
-        delegate_key: &PublicKey,
+        delegate_key: &Pubkey,
         keypair: Keypair,
     ) -> Result<OrgResponse> {
         let update = UpdateV1 {
             update: Some(Update::DelegateKey(DelegateKeyUpdateV1 {
-                delegate_key: delegate_key.into(),
+                delegate_key: delegate_key.to_bytes().to_vec(),
                 action: ActionV1::Add as i32,
             })),
         };
@@ -234,12 +241,12 @@ impl OrgClient {
     pub async fn remove_delegate_key(
         &mut self,
         oui: u64,
-        delegate_key: &PublicKey,
+        delegate_key: &Pubkey,
         keypair: Keypair,
     ) -> Result<OrgResponse> {
         let update = UpdateV1 {
             update: Some(Update::DelegateKey(DelegateKeyUpdateV1 {
-                delegate_key: delegate_key.into(),
+                delegate_key: delegate_key.to_bytes().to_vec(),
                 action: ActionV1::Remove as i32,
             })),
         };
@@ -650,7 +657,7 @@ impl SkfClient {
                         devaddr: skf.devaddr.into(),
                         session_key: skf.session_key.to_owned(),
                         action: ActionV1::Remove.into(),
-                        max_copies: 0
+                        max_copies: 0,
                     })
                     .collect(),
                 timestamp: current_timestamp()?,

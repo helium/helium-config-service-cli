@@ -7,6 +7,7 @@ use crate::{
 use anyhow::Context;
 use clap::{Args, Parser, Subcommand};
 use helium_crypto::PublicKey;
+use solana_sdk::pubkey::Pubkey;
 use std::path::PathBuf;
 
 pub mod admin;
@@ -738,6 +739,7 @@ pub struct GenerateKeypair {
     /// The helium network for which to issue keys
     #[arg(long, short, value_enum, default_value = "mainnet")]
     pub network: NetworkArg,
+
     /// overwrite <out_file> if it already exists
     #[arg(long)]
     pub commit: bool,
@@ -764,11 +766,11 @@ pub struct GetOrg {
 #[derive(Debug, Args)]
 pub struct CreateHelium {
     #[arg(long)]
-    pub owner: PublicKey,
+    pub owner: Pubkey,
     #[arg(long)]
-    pub payer: PublicKey,
+    pub escrow_key: String,
     #[arg(long)]
-    pub delegate: Option<Vec<PublicKey>>,
+    pub delegate: Option<Vec<Pubkey>>,
     #[arg(long)]
     pub devaddr_count: u64,
     #[arg(long, value_enum)]
@@ -786,11 +788,11 @@ pub struct CreateHelium {
 #[derive(Debug, Args)]
 pub struct CreateRoaming {
     #[arg(long)]
-    pub owner: PublicKey,
+    pub owner: Pubkey,
     #[arg(long)]
-    pub payer: PublicKey,
+    pub escrow_key: String,
     #[arg(long)]
-    pub delegate: Option<Vec<PublicKey>>,
+    pub delegate: Option<Vec<Pubkey>>,
     #[arg(long)]
     pub net_id: HexNetID,
     #[arg(from_global)]
@@ -807,8 +809,8 @@ pub struct CreateRoaming {
 pub enum OrgUpdateCommand {
     /// Update the org owner pubkey
     Owner(OrgUpdateKey),
-    /// Update the org payer pubkey
-    Payer(OrgUpdateKey),
+    /// Update the org escrow key
+    EscrowKey(OrgUpdateEscrowKey),
     /// Add delegate key to org
     DelegateAdd(OrgUpdateKey),
     /// Remove delegate key from org
@@ -826,7 +828,23 @@ pub struct OrgUpdateKey {
     #[arg(long, short)]
     pub oui: u64,
     #[arg(long, short)]
-    pub pubkey: PublicKey,
+    pub pubkey: Pubkey,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
+    #[arg(long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct OrgUpdateEscrowKey {
+    #[arg(long, short)]
+    pub oui: u64,
+    #[arg(long, short)]
+    pub escrow_key: String,
     #[arg(from_global)]
     pub keypair: PathBuf,
     #[arg(from_global)]

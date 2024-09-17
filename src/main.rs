@@ -77,7 +77,7 @@ pub async fn handle_cli(cli: Cli) -> Result<Msg> {
             Org::Enable(args) => org::enable_org(args).await,
             Org::Update { command } => match command {
                 cmds::OrgUpdateCommand::Owner(args) => org::update_owner(args).await,
-                cmds::OrgUpdateCommand::Payer(args) => org::update_payer(args).await,
+                cmds::OrgUpdateCommand::EscrowKey(args) => org::update_escrow_key(args).await,
                 cmds::OrgUpdateCommand::DelegateAdd(args) => org::add_delegate_key(args).await,
                 cmds::OrgUpdateCommand::DelegateRemove(args) => {
                     org::remove_delegate_key(args).await
