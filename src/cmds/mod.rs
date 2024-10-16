@@ -22,6 +22,8 @@ pub const ENV_KEYPAIR_BIN: &str = "HELIUM_KEYPAIR_BIN";
 pub const ENV_NET_ID: &str = "HELIUM_NET_ID";
 pub const ENV_OUI: &str = "HELIUM_OUI";
 pub const ENV_MAX_COPIES: &str = "HELIUM_MAX_COPIES";
+pub const ENV_SOLANA_WALLET: &str = "SOLANA_WALLET";
+pub const ENV_SOLANA_URL: &str = "SOLANA_URL";
 
 #[derive(Debug, Parser)]
 #[command(name = "helium-config-cli")]
@@ -56,6 +58,17 @@ pub struct Cli {
 
     #[arg(global = true, long)]
     pub print_command: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct CliSolanaConfig {
+    /// Solana keypair file path
+    #[arg(long, env = ENV_SOLANA_WALLET)]
+    pub solana_wallet: Option<PathBuf>,
+
+    /// Solana RPC URL
+    #[arg(long, env = ENV_SOLANA_URL)]
+    pub solana_url: String,
 }
 
 #[derive(Debug, Subcommand)]
@@ -766,13 +779,15 @@ pub struct GetOrg {
 #[derive(Debug, Args)]
 pub struct CreateHelium {
     #[arg(long)]
-    pub owner: Pubkey,
+    pub owner: Option<Pubkey>,
     #[arg(long)]
-    pub escrow_key: String,
+    pub oui: u64,
+    #[arg(long)]
+    pub escrow_key_override: Option<String>,
     #[arg(long)]
     pub delegate: Option<Vec<Pubkey>>,
     #[arg(long)]
-    pub devaddr_count: u64,
+    pub devaddr_num_blocks: u32,
     #[arg(long, value_enum)]
     pub net_id: HeliumNetId,
     #[arg(from_global)]
@@ -781,6 +796,8 @@ pub struct CreateHelium {
     pub config_host: String,
     #[arg(from_global)]
     pub config_pubkey: String,
+    #[command(flatten)]
+    pub solana: CliSolanaConfig,
     #[arg(long)]
     pub commit: bool,
 }
@@ -788,9 +805,11 @@ pub struct CreateHelium {
 #[derive(Debug, Args)]
 pub struct CreateRoaming {
     #[arg(long)]
-    pub owner: Pubkey,
+    pub owner: Option<Pubkey>,
     #[arg(long)]
-    pub escrow_key: String,
+    pub oui: u64,
+    #[arg(long)]
+    pub escrow_key_override: Option<String>,
     #[arg(long)]
     pub delegate: Option<Vec<Pubkey>>,
     #[arg(long)]
@@ -801,6 +820,8 @@ pub struct CreateRoaming {
     pub config_host: String,
     #[arg(from_global)]
     pub config_pubkey: String,
+    #[command(flatten)]
+    pub solana: CliSolanaConfig,
     #[arg(long)]
     pub commit: bool,
 }
@@ -809,8 +830,6 @@ pub struct CreateRoaming {
 pub enum OrgUpdateCommand {
     /// Update the org owner pubkey
     Owner(OrgUpdateKey),
-    /// Update the org escrow key
-    EscrowKey(OrgUpdateEscrowKey),
     /// Add delegate key to org
     DelegateAdd(OrgUpdateKey),
     /// Remove delegate key from org
@@ -818,7 +837,7 @@ pub enum OrgUpdateCommand {
     /// Add devaddr constraint to org
     DevaddrConstraintAdd(DevaddrUpdateConstraint),
     /// Remove devaddr constraint from org
-    DevaddrConstraintRemove(DevaddrUpdateConstraint),
+    DevaddrConstraintRemove(OrgUpdateKey),
     /// Add an even-numbered Devaddr slab to org
     DevaddrSlabAdd(DevaddrSlabAdd),
 }
@@ -835,22 +854,8 @@ pub struct OrgUpdateKey {
     pub config_host: String,
     #[arg(from_global)]
     pub config_pubkey: String,
-    #[arg(long)]
-    pub commit: bool,
-}
-
-#[derive(Debug, Args)]
-pub struct OrgUpdateEscrowKey {
-    #[arg(long, short)]
-    pub oui: u64,
-    #[arg(long, short)]
-    pub escrow_key: String,
-    #[arg(from_global)]
-    pub keypair: PathBuf,
-    #[arg(from_global)]
-    pub config_host: String,
-    #[arg(from_global)]
-    pub config_pubkey: String,
+    #[command(flatten)]
+    pub solana: CliSolanaConfig,
     #[arg(long)]
     pub commit: bool,
 }
@@ -860,13 +865,15 @@ pub struct DevaddrSlabAdd {
     #[arg(long, short)]
     pub oui: u64,
     #[arg(long, short)]
-    pub devaddr_count: u64,
+    pub devaddr_num_blocks: u32,
     #[arg(from_global)]
     pub keypair: PathBuf,
     #[arg(from_global)]
     pub config_host: String,
     #[arg(from_global)]
     pub config_pubkey: String,
+    #[command(flatten)]
+    pub solana: CliSolanaConfig,
     #[arg(long)]
     pub commit: bool,
 }
@@ -875,16 +882,16 @@ pub struct DevaddrSlabAdd {
 pub struct DevaddrUpdateConstraint {
     #[arg(long, short)]
     pub oui: u64,
-    #[arg(short, long, value_parser = hex_field::validate_devaddr)]
-    pub start_addr: hex_field::HexDevAddr,
-    #[arg(short, long, value_parser = hex_field::validate_devaddr)]
-    pub end_addr: hex_field::HexDevAddr,
+    #[arg(short, long)]
+    pub num_blocks: u32,
     #[arg(from_global)]
     pub keypair: PathBuf,
     #[arg(from_global)]
     pub config_host: String,
     #[arg(from_global)]
     pub config_pubkey: String,
+    #[command(flatten)]
+    pub solana: CliSolanaConfig,
     #[arg(long)]
     pub commit: bool,
 }

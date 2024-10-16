@@ -1,5 +1,5 @@
 use helium_config_service_cli::{
-    client,
+    clients,
     cmds::{self, *},
     hex_field, DevaddrRange, Result,
 };
@@ -18,7 +18,7 @@ async fn create_route_and_add_remove_devaddrs() -> Result {
     let config_host = common::CONFIG_HOST.to_string();
     let config_pubkey = common::CONFIG_PUBKEY.to_string();
 
-    let mut devaddr_client = client::DevaddrClient::new(&config_host, &config_pubkey).await?;
+    let mut devaddr_client = clients::DevaddrClient::new(&config_host, &config_pubkey).await?;
 
     // Generate keypair
     let public_key = common::generate_keypair(keypair_path.clone())?;

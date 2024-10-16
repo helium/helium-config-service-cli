@@ -1,6 +1,6 @@
 #![allow(unused)]
 use helium_config_service_cli::{
-    client,
+    clients,
     cmds::{self, *},
     hex_field,
     route::Route,
@@ -57,7 +57,7 @@ pub async fn create_helium_org(
     .await?;
     info!("{out}");
 
-    let mut org_client = client::OrgClient::new(CONFIG_HOST, CONFIG_PUBKEY).await?;
+    let mut org_client = clients::OrgClient::new(CONFIG_HOST, CONFIG_PUBKEY).await?;
     let mut org_list = org_client.list().await?;
     // Put in creation order
     org_list.orgs.sort_by_key(|x| x.oui);
@@ -78,7 +78,7 @@ pub async fn ensure_no_routes(oui: u64, keypair_path: PathBuf) -> Result {
     .await?;
     info!("{out}");
 
-    let mut route_client = client::RouteClient::new(CONFIG_HOST, CONFIG_PUBKEY).await?;
+    let mut route_client = clients::RouteClient::new(CONFIG_HOST, CONFIG_PUBKEY).await?;
     let route_list = route_client.list(oui, &keypair_path.to_keypair()?).await?;
     assert!(route_list.routes.is_empty());
     Ok(())
@@ -101,7 +101,7 @@ pub async fn create_empty_route(
     .await?;
     info!("{out1}");
 
-    let mut route_client = client::RouteClient::new(CONFIG_HOST, CONFIG_PUBKEY).await?;
+    let mut route_client = clients::RouteClient::new(CONFIG_HOST, CONFIG_PUBKEY).await?;
     let route_list = route_client.list(oui, &keypair_path.to_keypair()?).await?;
     Ok(route_list
         .routes
@@ -111,7 +111,7 @@ pub async fn create_empty_route(
 }
 
 pub async fn get_route(route_id: &str, keypair_path: PathBuf) -> Result<Route> {
-    let mut route_client = client::RouteClient::new(CONFIG_HOST, CONFIG_PUBKEY).await?;
+    let mut route_client = clients::RouteClient::new(CONFIG_HOST, CONFIG_PUBKEY).await?;
     let route = route_client
         .get(route_id, &keypair_path.to_keypair()?)
         .await?;
@@ -138,7 +138,7 @@ pub async fn ensure_num_euis(eui_count: usize, route_id: &str, keypair_path: Pat
     .await?;
     info!("{out}");
 
-    let mut eui_client = client::EuiClient::new(CONFIG_HOST, CONFIG_PUBKEY).await?;
+    let mut eui_client = clients::EuiClient::new(CONFIG_HOST, CONFIG_PUBKEY).await?;
     let euis = eui_client
         .get_euis(route_id, &keypair_path.to_keypair()?)
         .await?;
@@ -160,7 +160,7 @@ pub async fn ensure_num_devaddrs(
     .await?;
     info!("{out}");
 
-    let mut devaddr_client = client::DevaddrClient::new(CONFIG_HOST, CONFIG_PUBKEY).await?;
+    let mut devaddr_client = clients::DevaddrClient::new(CONFIG_HOST, CONFIG_PUBKEY).await?;
     let addrs = devaddr_client
         .get_devaddrs(route_id, &keypair_path.to_keypair()?)
         .await?;

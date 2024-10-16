@@ -1,10 +1,11 @@
-pub mod client;
+pub mod clients;
 pub mod cmds;
 pub mod hex_field;
 pub mod region;
 pub mod region_params;
 pub mod route;
 pub mod server;
+pub mod solana_utils;
 pub mod subnet;
 
 use anyhow::{anyhow, Error};
