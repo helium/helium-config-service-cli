@@ -1,8 +1,9 @@
 use crate::{
     cmds::env::NetworkArg,
+    helium_netids::HeliumNetId,
     hex_field::{self, HexNetID},
     region::Region,
-    DevaddrConstraint, HeliumNetId, KeyType, Msg, Oui, PrettyJson, Result,
+    DevaddrConstraint, KeyType, Msg, Oui, PrettyJson, Result,
 };
 use anyhow::Context;
 use clap::{Args, Parser, Subcommand};
@@ -781,10 +782,6 @@ pub struct CreateHelium {
     #[arg(long)]
     pub owner: Option<Pubkey>,
     #[arg(long)]
-    pub oui: u64,
-    #[arg(long)]
-    pub escrow_key_override: Option<String>,
-    #[arg(long)]
     pub delegate: Option<Vec<Pubkey>>,
     #[arg(long)]
     pub devaddr_num_blocks: u32,
@@ -806,10 +803,6 @@ pub struct CreateHelium {
 pub struct CreateRoaming {
     #[arg(long)]
     pub owner: Option<Pubkey>,
-    #[arg(long)]
-    pub oui: u64,
-    #[arg(long)]
-    pub escrow_key_override: Option<String>,
     #[arg(long)]
     pub delegate: Option<Vec<Pubkey>>,
     #[arg(long)]

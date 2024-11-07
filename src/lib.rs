@@ -1,11 +1,12 @@
 pub mod clients;
 pub mod cmds;
+pub mod helium_netids;
 pub mod hex_field;
+pub mod lora_field;
 pub mod region;
 pub mod region_params;
 pub mod route;
 pub mod server;
-pub mod solana_utils;
 pub mod subnet;
 
 use anyhow::{anyhow, Error};
@@ -80,26 +81,6 @@ impl<S: ?Sized + serde::Serialize> PrettyJson for S {
 
     fn pretty_json(&self) -> Result<String> {
         serde_json::to_string_pretty(&self).map_err(|e| e.into())
-    }
-}
-
-#[derive(clap::ValueEnum, Clone, Debug)]
-pub enum HeliumNetId {
-    #[value(alias("0x00003c"))]
-    Type0_0x00003c,
-    #[value(alias("0x60002d"))]
-    Type3_0x60002d,
-    #[value(alias("0xc00053"))]
-    Type6_0xc00053,
-}
-
-impl From<HeliumNetId> for proto::HeliumNetId {
-    fn from(id: HeliumNetId) -> Self {
-        match id {
-            HeliumNetId::Type0_0x00003c => proto::HeliumNetId::Type00x00003c,
-            HeliumNetId::Type3_0x60002d => proto::HeliumNetId::Type30x60002d,
-            HeliumNetId::Type6_0xc00053 => proto::HeliumNetId::Type60xc00053,
-        }
     }
 }
 

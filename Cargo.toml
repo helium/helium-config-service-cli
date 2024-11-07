@@ -6,8 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anchor-lang = "0.30.1"
-anchor-client = "0.30.1"
 angry-purple-tiger = { version = "1", features = ["helium_crypto"]}
 anyhow = "1.0.71"
 dialoguer = "0.10.2"
@@ -15,7 +13,7 @@ clap = { version = "4.2.7", features = ["derive", "env"] }
 futures = "0.3.28"
 helium-crypto = "0.8.4"
 helium-proto = { git = "https://github.com/helium/proto", branch="master", features=["services"]}
-helium-anchor-gen = { git = "https://github.com/helium/helium-anchor-gen.git" }
+helium-lib = { git = "https://github.com/helium/helium-wallet-rs", branch = "master" }
 h3o = "0"
 ipnet = "2.7.2"
 prost = "0.11.9"
@@ -50,6 +48,6 @@ temp-dir = "0.1.11"
 [patch.'https://github.com/helium/proto']
 helium-proto = { path = "../proto" }
 
-[patch.'https://github.com/helium/helium-anchor-gen.git']
-helium-anchor-gen = { path = "../helium-anchor-gen" }
+[patch.'https://github.com/helium/helium-wallet-rs.git']
+helium-lib = { path = "../helium-wallet-rs/helium-lib" }
 
