@@ -65,11 +65,11 @@ pub struct Cli {
 pub struct CliSolanaConfig {
     /// Solana keypair file path
     #[arg(long, env = ENV_SOLANA_WALLET)]
-    pub solana_wallet: Option<PathBuf>,
+    pub wallet: Option<PathBuf>,
 
     /// Solana RPC URL
     #[arg(long, env = ENV_SOLANA_URL)]
-    pub solana_url: String,
+    pub url: String,
 }
 
 #[derive(Debug, Subcommand)]
@@ -458,6 +458,11 @@ pub enum SkfCommands {
 }
 
 #[derive(Debug, Subcommand)]
+pub enum NetIdCommands {
+    List(ListNetIds),
+}
+
+#[derive(Debug, Subcommand)]
 pub enum OrgCommands {
     /// Get all Orgs
     List(ListOrgs),
@@ -467,6 +472,8 @@ pub enum OrgCommands {
     CreateHelium(CreateHelium),
     /// Create a new Roaming Organization (admin only)
     CreateRoaming(CreateRoaming),
+    /// Approve an organization
+    Approve(ApproveOrg),
     /// Enable a locked Oui
     Enable(EnableOrg),
     /// Update Org record
@@ -760,6 +767,24 @@ pub struct GenerateKeypair {
 }
 
 #[derive(Debug, Args)]
+pub struct ListNetIds {
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
+}
+
+#[derive(Debug, Args)]
+pub struct GetNetId {
+    #[arg(long, env = ENV_NET_ID, default_value = "000024")]
+    pub net_id: HexNetID,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
+}
+
+#[derive(Debug, Args)]
 pub struct ListOrgs {
     #[arg(from_global)]
     pub config_host: String,
@@ -781,10 +806,6 @@ pub struct GetOrg {
 pub struct CreateHelium {
     #[arg(long)]
     pub owner: Option<Pubkey>,
-    #[arg(long)]
-    pub delegate: Option<Vec<Pubkey>>,
-    #[arg(long)]
-    pub devaddr_num_blocks: u32,
     #[arg(long, value_enum)]
     pub net_id: HeliumNetId,
     #[arg(from_global)]
@@ -804,9 +825,23 @@ pub struct CreateRoaming {
     #[arg(long)]
     pub owner: Option<Pubkey>,
     #[arg(long)]
-    pub delegate: Option<Vec<Pubkey>>,
-    #[arg(long)]
     pub net_id: HexNetID,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
+    #[command(flatten)]
+    pub solana: CliSolanaConfig,
+    #[arg(long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct ApproveOrg {
+    #[arg(long, short)]
+    pub oui: u64,
     #[arg(from_global)]
     pub keypair: PathBuf,
     #[arg(from_global)]
@@ -831,8 +866,6 @@ pub enum OrgUpdateCommand {
     DevaddrConstraintAdd(DevaddrUpdateConstraint),
     /// Remove devaddr constraint from org
     DevaddrConstraintRemove(OrgUpdateKey),
-    /// Add an even-numbered Devaddr slab to org
-    DevaddrSlabAdd(DevaddrSlabAdd),
 }
 
 #[derive(Debug, Args)]
@@ -841,24 +874,6 @@ pub struct OrgUpdateKey {
     pub oui: u64,
     #[arg(long, short)]
     pub pubkey: Pubkey,
-    #[arg(from_global)]
-    pub keypair: PathBuf,
-    #[arg(from_global)]
-    pub config_host: String,
-    #[arg(from_global)]
-    pub config_pubkey: String,
-    #[command(flatten)]
-    pub solana: CliSolanaConfig,
-    #[arg(long)]
-    pub commit: bool,
-}
-
-#[derive(Debug, Args)]
-pub struct DevaddrSlabAdd {
-    #[arg(long, short)]
-    pub oui: u64,
-    #[arg(long, short)]
-    pub devaddr_num_blocks: u32,
     #[arg(from_global)]
     pub keypair: PathBuf,
     #[arg(from_global)]

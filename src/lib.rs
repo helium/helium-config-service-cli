@@ -119,6 +119,7 @@ pub struct Org {
     pub escrow_key: String,
     #[serde_as(as = "Vec<DisplayFromStr>")]
     pub delegate_keys: Vec<Pubkey>,
+    pub approved: bool,
     pub locked: bool,
 }
 
@@ -302,6 +303,7 @@ impl From<proto::OrgV1> for Org {
             owner: Pubkey::try_from(org.owner).expect("Invalid owner public key"),
             escrow_key: org.escrow_key,
             delegate_keys: d.collect(),
+            approved: org.approved,
             locked: org.locked,
         }
     }
@@ -318,6 +320,7 @@ impl From<Org> for proto::OrgV1 {
                 .iter()
                 .map(|key| key.to_bytes().to_vec())
                 .collect(),
+            approved: org.approved,
             locked: org.locked,
         }
     }

@@ -1,25 +1,19 @@
 use super::{
-    CliSolanaConfig, CreateHelium, CreateRoaming, DevaddrSlabAdd, DevaddrUpdateConstraint,
-    EnableOrg, GetOrg, ListOrgs, OrgUpdateKey, PathBufKeypair, ENV_NET_ID, ENV_OUI,
+    ApproveOrg, CliSolanaConfig, CreateHelium, CreateRoaming, DevaddrUpdateConstraint, EnableOrg,
+    GetOrg, ListOrgs, OrgUpdateKey, PathBufKeypair, ENV_NET_ID, ENV_OUI,
 };
 
-use crate::{
-    clients::{self, SolanaClientOpts},
-    helium_netids, lora_field, Msg, PrettyJson, Result,
-};
+use crate::{clients, helium_netids, lora_field, Msg, PrettyJson, Result};
 
 async fn initialize_clients(
     config_host: &str,
     config_pubkey: &str,
     config_solana: &CliSolanaConfig,
 ) -> Result<(clients::OrgClient, clients::SolanaClient)> {
-    let solana_opts = SolanaClientOpts {
-        wallet: config_solana.solana_wallet.clone(),
-        url: config_solana.solana_url.clone(),
-    };
-
     let org_client = clients::OrgClient::new(config_host, config_pubkey).await?;
-    let solana_client = clients::SolanaClient::new(solana_opts.clone()).await?;
+    let solana_client =
+        helium_lib::client::SolanaClient::new(&config_solana.url, config_solana.wallet.clone())?;
+
     Ok((org_client, solana_client))
 }
 
@@ -38,69 +32,67 @@ pub async fn get_org(args: GetOrg) -> Result<Msg> {
 }
 
 pub async fn create_helium_org(args: CreateHelium) -> Result<Msg> {
-    let delegates = args
-        .delegate
-        .as_ref()
-        .map_or_else(Vec::new, |keys| keys.to_vec());
-
     if args.commit {
-        let (mut client, mut solana_client) =
+        let (mut client, solana_client) =
             initialize_clients(&args.config_host, &args.config_pubkey, &args.solana).await?;
 
         let netid_field = helium_netids::HeliumNetId::from(args.net_id);
-        let (oui, ixs) = client
-            .create_helium(
-                &solana_client,
-                args.owner,
-                delegates,
-                args.devaddr_num_blocks,
-                netid_field,
-            )
+        let (organization_key, ix) = client
+            .create_helium(&solana_client, args.owner, args.owner, netid_field)
             .await?;
 
-        solana_client.send_instructions(ixs, &[], true).await?;
+        solana_client.send_instructions(vec![ix], &[], true).await?;
 
         return Msg::ok(format!(
-            "== Helium Organization Created, oui: {oui} ==\n== Call `org get --oui {oui} to see its details` ==",
-            oui = oui
+            "== Helium Organization Created: {organization_key} ==\n== Call `org get --oui {organization_key} to see its details` ==",
+            organization_key = organization_key
         ));
     }
 
     Msg::dry_run(format!(
-        "create Helium organization for NetId {:?} with {} devaddrs",
+        "Create Helium Organization for NetId {:?}",
         args.net_id,
-        args.devaddr_num_blocks * 8
     ))
 }
 
 pub async fn create_roaming_org(args: CreateRoaming) -> Result<Msg> {
-    let delegates = args
-        .delegate
-        .as_ref()
-        .map_or_else(Vec::new, |keys| keys.to_vec());
-
     if args.commit {
-        let (mut client, mut solana_client) =
+        let (mut client, solana_client) =
             initialize_clients(&args.config_host, &args.config_pubkey, &args.solana).await?;
 
-        let (oui, ixs) = client
-            .create_roamer(&solana_client, args.owner, delegates, args.net_id.into())
+        let (organization_key, ix) = client
+            .create_roamer(&solana_client, args.owner, args.owner, args.net_id.into())
             .await?;
 
-        solana_client
-            .send_instructions(ixs, &Vec::new(), true)
-            .await?;
+        solana_client.send_instructions(vec![ix], &[], true).await?;
 
         return Msg::ok(format!(
-            "== Roaming Organization Created, oui: {oui} ==\n== Call `org get --oui {oui} to see its details ==",
-            oui = oui
+            "== Roaming Organization Created: {organization} ==\n== Call `org get --oui {organization} to see its details ==",
+            organization = organization_key
         ));
     }
 
     Msg::dry_run(format!(
-        "create Roaming organization for NetId {}",
+        "Create Roaming Organization for NetId {}",
         args.net_id
     ))
+}
+
+pub async fn approve_org(args: ApproveOrg) -> Result<Msg> {
+    if args.commit {
+        let (mut client, solana_client) =
+            initialize_clients(&args.config_host, &args.config_pubkey, &args.solana).await?;
+
+        let ix = client.approve(&solana_client, args.oui).await?;
+
+        solana_client
+            .send_instructions(vec![ix], &[], false)
+            .await?;
+
+        return Msg::ok(format!("== Organization Approved: {} ==", args.oui));
+    }
+
+    Msg::dry_run(format!("Approve Organization {}", args.oui))
 }
 
 pub async fn enable_org(args: EnableOrg) -> Result<Msg> {
@@ -114,22 +106,22 @@ pub async fn enable_org(args: EnableOrg) -> Result<Msg> {
 
 pub async fn update_owner(args: OrgUpdateKey) -> Result<Msg> {
     if args.commit {
-        let (mut client, mut solana_client) =
+        let (mut client, solana_client) =
             initialize_clients(&args.config_host, &args.config_pubkey, &args.solana).await?;
 
-        let ix = client
+        let (organization_key, update_ix) = client
             .update_owner(&solana_client, args.oui, args.pubkey)
             .await?;
 
-        solana_client.send_instructions(vec![ix], &[], true).await?;
-        let updated_org = client.get(args.oui).await?;
-        return Msg::ok(
-            [
-                "== Organization Updated ==".to_string(),
-                updated_org.pretty_json()?,
-            ]
-            .join("\n"),
-        );
+        solana_client
+            .send_instructions(vec![update_ix], &[], true)
+            .await?;
+
+        return Msg::ok(format!(
+            "== Organization Updated: {organization} ==\n== New Owner: {owner} ==",
+            organization = organization_key,
+            owner = args.pubkey
+        ));
     }
     Msg::dry_run(format!(
         "update organization: owner pubkey {}",
@@ -139,22 +131,19 @@ pub async fn update_owner(args: OrgUpdateKey) -> Result<Msg> {
 
 pub async fn add_delegate_key(args: OrgUpdateKey) -> Result<Msg> {
     if args.commit {
-        let (mut client, mut solana_client) =
+        let (mut client, solana_client) =
             initialize_clients(&args.config_host, &args.config_pubkey, &args.solana).await?;
 
         let ix = client
-            .add_delegate_key(&solana_client, args.oui, &args.pubkey)
+            .add_delegate_key(&solana_client, args.oui, args.pubkey)
             .await?;
 
         solana_client.send_instructions(vec![ix], &[], true).await?;
-        let updated_org = client.get(args.oui).await?;
-        return Msg::ok(
-            [
-                "== Organization Updated ==".to_string(),
-                updated_org.pretty_json()?,
-            ]
-            .join("\n"),
-        );
+
+        return Msg::ok(format!(
+            "== Organization Updated ==\n== Delegate Added: {delegate} ==",
+            delegate = args.pubkey
+        ));
     }
     Msg::dry_run(format!(
         "update organization: add delegate key {}",
@@ -164,22 +153,19 @@ pub async fn add_delegate_key(args: OrgUpdateKey) -> Result<Msg> {
 
 pub async fn remove_delegate_key(args: OrgUpdateKey) -> Result<Msg> {
     if args.commit {
-        let (mut client, mut solana_client) =
+        let (mut client, solana_client) =
             initialize_clients(&args.config_host, &args.config_pubkey, &args.solana).await?;
 
         let ix = client
-            .remove_delegate_key(&solana_client, args.oui, &args.pubkey)
+            .remove_delegate_key(&solana_client, args.oui, args.pubkey)
             .await?;
 
         solana_client.send_instructions(vec![ix], &[], true).await?;
-        let updated_org = client.get(args.oui).await?;
-        return Msg::ok(
-            [
-                "== Organization Updated ==".to_string(),
-                updated_org.pretty_json()?,
-            ]
-            .join("\n"),
-        );
+
+        return Msg::ok(format!(
+            "== Organization Updated ==\n== Call `org get --oui {oui} to see its details ==",
+            oui = args.oui
+        ));
     }
     Msg::dry_run(format!(
         "update organization: remove delegate key {}",
@@ -187,49 +173,21 @@ pub async fn remove_delegate_key(args: OrgUpdateKey) -> Result<Msg> {
     ))
 }
 
-pub async fn add_devaddr_slab(args: DevaddrSlabAdd) -> Result<Msg> {
-    if args.commit {
-        let (mut client, mut solana_client) =
-            initialize_clients(&args.config_host, &args.config_pubkey, &args.solana).await?;
-
-        let ix = client
-            .add_devaddr_constraint(&solana_client, args.oui, args.devaddr_num_blocks)
-            .await?;
-
-        solana_client.send_instructions(vec![ix], &[], true).await?;
-        let updated_org = client.get(args.oui).await?;
-        return Msg::ok(
-            [
-                "== Organization Updated ==".to_string(),
-                updated_org.pretty_json()?,
-            ]
-            .join("\n"),
-        );
-    }
-    Msg::dry_run(format!(
-        "update organization: add {} new devaddrs",
-        args.devaddr_num_blocks
-    ))
-}
-
 pub async fn add_devaddr_constraint(args: DevaddrUpdateConstraint) -> Result<Msg> {
     if args.commit {
-        let (mut client, mut solana_client) =
+        let (mut client, solana_client) =
             initialize_clients(&args.config_host, &args.config_pubkey, &args.solana).await?;
 
         let ix = client
-            .add_devaddr_constraint(&solana_client, args.oui, args.num_blocks)
+            .add_devaddr_constraint(&solana_client, args.oui, args.num_blocks, None)
             .await?;
 
         solana_client.send_instructions(vec![ix], &[], true).await?;
-        let updated_org = client.get(args.oui).await?;
-        return Msg::ok(
-            [
-                "== Organization Updated ==".to_string(),
-                updated_org.pretty_json()?,
-            ]
-            .join("\n"),
-        );
+
+        return Msg::ok(format!(
+            "== Organization Updated ==\n== Call `org get --oui {oui} to see its details ==",
+            oui = args.oui
+        ));
     }
     Msg::dry_run(format!(
         "update organization: add devaddr constraint {} - num blocks",
@@ -239,22 +197,19 @@ pub async fn add_devaddr_constraint(args: DevaddrUpdateConstraint) -> Result<Msg
 
 pub async fn remove_devaddr_constraint(args: OrgUpdateKey) -> Result<Msg> {
     if args.commit {
-        let (mut client, mut solana_client) =
+        let (mut client, solana_client) =
             initialize_clients(&args.config_host, &args.config_pubkey, &args.solana).await?;
 
         let ix = client
-            .remove_devaddr_constraint(&solana_client, args.oui, args.pubkey)
+            .remove_devaddr_constraint(&solana_client, args.pubkey)
             .await?;
 
         solana_client.send_instructions(vec![ix], &[], true).await?;
-        let updated_org = client.get(args.oui).await?;
-        return Msg::ok(
-            [
-                "== Organization Updated ==".to_string(),
-                updated_org.pretty_json()?,
-            ]
-            .join("\n"),
-        );
+
+        return Msg::ok(format!(
+            "== Organization Updated ==\n== Call `org get --oui {oui} to see its details ==",
+            oui = args.oui
+        ));
     }
     Msg::dry_run(format!(
         "update organization: remove devaddr constraint {}",
