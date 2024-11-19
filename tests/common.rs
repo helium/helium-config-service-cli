@@ -1,10 +1,6 @@
 #![allow(unused)]
 use helium_config_service_cli::{
-    clients,
-    cmds::{self, *},
-    hex_field,
-    route::Route,
-    HeliumNetId, OrgResponse, Result,
+    clients, cmds::{self, *}, helium_netids::HeliumNetId, hex_field, route::Route, OrgResponse, Result
 };
 use helium_crypto::PublicKey;
 use std::{path::PathBuf, str::FromStr};

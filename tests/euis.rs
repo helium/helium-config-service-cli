@@ -1,5 +1,5 @@
 use helium_config_service_cli::{
-    client,
+    clients,
     cmds::{self, *},
     hex_field, Eui, Result,
 };
@@ -58,7 +58,8 @@ async fn create_route_and_add_remove_euis() -> Result {
     common::ensure_no_euis(&route.id, keypair_path.clone()).await?;
 
     // Add many Euis to delete
-    let mut eui_client = client::EuiClient::new(common::CONFIG_HOST, common::CONFIG_PUBKEY).await?;
+    let mut eui_client =
+        clients::EuiClient::new(common::CONFIG_HOST, common::CONFIG_PUBKEY).await?;
     let mut euis = vec![];
     for e in 0..15 {
         euis.push(Eui::new(

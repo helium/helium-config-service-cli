@@ -1,5 +1,5 @@
 use helium_config_service_cli::{
-    client,
+    clients,
     cmds::{self, *},
     hex_field, Result,
 };
@@ -18,7 +18,7 @@ async fn create_org_and_add_remove_session_key_filtesr() -> Result {
     let config_host = common::CONFIG_HOST.to_string();
     let config_pubkey = common::CONFIG_PUBKEY.to_string();
 
-    let mut skf_client = client::SkfClient::new(&config_host, &config_pubkey).await?;
+    let mut skf_client = clients::SkfClient::new(&config_host, &config_pubkey).await?;
 
     // Generate keypair
     let public_key = common::generate_keypair(keypair_path.clone())?;
