@@ -3,7 +3,7 @@ use super::{
     GetOrg, ListOrgs, OrgUpdateKey, PathBufKeypair, ENV_NET_ID, ENV_OUI,
 };
 
-use crate::{clients, helium_netids, lora_field, Msg, PrettyJson, Result};
+use crate::{clients, helium_netids, Msg, PrettyJson, Result};
 
 async fn initialize_clients(
     config_host: &str,
