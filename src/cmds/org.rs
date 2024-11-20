@@ -1,11 +1,17 @@
-use helium_lib::iot_routing_manager::organization::{self, OrgIdentifier};
-
-use super::{
-    ApproveOrg, CliSolanaConfig, CreateHelium, CreateRoaming, DevaddrUpdateConstraint, EnableOrg,
-    GetOrg, ListOrgs, OrgUpdateKey, PathBufKeypair, ENV_NET_ID, ENV_OUI,
+use helium_lib::iot_routing_manager::{
+    net_id::{self, NetIdIdentifier},
+    organization::{self, OrgIdentifier},
 };
 
-use crate::{clients, helium_netids, Msg, PrettyJson, Result};
+use super::{
+    ApproveOrg, CliSolanaConfig, CreateHelium, CreateNetId, CreateRoaming, DevaddrUpdateConstraint,
+    EnableOrg, GetOrg, ListOrgs, OrgUpdateKey, PathBufKeypair,
+};
+
+use crate::{
+    clients::{self, OrgType},
+    helium_netids, Msg, PrettyJson, Result,
+};
 
 async fn initialize_clients(
     config_host: &str,
@@ -33,6 +39,26 @@ pub async fn get_org(args: GetOrg) -> Result<Msg> {
     Msg::ok(org.pretty_json()?)
 }
 
+pub async fn create_net_id(args: CreateNetId) -> Result<Msg> {
+    if args.commit {
+        let (mut client, solana_client) =
+            initialize_clients(&args.config_host, &args.config_pubkey, &args.solana).await?;
+
+        let (_, ix) = client
+            .create_net_id(&solana_client, args.net_id.into())
+            .await?;
+
+        solana_client.send_instructions(vec![ix], &[], true).await?;
+
+        let (_, net_id) =
+            net_id::ensure_exists(&solana_client, NetIdIdentifier::Id(args.net_id.into())).await?;
+
+        return Msg::ok(format!("== NetId Created: {id} ==", id = net_id.id));
+    }
+
+    Msg::dry_run(format!("Create NetId {:?}", args.net_id,))
+}
+
 pub async fn create_helium_org(args: CreateHelium) -> Result<Msg> {
     if args.commit {
         let (mut client, solana_client) =
@@ -40,7 +66,12 @@ pub async fn create_helium_org(args: CreateHelium) -> Result<Msg> {
 
         let netid_field = helium_netids::HeliumNetId::from(args.net_id);
         let (organization_key, ix) = client
-            .create_helium(&solana_client, args.owner, args.owner, netid_field)
+            .create_org(
+                &solana_client,
+                args.owner,
+                args.owner,
+                OrgType::Helium(netid_field),
+            )
             .await?;
 
         solana_client.send_instructions(vec![ix], &[], true).await?;
@@ -67,7 +98,12 @@ pub async fn create_roaming_org(args: CreateRoaming) -> Result<Msg> {
             initialize_clients(&args.config_host, &args.config_pubkey, &args.solana).await?;
 
         let (organization_key, ix) = client
-            .create_roamer(&solana_client, args.owner, args.owner, args.net_id.into())
+            .create_org(
+                &solana_client,
+                args.owner,
+                args.owner,
+                OrgType::Roamer(args.net_id.into()),
+            )
             .await?;
 
         solana_client.send_instructions(vec![ix], &[], true).await?;

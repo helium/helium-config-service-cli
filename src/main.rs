@@ -72,6 +72,7 @@ pub async fn handle_cli(cli: Cli) -> Result<Msg> {
         Commands::Org { command } => match command {
             Org::List(args) => org::list_orgs(args).await,
             Org::Get(args) => org::get_org(args).await,
+            Org::CreateNetId(args) => org::create_net_id(args).await,
             Org::CreateHelium(args) => org::create_helium_org(args).await,
             Org::CreateRoaming(args) => org::create_roaming_org(args).await,
             Org::Approve(args) => org::approve_org(args).await,

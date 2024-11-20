@@ -468,6 +468,8 @@ pub enum OrgCommands {
     List(ListOrgs),
     /// Get an Organization you own
     Get(GetOrg),
+    /// Create a new NetId
+    CreateNetId(CreateNetId),
     /// Create a new Helium Organization
     CreateHelium(CreateHelium),
     /// Create a new Roaming Organization (admin only)
@@ -800,6 +802,22 @@ pub struct GetOrg {
     pub config_host: String,
     #[arg(from_global)]
     pub config_pubkey: String,
+}
+
+#[derive(Debug, Args)]
+pub struct CreateNetId {
+    #[arg(long, value_enum)]
+    pub net_id: HexNetID,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
+    #[command(flatten)]
+    pub solana: CliSolanaConfig,
+    #[arg(long)]
+    pub commit: bool,
 }
 
 #[derive(Debug, Args)]

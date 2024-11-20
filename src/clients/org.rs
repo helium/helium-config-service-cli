@@ -13,7 +13,7 @@ use helium_lib::{
 use helium_proto::{
     services::iot_config::{
         org_client, OrgEnableReqV1, OrgEnableResV1, OrgGetReqV1, OrgListReqV1, OrgListResV1,
-        OrgResV1, OrgUpdateReqV1,
+        OrgResV1,
     },
     Message,
 };
@@ -32,6 +32,11 @@ use crate::{
 pub struct OrgClient {
     client: org_client::OrgClient<helium_proto::services::Channel>,
     server_pubkey: PublicKey,
+}
+
+pub enum OrgType {
+    Helium(HeliumNetId),
+    Roamer(NetId),
 }
 
 impl OrgClient {
@@ -56,36 +61,42 @@ impl OrgClient {
         Ok(response.into())
     }
 
-    pub async fn create_helium(
+    pub async fn create_net_id(
         &mut self,
         client: &SolanaClient,
-        owner: Option<Pubkey>,
-        recipient: Option<Pubkey>,
-        net_id: HeliumNetId,
-    ) -> Result<(Pubkey, Instruction), Error> {
-        let payer = client.wallet()?;
-        let authority = owner.unwrap_or(payer);
-        let sub_dao_key = dao::SubDao::Iot.key();
-        let routing_manager_key = routing_manager_key(&sub_dao_key);
-        let net_id_key = net_id_key(&routing_manager_key, u32::from(net_id.id()));
-        let (organization_key, create_org_ix) =
-            organization::create(client, payer, net_id_key, Some(authority), recipient).await?;
-
-        Ok((organization_key, create_org_ix))
-    }
-
-    pub async fn create_roamer(
-        &mut self,
-        client: &SolanaClient,
-        owner: Option<Pubkey>,
-        recipient: Option<Pubkey>,
         net_id: NetId,
     ) -> Result<(Pubkey, Instruction), Error> {
         let payer = client.wallet()?;
+        let (net_id_key, create_net_id_ix) = net_id::create(
+            client,
+            payer,
+            iot_routing_manager::InitializeNetIdArgsV0 { net_id },
+            Some(payer),
+        )
+        .await?;
+
+        Ok((net_id_key, create_net_id_ix))
+    }
+
+    pub async fn create_org(
+        &mut self,
+        client: &SolanaClient,
+        owner: Option<Pubkey>,
+        recipient: Option<Pubkey>,
+        org_type: OrgType,
+    ) -> Result<(Pubkey, Instruction), Error> {
+        let payer = client.wallet()?;
         let authority = owner.unwrap_or(payer);
         let sub_dao_key = dao::SubDao::Iot.key();
         let routing_manager_key = routing_manager_key(&sub_dao_key);
-        let net_id_key = iot_routing_manager::net_id_key(&routing_manager_key, net_id);
+
+        let net_id_key = match org_type {
+            OrgType::Helium(net_id) => net_id_key(&routing_manager_key, u32::from(net_id.id())),
+            OrgType::Roamer(net_id) => {
+                iot_routing_manager::net_id_key(&routing_manager_key, net_id)
+            }
+        };
+
         let (organization_key, create_org_ix) = iot_routing_manager::organization::create(
             client,
             payer,
@@ -227,7 +238,6 @@ impl OrgClient {
 }
 
 impl_sign!(OrgEnableReqV1, signature);
-impl_sign!(OrgUpdateReqV1, signature);
 
 impl_verify!(OrgListResV1, signature);
 impl_verify!(OrgResV1, signature);
