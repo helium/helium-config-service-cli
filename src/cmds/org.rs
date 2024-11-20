@@ -1,3 +1,5 @@
+use helium_lib::iot_routing_manager::organization::{self, OrgIdentifier};
+
 use super::{
     ApproveOrg, CliSolanaConfig, CreateHelium, CreateRoaming, DevaddrUpdateConstraint, EnableOrg,
     GetOrg, ListOrgs, OrgUpdateKey, PathBufKeypair, ENV_NET_ID, ENV_OUI,
@@ -43,9 +45,13 @@ pub async fn create_helium_org(args: CreateHelium) -> Result<Msg> {
 
         solana_client.send_instructions(vec![ix], &[], true).await?;
 
+        let (_, organization) =
+            organization::ensure_exists(&solana_client, OrgIdentifier::Pubkey(organization_key))
+                .await?;
+
         return Msg::ok(format!(
-            "== Helium Organization Created: {organization_key} ==\n== Call `org get --oui {organization_key} to see its details` ==",
-            organization_key = organization_key
+            "== Helium Organization Created: {oui} ==\n== Call `org get --oui {oui} to see its details` ==",
+            oui = organization.oui
         ));
     }
 
