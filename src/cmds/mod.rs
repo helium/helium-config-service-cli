@@ -57,12 +57,11 @@ pub struct Cli {
     )]
     pub keypair: PathBuf,
 
-    #[arg(global = true, long)]
     pub print_command: bool,
 }
 
 #[derive(Debug, Args)]
-pub struct CliSolanaConfig {
+pub struct SolanaArgs {
     /// Solana keypair file path
     #[arg(long, env = ENV_SOLANA_WALLET)]
     pub wallet: Option<PathBuf>,
@@ -815,7 +814,7 @@ pub struct CreateNetId {
     #[arg(from_global)]
     pub config_pubkey: String,
     #[command(flatten)]
-    pub solana: CliSolanaConfig,
+    pub solana: SolanaArgs,
     #[arg(long)]
     pub commit: bool,
 }
@@ -833,7 +832,7 @@ pub struct CreateHelium {
     #[arg(from_global)]
     pub config_pubkey: String,
     #[command(flatten)]
-    pub solana: CliSolanaConfig,
+    pub solana: SolanaArgs,
     #[arg(long)]
     pub commit: bool,
 }
@@ -851,7 +850,7 @@ pub struct CreateRoaming {
     #[arg(from_global)]
     pub config_pubkey: String,
     #[command(flatten)]
-    pub solana: CliSolanaConfig,
+    pub solana: SolanaArgs,
     #[arg(long)]
     pub commit: bool,
 }
@@ -867,7 +866,7 @@ pub struct ApproveOrg {
     #[arg(from_global)]
     pub config_pubkey: String,
     #[command(flatten)]
-    pub solana: CliSolanaConfig,
+    pub solana: SolanaArgs,
     #[arg(long)]
     pub commit: bool,
 }
@@ -899,7 +898,7 @@ pub struct OrgUpdateKey {
     #[arg(from_global)]
     pub config_pubkey: String,
     #[command(flatten)]
-    pub solana: CliSolanaConfig,
+    pub solana: SolanaArgs,
     #[arg(long)]
     pub commit: bool,
 }
@@ -917,7 +916,7 @@ pub struct DevaddrUpdateConstraint {
     #[arg(from_global)]
     pub config_pubkey: String,
     #[command(flatten)]
-    pub solana: CliSolanaConfig,
+    pub solana: SolanaArgs,
     #[arg(long)]
     pub commit: bool,
 }
