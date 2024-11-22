@@ -34,11 +34,6 @@ pub struct OrgClient {
     server_pubkey: PublicKey,
 }
 
-pub enum OrgType {
-    Helium(HeliumNetId),
-    Roamer(NetId),
-}
-
 impl OrgClient {
     pub async fn new(host: &str, server_pubkey: &str) -> Result<Self> {
         Ok(Self {
@@ -61,8 +56,30 @@ impl OrgClient {
         Ok(response.into())
     }
 
+    pub async fn enable(&mut self, oui: u64, keypair: Keypair) -> Result<()> {
+        let mut request = OrgEnableReqV1 {
+            oui,
+            timestamp: current_timestamp()?,
+            signer: keypair.public_key().into(),
+            signature: vec![],
+        };
+        request.signature = request.sign(&keypair)?;
+        let response = self.client.enable(request).await?.into_inner();
+        response.verify(&self.server_pubkey)?;
+        Ok(())
+    }
+}
+
+pub struct OrgSolanaOperations;
+
+pub enum OrgType {
+    Helium(HeliumNetId),
+    Roamer(NetId),
+}
+
+impl OrgSolanaOperations {
+    // Standalone operations that don't need the RPC
     pub async fn create_net_id(
-        &mut self,
         client: &SolanaClient,
         net_id: NetId,
     ) -> Result<(Pubkey, Instruction), Error> {
@@ -79,7 +96,6 @@ impl OrgClient {
     }
 
     pub async fn create_org(
-        &mut self,
         client: &SolanaClient,
         owner: Option<Pubkey>,
         recipient: Option<Pubkey>,
@@ -109,7 +125,7 @@ impl OrgClient {
         Ok((organization_key, create_org_ix))
     }
 
-    pub async fn approve(&mut self, client: &SolanaClient, oui: u64) -> Result<Instruction, Error> {
+    pub async fn approve(client: &SolanaClient, oui: u64) -> Result<Instruction, Error> {
         let authority = client.wallet()?;
         let (organization_key, organization) =
             organization::ensure_exists(client, OrgIdentifier::Oui(oui)).await?;
@@ -124,21 +140,7 @@ impl OrgClient {
         Ok(approve_org_ix)
     }
 
-    pub async fn enable(&mut self, oui: u64, keypair: Keypair) -> Result<()> {
-        let mut request = OrgEnableReqV1 {
-            oui,
-            timestamp: current_timestamp()?,
-            signer: keypair.public_key().into(),
-            signature: vec![],
-        };
-        request.signature = request.sign(&keypair)?;
-        let response = self.client.enable(request).await?.into_inner();
-        response.verify(&self.server_pubkey)?;
-        Ok(())
-    }
-
     pub async fn update_owner(
-        &mut self,
         client: &SolanaClient,
         oui: u64,
         new_authority: Pubkey,
@@ -160,7 +162,6 @@ impl OrgClient {
     }
 
     pub async fn add_delegate_key(
-        &mut self,
         client: &SolanaClient,
         oui: u64,
         delegate_key: Pubkey,
@@ -177,7 +178,6 @@ impl OrgClient {
     }
 
     pub async fn remove_delegate_key(
-        &mut self,
         client: &SolanaClient,
         oui: u64,
         delegate_key: Pubkey,
@@ -193,7 +193,6 @@ impl OrgClient {
     }
 
     pub async fn add_devaddr_constraint(
-        &mut self,
         client: &SolanaClient,
         oui: u64,
         num_blocks: u32,
@@ -227,7 +226,6 @@ impl OrgClient {
     }
 
     pub async fn remove_devaddr_constraint(
-        &mut self,
         client: &SolanaClient,
         devaddr_constraint_key: Pubkey,
     ) -> Result<Instruction, Error> {

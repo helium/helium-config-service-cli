@@ -114,6 +114,8 @@ pub struct OrgList {
 pub struct Org {
     pub oui: Oui,
     #[serde_as(as = "DisplayFromStr")]
+    pub address: Pubkey,
+    #[serde_as(as = "DisplayFromStr")]
     pub owner: Pubkey,
     pub escrow_key: String,
     #[serde_as(as = "Vec<DisplayFromStr>")]
@@ -299,6 +301,7 @@ impl From<proto::OrgV1> for Org {
 
         Self {
             oui: org.oui,
+            address: Pubkey::try_from(org.address).expect("Invalid address public key"),
             owner: Pubkey::try_from(org.owner).expect("Invalid owner public key"),
             escrow_key: org.escrow_key,
             delegate_keys: d.collect(),
@@ -312,6 +315,7 @@ impl From<Org> for proto::OrgV1 {
     fn from(org: Org) -> Self {
         Self {
             oui: org.oui,
+            address: org.address.to_bytes().to_vec(),
             owner: org.owner.to_bytes().to_vec(),
             escrow_key: org.escrow_key,
             delegate_keys: org

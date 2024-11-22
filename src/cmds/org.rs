@@ -4,26 +4,14 @@ use helium_lib::iot_routing_manager::{
 };
 
 use super::{
-    ApproveOrg, CliSolanaConfig, CreateHelium, CreateNetId, CreateRoaming, DevaddrUpdateConstraint,
-    EnableOrg, GetOrg, ListOrgs, OrgUpdateKey, PathBufKeypair,
+    ApproveOrg, CreateHelium, CreateNetId, CreateRoaming, DevaddrUpdateConstraint, EnableOrg,
+    GetOrg, ListOrgs, OrgUpdateKey, PathBufKeypair,
 };
 
 use crate::{
-    clients::{self, OrgType},
+    clients::{self, OrgSolanaOperations, OrgType},
     helium_netids, Msg, PrettyJson, Result,
 };
-
-async fn initialize_clients(
-    config_host: &str,
-    config_pubkey: &str,
-    config_solana: &CliSolanaConfig,
-) -> Result<(clients::OrgClient, clients::SolanaClient)> {
-    let org_client = clients::OrgClient::new(config_host, config_pubkey).await?;
-    let solana_client =
-        helium_lib::client::SolanaClient::new(&config_solana.url, config_solana.wallet.clone())?;
-
-    Ok((org_client, solana_client))
-}
 
 pub async fn list_orgs(args: ListOrgs) -> Result<Msg> {
     let mut client = clients::OrgClient::new(&args.config_host, &args.config_pubkey).await?;
@@ -41,12 +29,11 @@ pub async fn get_org(args: GetOrg) -> Result<Msg> {
 
 pub async fn create_net_id(args: CreateNetId) -> Result<Msg> {
     if args.commit {
-        let (mut client, solana_client) =
-            initialize_clients(&args.config_host, &args.config_pubkey, &args.solana).await?;
+        let solana_client =
+            helium_lib::client::SolanaClient::new(&args.solana.url, args.solana.wallet.clone())?;
 
-        let (_, ix) = client
-            .create_net_id(&solana_client, args.net_id.into())
-            .await?;
+        let (_, ix) =
+            OrgSolanaOperations::create_net_id(&solana_client, args.net_id.into()).await?;
 
         solana_client.send_instructions(vec![ix], &[], true).await?;
 
@@ -61,18 +48,17 @@ pub async fn create_net_id(args: CreateNetId) -> Result<Msg> {
 
 pub async fn create_helium_org(args: CreateHelium) -> Result<Msg> {
     if args.commit {
-        let (mut client, solana_client) =
-            initialize_clients(&args.config_host, &args.config_pubkey, &args.solana).await?;
+        let solana_client =
+            helium_lib::client::SolanaClient::new(&args.solana.url, args.solana.wallet.clone())?;
 
         let netid_field = helium_netids::HeliumNetId::from(args.net_id);
-        let (organization_key, ix) = client
-            .create_org(
-                &solana_client,
-                args.owner,
-                args.owner,
-                OrgType::Helium(netid_field),
-            )
-            .await?;
+        let (organization_key, ix) = OrgSolanaOperations::create_org(
+            &solana_client,
+            args.owner,
+            args.owner,
+            OrgType::Helium(netid_field),
+        )
+        .await?;
 
         solana_client.send_instructions(vec![ix], &[], true).await?;
 
@@ -94,17 +80,16 @@ pub async fn create_helium_org(args: CreateHelium) -> Result<Msg> {
 
 pub async fn create_roaming_org(args: CreateRoaming) -> Result<Msg> {
     if args.commit {
-        let (mut client, solana_client) =
-            initialize_clients(&args.config_host, &args.config_pubkey, &args.solana).await?;
+        let solana_client =
+            helium_lib::client::SolanaClient::new(&args.solana.url, args.solana.wallet.clone())?;
 
-        let (organization_key, ix) = client
-            .create_org(
-                &solana_client,
-                args.owner,
-                args.owner,
-                OrgType::Roamer(args.net_id.into()),
-            )
-            .await?;
+        let (organization_key, ix) = OrgSolanaOperations::create_org(
+            &solana_client,
+            args.owner,
+            args.owner,
+            OrgType::Roamer(args.net_id.into()),
+        )
+        .await?;
 
         solana_client.send_instructions(vec![ix], &[], true).await?;
 
@@ -122,10 +107,10 @@ pub async fn create_roaming_org(args: CreateRoaming) -> Result<Msg> {
 
 pub async fn approve_org(args: ApproveOrg) -> Result<Msg> {
     if args.commit {
-        let (mut client, solana_client) =
-            initialize_clients(&args.config_host, &args.config_pubkey, &args.solana).await?;
+        let solana_client =
+            helium_lib::client::SolanaClient::new(&args.solana.url, args.solana.wallet.clone())?;
 
-        let ix = client.approve(&solana_client, args.oui).await?;
+        let ix = OrgSolanaOperations::approve(&solana_client, args.oui).await?;
 
         solana_client
             .send_instructions(vec![ix], &[], false)
@@ -148,12 +133,11 @@ pub async fn enable_org(args: EnableOrg) -> Result<Msg> {
 
 pub async fn update_owner(args: OrgUpdateKey) -> Result<Msg> {
     if args.commit {
-        let (mut client, solana_client) =
-            initialize_clients(&args.config_host, &args.config_pubkey, &args.solana).await?;
+        let solana_client =
+            helium_lib::client::SolanaClient::new(&args.solana.url, args.solana.wallet.clone())?;
 
-        let (organization_key, update_ix) = client
-            .update_owner(&solana_client, args.oui, args.pubkey)
-            .await?;
+        let (organization_key, update_ix) =
+            OrgSolanaOperations::update_owner(&solana_client, args.oui, args.pubkey).await?;
 
         solana_client
             .send_instructions(vec![update_ix], &[], true)
@@ -173,12 +157,11 @@ pub async fn update_owner(args: OrgUpdateKey) -> Result<Msg> {
 
 pub async fn add_delegate_key(args: OrgUpdateKey) -> Result<Msg> {
     if args.commit {
-        let (mut client, solana_client) =
-            initialize_clients(&args.config_host, &args.config_pubkey, &args.solana).await?;
+        let solana_client =
+            helium_lib::client::SolanaClient::new(&args.solana.url, args.solana.wallet.clone())?;
 
-        let ix = client
-            .add_delegate_key(&solana_client, args.oui, args.pubkey)
-            .await?;
+        let ix =
+            OrgSolanaOperations::add_delegate_key(&solana_client, args.oui, args.pubkey).await?;
 
         solana_client.send_instructions(vec![ix], &[], true).await?;
 
@@ -195,12 +178,11 @@ pub async fn add_delegate_key(args: OrgUpdateKey) -> Result<Msg> {
 
 pub async fn remove_delegate_key(args: OrgUpdateKey) -> Result<Msg> {
     if args.commit {
-        let (mut client, solana_client) =
-            initialize_clients(&args.config_host, &args.config_pubkey, &args.solana).await?;
+        let solana_client =
+            helium_lib::client::SolanaClient::new(&args.solana.url, args.solana.wallet.clone())?;
 
-        let ix = client
-            .remove_delegate_key(&solana_client, args.oui, args.pubkey)
-            .await?;
+        let ix =
+            OrgSolanaOperations::remove_delegate_key(&solana_client, args.oui, args.pubkey).await?;
 
         solana_client.send_instructions(vec![ix], &[], true).await?;
 
@@ -217,12 +199,16 @@ pub async fn remove_delegate_key(args: OrgUpdateKey) -> Result<Msg> {
 
 pub async fn add_devaddr_constraint(args: DevaddrUpdateConstraint) -> Result<Msg> {
     if args.commit {
-        let (mut client, solana_client) =
-            initialize_clients(&args.config_host, &args.config_pubkey, &args.solana).await?;
+        let solana_client =
+            helium_lib::client::SolanaClient::new(&args.solana.url, args.solana.wallet.clone())?;
 
-        let ix = client
-            .add_devaddr_constraint(&solana_client, args.oui, args.num_blocks, None)
-            .await?;
+        let ix = OrgSolanaOperations::add_devaddr_constraint(
+            &solana_client,
+            args.oui,
+            args.num_blocks,
+            None,
+        )
+        .await?;
 
         solana_client.send_instructions(vec![ix], &[], true).await?;
 
@@ -239,12 +225,11 @@ pub async fn add_devaddr_constraint(args: DevaddrUpdateConstraint) -> Result<Msg
 
 pub async fn remove_devaddr_constraint(args: OrgUpdateKey) -> Result<Msg> {
     if args.commit {
-        let (mut client, solana_client) =
-            initialize_clients(&args.config_host, &args.config_pubkey, &args.solana).await?;
+        let solana_client =
+            helium_lib::client::SolanaClient::new(&args.solana.url, args.solana.wallet.clone())?;
 
-        let ix = client
-            .remove_devaddr_constraint(&solana_client, args.pubkey)
-            .await?;
+        let ix =
+            OrgSolanaOperations::remove_devaddr_constraint(&solana_client, args.pubkey).await?;
 
         solana_client.send_instructions(vec![ix], &[], true).await?;
 
