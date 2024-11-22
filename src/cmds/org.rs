@@ -37,10 +37,10 @@ pub async fn create_net_id(args: CreateNetId) -> Result<Msg> {
 
         solana_client.send_instructions(vec![ix], &[], true).await?;
 
-        let (_, net_id) =
+        let (_, _net_id) =
             net_id::ensure_exists(&solana_client, NetIdIdentifier::Id(args.net_id.into())).await?;
 
-        return Msg::ok(format!("== NetId Created: {id} ==", id = net_id.id));
+        return Msg::ok(format!("== NetId Created: {id} ==", id = args.net_id));
     }
 
     Msg::dry_run(format!("Create NetId {:?}", args.net_id,))
@@ -93,9 +93,13 @@ pub async fn create_roaming_org(args: CreateRoaming) -> Result<Msg> {
 
         solana_client.send_instructions(vec![ix], &[], true).await?;
 
+        let (_, organization) =
+            organization::ensure_exists(&solana_client, OrgIdentifier::Pubkey(organization_key))
+                .await?;
+
         return Msg::ok(format!(
-            "== Roaming Organization Created: {organization} ==\n== Call `org get --oui {organization} to see its details ==",
-            organization = organization_key
+            "== Roaming Organization Created: {oui} ==\n== Call `org get --oui {oui} to see its details ==",
+            oui = organization.oui
         ));
     }
 
