@@ -22,7 +22,7 @@ pub mod proto {
     pub use helium_proto::services::iot_config::{
         admin_add_key_req_v1::KeyTypeV1, route_skf_update_req_v1::RouteSkfUpdateV1, ActionV1,
         DevaddrConstraintV1, DevaddrRangeV1, EuiPairV1, GatewayLocationResV1, OrgEnableResV1,
-        OrgListResV1, OrgResV1, OrgV1, RouteListResV1, SkfV1,
+        OrgListResV2, OrgResV2, OrgV2, RouteListResV1, SkfV1,
     };
 }
 
@@ -287,16 +287,16 @@ impl From<Skf> for proto::SkfV1 {
     }
 }
 
-impl From<proto::OrgListResV1> for OrgList {
-    fn from(org_list: proto::OrgListResV1) -> Self {
+impl From<proto::OrgListResV2> for OrgList {
+    fn from(org_list: proto::OrgListResV2) -> Self {
         Self {
             orgs: org_list.orgs.into_iter().map(|o| o.into()).collect(),
         }
     }
 }
 
-impl From<proto::OrgV1> for Org {
-    fn from(org: proto::OrgV1) -> Self {
+impl From<proto::OrgV2> for Org {
+    fn from(org: proto::OrgV2) -> Self {
         let d = org.delegate_keys.into_iter().flat_map(Pubkey::try_from);
 
         Self {
@@ -311,7 +311,7 @@ impl From<proto::OrgV1> for Org {
     }
 }
 
-impl From<Org> for proto::OrgV1 {
+impl From<Org> for proto::OrgV2 {
     fn from(org: Org) -> Self {
         Self {
             oui: org.oui,

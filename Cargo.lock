@@ -2379,7 +2379,7 @@ dependencies = [
 [[package]]
 name = "helium-lib"
 version = "0.0.0"
-source = "git+https://github.com/helium/helium-wallet-rs?branch=master#7fb4224ef61865bd7e99932c2fa85d256b65a700"
+source = "git+https://github.com/helium/helium-wallet-rs?branch=master#21208fcf8dcaaee955fa38798d9fa0da6b8d3f7b"
 dependencies = [
  "anchor-client",
  "anchor-spl",
@@ -2419,7 +2419,7 @@ dependencies = [
 [[package]]
 name = "helium-proto"
 version = "0.1.0"
-source = "git+https://github.com/helium/proto?branch=master#8e3edc2053a16ec98421d83211399338836f91e4"
+source = "git+https://github.com/helium/proto?branch=master#b4c8c8f47dfff38a2ff1b7fe14e1b2a1beea651c"
 dependencies = [
  "bytes",
  "prost 0.12.6",

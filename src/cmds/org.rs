@@ -1,8 +1,3 @@
-use helium_lib::iot_routing_manager::{
-    net_id::{self, NetIdIdentifier},
-    organization::{self, OrgIdentifier},
-};
-
 use super::{
     ApproveOrg, CreateHelium, CreateNetId, CreateRoaming, DevaddrUpdateConstraint, EnableOrg,
     GetOrg, ListOrgs, OrgUpdateKey, PathBufKeypair,
@@ -11,6 +6,14 @@ use super::{
 use crate::{
     clients::{self, OrgSolanaOperations, OrgType},
     helium_netids, Msg, PrettyJson, Result,
+};
+
+use helium_lib::{
+    iot_routing_manager::{
+        net_id::{self, NetIdIdentifier},
+        organization::{self, OrgIdentifier},
+    },
+    transaction::send_instructions,
 };
 
 pub async fn list_orgs(args: ListOrgs) -> Result<Msg> {
@@ -35,7 +38,7 @@ pub async fn create_net_id(args: CreateNetId) -> Result<Msg> {
         let (_, ix) =
             OrgSolanaOperations::create_net_id(&solana_client, args.net_id.into()).await?;
 
-        solana_client.send_instructions(vec![ix], &[], true).await?;
+        send_instructions(solana_client, vec![ix], &[], true).await?;
 
         let (_, _net_id) =
             net_id::ensure_exists(&solana_client, NetIdIdentifier::Id(args.net_id.into())).await?;
@@ -60,7 +63,7 @@ pub async fn create_helium_org(args: CreateHelium) -> Result<Msg> {
         )
         .await?;
 
-        solana_client.send_instructions(vec![ix], &[], true).await?;
+        send_instructions(solana_client, vec![ix], &[], true).await?;
 
         let (_, organization) =
             organization::ensure_exists(&solana_client, OrgIdentifier::Pubkey(organization_key))
@@ -91,7 +94,7 @@ pub async fn create_roaming_org(args: CreateRoaming) -> Result<Msg> {
         )
         .await?;
 
-        solana_client.send_instructions(vec![ix], &[], true).await?;
+        send_instructions(solana_client, vec![ixs], &[], true).await?;
 
         let (_, organization) =
             organization::ensure_exists(&solana_client, OrgIdentifier::Pubkey(organization_key))
@@ -116,9 +119,7 @@ pub async fn approve_org(args: ApproveOrg) -> Result<Msg> {
 
         let ix = OrgSolanaOperations::approve(&solana_client, args.oui).await?;
 
-        solana_client
-            .send_instructions(vec![ix], &[], false)
-            .await?;
+        send_instructions(solana_client, vec![ix], &[], true).await?;
 
         return Msg::ok(format!("== Organization Approved: {} ==", args.oui));
     }
@@ -143,9 +144,7 @@ pub async fn update_owner(args: OrgUpdateKey) -> Result<Msg> {
         let (organization_key, update_ix) =
             OrgSolanaOperations::update_owner(&solana_client, args.oui, args.pubkey).await?;
 
-        solana_client
-            .send_instructions(vec![update_ix], &[], true)
-            .await?;
+        send_instructions(solana_client, vec![update_ix], &[], true).await?;
 
         return Msg::ok(format!(
             "== Organization Updated: {organization} ==\n== New Owner: {owner} ==",
@@ -167,7 +166,7 @@ pub async fn add_delegate_key(args: OrgUpdateKey) -> Result<Msg> {
         let ix =
             OrgSolanaOperations::add_delegate_key(&solana_client, args.oui, args.pubkey).await?;
 
-        solana_client.send_instructions(vec![ix], &[], true).await?;
+        send_instructions(solana_client, vec![ix], &[], true).await?;
 
         return Msg::ok(format!(
             "== Organization Updated ==\n== Delegate Added: {delegate} ==",
@@ -188,7 +187,7 @@ pub async fn remove_delegate_key(args: OrgUpdateKey) -> Result<Msg> {
         let ix =
             OrgSolanaOperations::remove_delegate_key(&solana_client, args.oui, args.pubkey).await?;
 
-        solana_client.send_instructions(vec![ix], &[], true).await?;
+        send_instructions(solana_client, vec![ix], &[], true).await?;
 
         return Msg::ok(format!(
             "== Organization Updated ==\n== Call `org get --oui {oui} to see its details ==",
@@ -214,7 +213,7 @@ pub async fn add_devaddr_constraint(args: DevaddrUpdateConstraint) -> Result<Msg
         )
         .await?;
 
-        solana_client.send_instructions(vec![ix], &[], true).await?;
+        send_instructions(solana_client, vec![ix], &[], true).await?;
 
         return Msg::ok(format!(
             "== Organization Updated ==\n== Call `org get --oui {oui} to see its details ==",
@@ -235,7 +234,7 @@ pub async fn remove_devaddr_constraint(args: OrgUpdateKey) -> Result<Msg> {
         let ix =
             OrgSolanaOperations::remove_devaddr_constraint(&solana_client, args.pubkey).await?;
 
-        solana_client.send_instructions(vec![ix], &[], true).await?;
+        send_instructions(solana_client, vec![ix], &[], true).await?;
 
         return Msg::ok(format!(
             "== Organization Updated ==\n== Call `org get --oui {oui} to see its details ==",

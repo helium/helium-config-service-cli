@@ -12,8 +12,8 @@ use helium_lib::{
 };
 use helium_proto::{
     services::iot_config::{
-        org_client, OrgEnableReqV1, OrgEnableResV1, OrgGetReqV1, OrgListReqV1, OrgListResV1,
-        OrgResV1,
+        org_client, OrgEnableReqV1, OrgEnableResV1, OrgGetReqV2, OrgListReqV2, OrgListResV2,
+        OrgResV2,
     },
     Message,
 };
@@ -43,14 +43,14 @@ impl OrgClient {
     }
 
     pub async fn list(&mut self) -> Result<OrgList> {
-        let request = OrgListReqV1 {};
+        let request = OrgListReqV2 {};
         let response = self.client.list(request).await?.into_inner();
         response.verify(&self.server_pubkey)?;
         Ok(response.into())
     }
 
     pub async fn get(&mut self, oui: Oui) -> Result<OrgResponse> {
-        let request = OrgGetReqV1 { oui };
+        let request = OrgGetReqV2 { oui };
         let response = self.client.get(request).await?.into_inner();
         response.verify(&self.server_pubkey)?;
         Ok(response.into())
@@ -237,6 +237,6 @@ impl OrgSolanaOperations {
 
 impl_sign!(OrgEnableReqV1, signature);
 
-impl_verify!(OrgListResV1, signature);
-impl_verify!(OrgResV1, signature);
+impl_verify!(OrgListResV2, signature);
+impl_verify!(OrgResV2, signature);
 impl_verify!(OrgEnableResV1, signature);
