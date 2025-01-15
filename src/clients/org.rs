@@ -1,13 +1,14 @@
+use helium_anchor_gen::iot_routing_manager;
 use helium_crypto::{Keypair, PublicKey};
 use helium_lib::{
     dao,
     error::Error,
-    iot_routing_manager::{
+    iot::{
         self, devaddr_constraint,
         net_id::{self, NetIdIdentifier},
-        net_id_key, orgainization_delegate,
+        net_id_key,
         organization::{self, OrgIdentifier},
-        routing_manager_key,
+        organization_delegate, routing_manager_key,
     },
 };
 use helium_proto::{
@@ -83,7 +84,7 @@ impl OrgSolanaOperations {
         client: &SolanaClient,
         net_id: NetId,
     ) -> Result<(Pubkey, Instruction), Error> {
-        let payer = client.wallet()?;
+        let payer = client.pubkey()?;
         let (net_id_key, create_net_id_ix) = net_id::create(
             client,
             payer,
@@ -101,41 +102,30 @@ impl OrgSolanaOperations {
         recipient: Option<Pubkey>,
         org_type: OrgType,
     ) -> Result<(Pubkey, Instruction), Error> {
-        let payer = client.wallet()?;
+        let payer = client.pubkey()?;
         let authority = owner.unwrap_or(payer);
         let sub_dao_key = dao::SubDao::Iot.key();
         let routing_manager_key = routing_manager_key(&sub_dao_key);
 
         let net_id_key = match org_type {
             OrgType::Helium(net_id) => net_id_key(&routing_manager_key, u32::from(net_id.id())),
-            OrgType::Roamer(net_id) => {
-                iot_routing_manager::net_id_key(&routing_manager_key, net_id)
-            }
+            OrgType::Roamer(net_id) => iot::net_id_key(&routing_manager_key, net_id),
         };
 
-        let (organization_key, create_org_ix) = iot_routing_manager::organization::create(
-            client,
-            payer,
-            net_id_key,
-            Some(authority),
-            recipient,
-        )
-        .await?;
+        let (organization_key, create_org_ix) =
+            iot::organization::create(client, payer, net_id_key, Some(authority), recipient)
+                .await?;
 
         Ok((organization_key, create_org_ix))
     }
 
     pub async fn approve(client: &SolanaClient, oui: u64) -> Result<Instruction, Error> {
-        let authority = client.wallet()?;
+        let authority = client.pubkey()?;
         let (organization_key, organization) =
             organization::ensure_exists(client, OrgIdentifier::Oui(oui)).await?;
-        let approve_org_ix = iot_routing_manager::organization::approve(
-            client,
-            authority,
-            organization_key,
-            organization.net_id,
-        )
-        .await?;
+        let approve_org_ix =
+            iot::organization::approve(client, authority, organization_key, organization.net_id)
+                .await?;
 
         Ok(approve_org_ix)
     }
@@ -143,9 +133,9 @@ impl OrgSolanaOperations {
     pub async fn update_owner(
         client: &SolanaClient,
         oui: u64,
-        new_authority: Pubkey,
+        authority: Pubkey,
     ) -> Result<(Pubkey, Instruction), Error> {
-        let authority = client.wallet()?;
+        let authority = client.pubkey()?;
         let (organization_key, _organization) =
             organization::ensure_exists(client, OrgIdentifier::Oui(oui)).await?;
         let ix = organization::update(
@@ -153,7 +143,7 @@ impl OrgSolanaOperations {
             authority,
             organization_key,
             iot_routing_manager::UpdateOrganizationArgsV0 {
-                new_authority: Some(new_authority),
+                authority: Some(authority),
             },
         )
         .await?;
@@ -166,12 +156,12 @@ impl OrgSolanaOperations {
         oui: u64,
         delegate_key: Pubkey,
     ) -> Result<Instruction, Error> {
-        let payer = client.wallet()?;
+        let payer = client.pubkey()?;
         let (organization_key, _organization) =
             organization::ensure_exists(client, OrgIdentifier::Oui(oui)).await?;
 
         Ok(
-            orgainization_delegate::create(client, payer, delegate_key, organization_key, None)
+            organization_delegate::create(client, payer, delegate_key, organization_key, None)
                 .await?
                 .1,
         )
@@ -182,12 +172,12 @@ impl OrgSolanaOperations {
         oui: u64,
         delegate_key: Pubkey,
     ) -> Result<Instruction, Error> {
-        let authority = client.wallet()?;
+        let authority = client.pubkey()?;
         let (organization_key, _organization) =
             organization::ensure_exists(client, OrgIdentifier::Oui(oui)).await?;
 
         Ok(
-            orgainization_delegate::remove(client, authority, delegate_key, organization_key)
+            organization_delegate::remove(client, authority, delegate_key, organization_key)
                 .await?,
         )
     }
@@ -196,9 +186,8 @@ impl OrgSolanaOperations {
         client: &SolanaClient,
         oui: u64,
         num_blocks: u32,
-        start_addr: Option<u64>,
     ) -> Result<Instruction, Error> {
-        let payer = client.wallet()?;
+        let payer = client.pubkey()?;
         let (organization_key, organization) =
             organization::ensure_exists(client, OrgIdentifier::Oui(oui)).await?;
 
@@ -208,15 +197,12 @@ impl OrgSolanaOperations {
         net_id
             .current_addr_offset
             .checked_add(num_blocks as u64 * 8)
-            .ok_or(Error::Other("No Available Addrs".to_string()))?;
+            .ok_or(Error::other("No Available Addrs".to_string()))?;
 
         Ok(devaddr_constraint::create(
             client,
             payer,
-            iot_routing_manager::InitializeDevaddrConstraintArgsV0 {
-                start_addr,
-                num_blocks,
-            },
+            iot_routing_manager::InitializeDevaddrConstraintArgsV0 { num_blocks },
             organization_key,
             net_id_key,
             None,
@@ -229,8 +215,7 @@ impl OrgSolanaOperations {
         client: &SolanaClient,
         devaddr_constraint_key: Pubkey,
     ) -> Result<Instruction, Error> {
-        let authority = client.wallet()?;
-
+        let authority = client.pubkey()?;
         Ok(devaddr_constraint::remove(client, authority, devaddr_constraint_key).await?)
     }
 }

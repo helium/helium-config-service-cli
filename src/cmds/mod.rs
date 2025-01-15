@@ -23,7 +23,7 @@ pub const ENV_KEYPAIR_BIN: &str = "HELIUM_KEYPAIR_BIN";
 pub const ENV_NET_ID: &str = "HELIUM_NET_ID";
 pub const ENV_OUI: &str = "HELIUM_OUI";
 pub const ENV_MAX_COPIES: &str = "HELIUM_MAX_COPIES";
-pub const ENV_SOLANA_WALLET: &str = "SOLANA_WALLET";
+pub const ENV_SOLANA_KEYPAIR: &str = "SOLANA_KEYPAIR";
 pub const ENV_SOLANA_URL: &str = "SOLANA_URL";
 
 #[derive(Debug, Parser)]
@@ -63,8 +63,8 @@ pub struct Cli {
 #[derive(Debug, Args)]
 pub struct SolanaArgs {
     /// Solana keypair file path
-    #[arg(long, env = ENV_SOLANA_WALLET)]
-    pub wallet: Option<PathBuf>,
+    #[arg(long, env = ENV_SOLANA_KEYPAIR)]
+    pub keypair: Option<PathBuf>,
 
     /// Solana RPC URL
     #[arg(long, env = ENV_SOLANA_URL)]

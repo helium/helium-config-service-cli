@@ -90,8 +90,8 @@ pub struct OrgResponse {
     pub devaddr_constraints: Vec<DevaddrConstraint>,
 }
 
-impl From<proto::OrgResV1> for OrgResponse {
-    fn from(res: proto::OrgResV1) -> Self {
+impl From<proto::OrgResV2> for OrgResponse {
+    fn from(res: proto::OrgResV2) -> Self {
         Self {
             org: res.org.expect("no org returned during creation").into(),
             net_id: hex_field::net_id(res.net_id),

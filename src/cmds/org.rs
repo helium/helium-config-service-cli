@@ -9,12 +9,14 @@ use crate::{
 };
 
 use helium_lib::{
-    iot_routing_manager::{
+    iot::{
         net_id::{self, NetIdIdentifier},
         organization::{self, OrgIdentifier},
     },
-    transaction::send_instructions,
+    keypair::Keypair,
 };
+
+use std::sync::Arc;
 
 pub async fn list_orgs(args: ListOrgs) -> Result<Msg> {
     let mut client = clients::OrgClient::new(&args.config_host, &args.config_pubkey).await?;
@@ -32,13 +34,17 @@ pub async fn get_org(args: GetOrg) -> Result<Msg> {
 
 pub async fn create_net_id(args: CreateNetId) -> Result<Msg> {
     if args.commit {
-        let solana_client =
-            helium_lib::client::SolanaClient::new(&args.solana.url, args.solana.wallet.clone())?;
+        let solana_client = helium_lib::client::SolanaClient::new(
+            &args.solana.url,
+            args.solana
+                .keypair
+                .map(|path| Arc::new(Keypair::from_path(path).unwrap())),
+        )?;
 
         let (_, ix) =
             OrgSolanaOperations::create_net_id(&solana_client, args.net_id.into()).await?;
 
-        send_instructions(solana_client, vec![ix], &[], true).await?;
+        solana_client.send_instructions(&[ix], &[]).await?;
 
         let (_, _net_id) =
             net_id::ensure_exists(&solana_client, NetIdIdentifier::Id(args.net_id.into())).await?;
@@ -51,8 +57,12 @@ pub async fn create_net_id(args: CreateNetId) -> Result<Msg> {
 
 pub async fn create_helium_org(args: CreateHelium) -> Result<Msg> {
     if args.commit {
-        let solana_client =
-            helium_lib::client::SolanaClient::new(&args.solana.url, args.solana.wallet.clone())?;
+        let solana_client = helium_lib::client::SolanaClient::new(
+            &args.solana.url,
+            args.solana
+                .keypair
+                .map(|path| Arc::new(Keypair::from_path(path).unwrap())),
+        )?;
 
         let netid_field = helium_netids::HeliumNetId::from(args.net_id);
         let (organization_key, ix) = OrgSolanaOperations::create_org(
@@ -63,7 +73,7 @@ pub async fn create_helium_org(args: CreateHelium) -> Result<Msg> {
         )
         .await?;
 
-        send_instructions(solana_client, vec![ix], &[], true).await?;
+        solana_client.send_instructions(&[ix], &[]).await?;
 
         let (_, organization) =
             organization::ensure_exists(&solana_client, OrgIdentifier::Pubkey(organization_key))
@@ -83,8 +93,12 @@ pub async fn create_helium_org(args: CreateHelium) -> Result<Msg> {
 
 pub async fn create_roaming_org(args: CreateRoaming) -> Result<Msg> {
     if args.commit {
-        let solana_client =
-            helium_lib::client::SolanaClient::new(&args.solana.url, args.solana.wallet.clone())?;
+        let solana_client = helium_lib::client::SolanaClient::new(
+            &args.solana.url,
+            args.solana
+                .keypair
+                .map(|path| Arc::new(Keypair::from_path(path).unwrap())),
+        )?;
 
         let (organization_key, ix) = OrgSolanaOperations::create_org(
             &solana_client,
@@ -94,7 +108,7 @@ pub async fn create_roaming_org(args: CreateRoaming) -> Result<Msg> {
         )
         .await?;
 
-        send_instructions(solana_client, vec![ixs], &[], true).await?;
+        solana_client.send_instructions(&[ix], &[]).await?;
 
         let (_, organization) =
             organization::ensure_exists(&solana_client, OrgIdentifier::Pubkey(organization_key))
@@ -114,12 +128,16 @@ pub async fn create_roaming_org(args: CreateRoaming) -> Result<Msg> {
 
 pub async fn approve_org(args: ApproveOrg) -> Result<Msg> {
     if args.commit {
-        let solana_client =
-            helium_lib::client::SolanaClient::new(&args.solana.url, args.solana.wallet.clone())?;
+        let solana_client = helium_lib::client::SolanaClient::new(
+            &args.solana.url,
+            args.solana
+                .keypair
+                .map(|path| Arc::new(Keypair::from_path(path).unwrap())),
+        )?;
 
         let ix = OrgSolanaOperations::approve(&solana_client, args.oui).await?;
 
-        send_instructions(solana_client, vec![ix], &[], true).await?;
+        solana_client.send_instructions(&[ix], &[]).await?;
 
         return Msg::ok(format!("== Organization Approved: {} ==", args.oui));
     }
@@ -138,13 +156,17 @@ pub async fn enable_org(args: EnableOrg) -> Result<Msg> {
 
 pub async fn update_owner(args: OrgUpdateKey) -> Result<Msg> {
     if args.commit {
-        let solana_client =
-            helium_lib::client::SolanaClient::new(&args.solana.url, args.solana.wallet.clone())?;
+        let solana_client = helium_lib::client::SolanaClient::new(
+            &args.solana.url,
+            args.solana
+                .keypair
+                .map(|path| Arc::new(Keypair::from_path(path).unwrap())),
+        )?;
 
         let (organization_key, update_ix) =
             OrgSolanaOperations::update_owner(&solana_client, args.oui, args.pubkey).await?;
 
-        send_instructions(solana_client, vec![update_ix], &[], true).await?;
+        solana_client.send_instructions(&[update_ix], &[]).await?;
 
         return Msg::ok(format!(
             "== Organization Updated: {organization} ==\n== New Owner: {owner} ==",
@@ -160,13 +182,17 @@ pub async fn update_owner(args: OrgUpdateKey) -> Result<Msg> {
 
 pub async fn add_delegate_key(args: OrgUpdateKey) -> Result<Msg> {
     if args.commit {
-        let solana_client =
-            helium_lib::client::SolanaClient::new(&args.solana.url, args.solana.wallet.clone())?;
+        let solana_client = helium_lib::client::SolanaClient::new(
+            &args.solana.url,
+            args.solana
+                .keypair
+                .map(|path| Arc::new(Keypair::from_path(path).unwrap())),
+        )?;
 
         let ix =
             OrgSolanaOperations::add_delegate_key(&solana_client, args.oui, args.pubkey).await?;
 
-        send_instructions(solana_client, vec![ix], &[], true).await?;
+        solana_client.send_instructions(&[ix], &[]).await?;
 
         return Msg::ok(format!(
             "== Organization Updated ==\n== Delegate Added: {delegate} ==",
@@ -181,13 +207,17 @@ pub async fn add_delegate_key(args: OrgUpdateKey) -> Result<Msg> {
 
 pub async fn remove_delegate_key(args: OrgUpdateKey) -> Result<Msg> {
     if args.commit {
-        let solana_client =
-            helium_lib::client::SolanaClient::new(&args.solana.url, args.solana.wallet.clone())?;
+        let solana_client = helium_lib::client::SolanaClient::new(
+            &args.solana.url,
+            args.solana
+                .keypair
+                .map(|path| Arc::new(Keypair::from_path(path).unwrap())),
+        )?;
 
         let ix =
             OrgSolanaOperations::remove_delegate_key(&solana_client, args.oui, args.pubkey).await?;
 
-        send_instructions(solana_client, vec![ix], &[], true).await?;
+        solana_client.send_instructions(&[ix], &[]).await?;
 
         return Msg::ok(format!(
             "== Organization Updated ==\n== Call `org get --oui {oui} to see its details ==",
@@ -202,18 +232,18 @@ pub async fn remove_delegate_key(args: OrgUpdateKey) -> Result<Msg> {
 
 pub async fn add_devaddr_constraint(args: DevaddrUpdateConstraint) -> Result<Msg> {
     if args.commit {
-        let solana_client =
-            helium_lib::client::SolanaClient::new(&args.solana.url, args.solana.wallet.clone())?;
+        let solana_client = helium_lib::client::SolanaClient::new(
+            &args.solana.url,
+            args.solana
+                .keypair
+                .map(|path| Arc::new(Keypair::from_path(path).unwrap())),
+        )?;
 
-        let ix = OrgSolanaOperations::add_devaddr_constraint(
-            &solana_client,
-            args.oui,
-            args.num_blocks,
-            None,
-        )
-        .await?;
+        let ix =
+            OrgSolanaOperations::add_devaddr_constraint(&solana_client, args.oui, args.num_blocks)
+                .await?;
 
-        send_instructions(solana_client, vec![ix], &[], true).await?;
+        solana_client.send_instructions(&[ix], &[]).await?;
 
         return Msg::ok(format!(
             "== Organization Updated ==\n== Call `org get --oui {oui} to see its details ==",
@@ -228,13 +258,17 @@ pub async fn add_devaddr_constraint(args: DevaddrUpdateConstraint) -> Result<Msg
 
 pub async fn remove_devaddr_constraint(args: OrgUpdateKey) -> Result<Msg> {
     if args.commit {
-        let solana_client =
-            helium_lib::client::SolanaClient::new(&args.solana.url, args.solana.wallet.clone())?;
+        let solana_client = helium_lib::client::SolanaClient::new(
+            &args.solana.url,
+            args.solana
+                .keypair
+                .map(|path| Arc::new(Keypair::from_path(path).unwrap())),
+        )?;
 
         let ix =
             OrgSolanaOperations::remove_devaddr_constraint(&solana_client, args.pubkey).await?;
 
-        send_instructions(solana_client, vec![ix], &[], true).await?;
+        solana_client.send_instructions(&[ix], &[]).await?;
 
         return Msg::ok(format!(
             "== Organization Updated ==\n== Call `org get --oui {oui} to see its details ==",
