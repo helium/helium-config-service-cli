@@ -1183,6 +1183,7 @@ dependencies = [
 [[package]]
 name = "circuit-breaker"
 version = "0.1.0"
+source = "git+https://github.com/helium/helium-anchor-gen.git#3036b33793cfe54b20ab24761677493510d5bd50"
 dependencies = [
  "anchor-gen",
  "anchor-lang",
@@ -1633,6 +1634,7 @@ dependencies = [
 [[package]]
 name = "data-credits"
 version = "0.2.2"
+source = "git+https://github.com/helium/helium-anchor-gen.git#3036b33793cfe54b20ab24761677493510d5bd50"
 dependencies = [
  "anchor-gen",
  "anchor-lang",
@@ -1936,6 +1938,7 @@ checksum = "0206175f82b8d6bf6652ff7d71a1e27fd2e4efde587fd368662814d6ec1d9ce0"
 [[package]]
 name = "fanout"
 version = "0.1.0"
+source = "git+https://github.com/helium/helium-anchor-gen.git#3036b33793cfe54b20ab24761677493510d5bd50"
 dependencies = [
  "anchor-gen",
  "anchor-lang",
@@ -2291,6 +2294,7 @@ checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
 [[package]]
 name = "helium-anchor-gen"
 version = "0.1.0"
+source = "git+https://github.com/helium/helium-anchor-gen.git#3036b33793cfe54b20ab24761677493510d5bd50"
 dependencies = [
  "anchor-gen",
  "anchor-lang",
@@ -2300,7 +2304,6 @@ dependencies = [
  "helium-entity-manager",
  "helium-sub-daos",
  "hexboosting",
- "iot-routing-manager",
  "lazy-distributor",
  "lazy-transactions",
  "mobile-entity-manager",
@@ -2368,6 +2371,7 @@ dependencies = [
 [[package]]
 name = "helium-entity-manager"
 version = "0.2.11"
+source = "git+https://github.com/helium/helium-anchor-gen.git#3036b33793cfe54b20ab24761677493510d5bd50"
 dependencies = [
  "anchor-gen",
  "anchor-lang",
@@ -2376,6 +2380,7 @@ dependencies = [
 [[package]]
 name = "helium-lib"
 version = "0.0.0"
+source = "git+https://github.com/helium/helium-wallet-rs?branch=master#d527be0dc3db4641c0a658ed462b53e98864eb73"
 dependencies = [
  "anchor-client",
  "anchor-spl",
@@ -2415,6 +2420,7 @@ dependencies = [
 [[package]]
 name = "helium-proto"
 version = "0.1.0"
+source = "git+https://github.com/helium/proto?branch=master#4085e00c6f4d82c3da798ae1bc97324bc9cada2e"
 dependencies = [
  "bytes",
  "prost",
@@ -2430,6 +2436,7 @@ dependencies = [
 [[package]]
 name = "helium-sub-daos"
 version = "0.1.8"
+source = "git+https://github.com/helium/helium-anchor-gen.git#3036b33793cfe54b20ab24761677493510d5bd50"
 dependencies = [
  "anchor-gen",
  "anchor-lang",
@@ -2462,6 +2469,7 @@ dependencies = [
 [[package]]
 name = "hexboosting"
 version = "0.1.0"
+source = "git+https://github.com/helium/helium-anchor-gen.git#3036b33793cfe54b20ab24761677493510d5bd50"
 dependencies = [
  "anchor-gen",
  "anchor-lang",
@@ -2836,14 +2844,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "iot-routing-manager"
-version = "0.1.2"
-dependencies = [
- "anchor-gen",
- "anchor-lang",
-]
-
-[[package]]
 name = "ipnet"
 version = "2.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2970,6 +2970,7 @@ dependencies = [
 [[package]]
 name = "lazy-distributor"
 version = "0.2.0"
+source = "git+https://github.com/helium/helium-anchor-gen.git#3036b33793cfe54b20ab24761677493510d5bd50"
 dependencies = [
  "anchor-gen",
  "anchor-lang",
@@ -2978,6 +2979,7 @@ dependencies = [
 [[package]]
 name = "lazy-transactions"
 version = "0.2.0"
+source = "git+https://github.com/helium/helium-anchor-gen.git#3036b33793cfe54b20ab24761677493510d5bd50"
 dependencies = [
  "anchor-gen",
  "anchor-lang",
@@ -3185,6 +3187,7 @@ dependencies = [
 [[package]]
 name = "mobile-entity-manager"
 version = "0.1.3"
+source = "git+https://github.com/helium/helium-anchor-gen.git#3036b33793cfe54b20ab24761677493510d5bd50"
 dependencies = [
  "anchor-gen",
  "anchor-lang",
@@ -3730,6 +3733,7 @@ dependencies = [
 [[package]]
 name = "price-oracle"
 version = "0.2.1"
+source = "git+https://github.com/helium/helium-anchor-gen.git#3036b33793cfe54b20ab24761677493510d5bd50"
 dependencies = [
  "anchor-gen",
  "anchor-lang",
@@ -4177,6 +4181,7 @@ dependencies = [
 [[package]]
 name = "rewards-oracle"
 version = "0.2.0"
+source = "git+https://github.com/helium/helium-anchor-gen.git#3036b33793cfe54b20ab24761677493510d5bd50"
 dependencies = [
  "anchor-gen",
  "anchor-lang",
@@ -6445,6 +6450,7 @@ dependencies = [
 [[package]]
 name = "treasury-management"
 version = "0.2.0"
+source = "git+https://github.com/helium/helium-anchor-gen.git#3036b33793cfe54b20ab24761677493510d5bd50"
 dependencies = [
  "anchor-gen",
  "anchor-lang",
@@ -6626,6 +6632,7 @@ checksum = "6a02e4885ed3bc0f2de90ea6dd45ebcbb66dacffe03547fadbb0eeae2770887d"
 [[package]]
 name = "voter-stake-registry"
 version = "0.3.3"
+source = "git+https://github.com/helium/helium-anchor-gen.git#3036b33793cfe54b20ab24761677493510d5bd50"
 dependencies = [
  "anchor-gen",
  "anchor-lang",
