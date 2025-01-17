@@ -63,12 +63,12 @@ pub struct Cli {
 #[derive(Debug, Args)]
 pub struct SolanaArgs {
     /// Solana keypair file path
-    #[arg(long, env = ENV_SOLANA_KEYPAIR)]
-    pub keypair: Option<PathBuf>,
+    #[arg(long, alias = "solana-keypair", env = ENV_SOLANA_KEYPAIR)]
+    pub solana_keypair: Option<PathBuf>,
 
     /// Solana RPC URL
-    #[arg(long, env = ENV_SOLANA_URL)]
-    pub url: String,
+    #[arg(long, alias = "solana-url", env = ENV_SOLANA_URL)]
+    pub solana_url: String,
 }
 
 #[derive(Debug, Subcommand)]

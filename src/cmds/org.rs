@@ -35,9 +35,9 @@ pub async fn get_org(args: GetOrg) -> Result<Msg> {
 pub async fn create_net_id(args: CreateNetId) -> Result<Msg> {
     if args.commit {
         let solana_client = helium_lib::client::SolanaClient::new(
-            &args.solana.url,
+            &args.solana.solana_url,
             args.solana
-                .keypair
+                .solana_keypair
                 .map(|path| Arc::new(Keypair::from_path(path).unwrap())),
         )?;
 
@@ -58,9 +58,9 @@ pub async fn create_net_id(args: CreateNetId) -> Result<Msg> {
 pub async fn create_helium_org(args: CreateHelium) -> Result<Msg> {
     if args.commit {
         let solana_client = helium_lib::client::SolanaClient::new(
-            &args.solana.url,
+            &args.solana.solana_url,
             args.solana
-                .keypair
+                .solana_keypair
                 .map(|path| Arc::new(Keypair::from_path(path).unwrap())),
         )?;
 
@@ -94,9 +94,9 @@ pub async fn create_helium_org(args: CreateHelium) -> Result<Msg> {
 pub async fn create_roaming_org(args: CreateRoaming) -> Result<Msg> {
     if args.commit {
         let solana_client = helium_lib::client::SolanaClient::new(
-            &args.solana.url,
+            &args.solana.solana_url,
             args.solana
-                .keypair
+                .solana_keypair
                 .map(|path| Arc::new(Keypair::from_path(path).unwrap())),
         )?;
 
@@ -129,9 +129,9 @@ pub async fn create_roaming_org(args: CreateRoaming) -> Result<Msg> {
 pub async fn approve_org(args: ApproveOrg) -> Result<Msg> {
     if args.commit {
         let solana_client = helium_lib::client::SolanaClient::new(
-            &args.solana.url,
+            &args.solana.solana_url,
             args.solana
-                .keypair
+                .solana_keypair
                 .map(|path| Arc::new(Keypair::from_path(path).unwrap())),
         )?;
 
@@ -157,9 +157,9 @@ pub async fn enable_org(args: EnableOrg) -> Result<Msg> {
 pub async fn update_owner(args: OrgUpdateKey) -> Result<Msg> {
     if args.commit {
         let solana_client = helium_lib::client::SolanaClient::new(
-            &args.solana.url,
+            &args.solana.solana_url,
             args.solana
-                .keypair
+                .solana_keypair
                 .map(|path| Arc::new(Keypair::from_path(path).unwrap())),
         )?;
 
@@ -183,9 +183,9 @@ pub async fn update_owner(args: OrgUpdateKey) -> Result<Msg> {
 pub async fn add_delegate_key(args: OrgUpdateKey) -> Result<Msg> {
     if args.commit {
         let solana_client = helium_lib::client::SolanaClient::new(
-            &args.solana.url,
+            &args.solana.solana_url,
             args.solana
-                .keypair
+                .solana_keypair
                 .map(|path| Arc::new(Keypair::from_path(path).unwrap())),
         )?;
 
@@ -208,9 +208,9 @@ pub async fn add_delegate_key(args: OrgUpdateKey) -> Result<Msg> {
 pub async fn remove_delegate_key(args: OrgUpdateKey) -> Result<Msg> {
     if args.commit {
         let solana_client = helium_lib::client::SolanaClient::new(
-            &args.solana.url,
+            &args.solana.solana_url,
             args.solana
-                .keypair
+                .solana_keypair
                 .map(|path| Arc::new(Keypair::from_path(path).unwrap())),
         )?;
 
@@ -233,9 +233,9 @@ pub async fn remove_delegate_key(args: OrgUpdateKey) -> Result<Msg> {
 pub async fn add_devaddr_constraint(args: DevaddrUpdateConstraint) -> Result<Msg> {
     if args.commit {
         let solana_client = helium_lib::client::SolanaClient::new(
-            &args.solana.url,
+            &args.solana.solana_url,
             args.solana
-                .keypair
+                .solana_keypair
                 .map(|path| Arc::new(Keypair::from_path(path).unwrap())),
         )?;
 
@@ -259,9 +259,9 @@ pub async fn add_devaddr_constraint(args: DevaddrUpdateConstraint) -> Result<Msg
 pub async fn remove_devaddr_constraint(args: OrgUpdateKey) -> Result<Msg> {
     if args.commit {
         let solana_client = helium_lib::client::SolanaClient::new(
-            &args.solana.url,
+            &args.solana.solana_url,
             args.solana
-                .keypair
+                .solana_keypair
                 .map(|path| Arc::new(Keypair::from_path(path).unwrap())),
         )?;
 
