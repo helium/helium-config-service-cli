@@ -10,11 +10,12 @@ use helium_lib::{
         organization::{self, OrgIdentifier},
         organization_delegate, routing_manager_key,
     },
+    keypair::to_pubkey,
 };
 use helium_proto::{
     services::iot_config::{
-        org_client, OrgEnableReqV1, OrgEnableResV1, OrgGetReqV2, OrgListReqV2, OrgListResV2,
-        OrgResV2,
+        org_client, OrgDisableReqV1, OrgDisableResV1, OrgEnableReqV1, OrgEnableResV1, OrgGetReqV2,
+        OrgListReqV2, OrgListResV2, OrgResV2,
     },
     Message,
 };
@@ -45,14 +46,14 @@ impl OrgClient {
 
     pub async fn list(&mut self) -> Result<OrgList> {
         let request = OrgListReqV2 {};
-        let response = self.client.list(request).await?.into_inner();
+        let response = self.client.list_v2(request).await?.into_inner();
         response.verify(&self.server_pubkey)?;
         Ok(response.into())
     }
 
     pub async fn get(&mut self, oui: Oui) -> Result<OrgResponse> {
         let request = OrgGetReqV2 { oui };
-        let response = self.client.get(request).await?.into_inner();
+        let response = self.client.get_v2(request).await?.into_inner();
         response.verify(&self.server_pubkey)?;
         Ok(response.into())
     }
@@ -69,6 +70,19 @@ impl OrgClient {
         response.verify(&self.server_pubkey)?;
         Ok(())
     }
+
+    pub async fn disable(&mut self, oui: u64, keypair: Keypair) -> Result<()> {
+        let mut request = OrgDisableReqV1 {
+            oui,
+            timestamp: current_timestamp()?,
+            signer: keypair.public_key().into(),
+            signature: vec![],
+        };
+        request.signature = request.sign(&keypair)?;
+        let response = self.client.disable(request).await?.into_inner();
+        response.verify(&self.server_pubkey)?;
+        Ok(())
+    }
 }
 
 pub struct OrgSolanaOperations;
@@ -79,7 +93,6 @@ pub enum OrgType {
 }
 
 impl OrgSolanaOperations {
-    // Standalone operations that don't need the RPC
     pub async fn create_net_id(
         client: &SolanaClient,
         net_id: NetId,
@@ -98,14 +111,22 @@ impl OrgSolanaOperations {
 
     pub async fn create_org(
         client: &SolanaClient,
-        owner: Option<Pubkey>,
-        recipient: Option<Pubkey>,
+        owner: Option<PublicKey>,
+        recipient: Option<PublicKey>,
         org_type: OrgType,
     ) -> Result<(Pubkey, Instruction), Error> {
         let payer = client.pubkey()?;
-        let authority = owner.unwrap_or(payer);
         let sub_dao_key = dao::SubDao::Iot.key();
         let routing_manager_key = routing_manager_key(&sub_dao_key);
+        let authority = match owner {
+            Some(owner_key) => to_pubkey(&owner_key)?,
+            None => payer,
+        };
+
+        let recipient = match recipient {
+            Some(recipient_key) => to_pubkey(&recipient_key)?,
+            None => payer,
+        };
 
         let net_id_key = match org_type {
             OrgType::Helium(net_id) => net_id_key(&routing_manager_key, u32::from(net_id.id())),
@@ -113,7 +134,7 @@ impl OrgSolanaOperations {
         };
 
         let (organization_key, create_org_ix) =
-            iot::organization::create(client, payer, net_id_key, Some(authority), recipient)
+            iot::organization::create(client, payer, net_id_key, Some(authority), Some(recipient))
                 .await?;
 
         Ok((organization_key, create_org_ix))
@@ -133,17 +154,17 @@ impl OrgSolanaOperations {
     pub async fn update_owner(
         client: &SolanaClient,
         oui: u64,
-        authority: Pubkey,
+        authority: PublicKey,
     ) -> Result<(Pubkey, Instruction), Error> {
-        let authority = client.pubkey()?;
+        let current_authority = client.pubkey()?;
         let (organization_key, _organization) =
             organization::ensure_exists(client, OrgIdentifier::Oui(oui)).await?;
         let ix = organization::update(
             client,
-            authority,
+            current_authority,
             organization_key,
             iot_routing_manager::UpdateOrganizationArgsV0 {
-                authority: Some(authority),
+                authority: Some(to_pubkey(&authority)?),
             },
         )
         .await?;
@@ -154,32 +175,39 @@ impl OrgSolanaOperations {
     pub async fn add_delegate_key(
         client: &SolanaClient,
         oui: u64,
-        delegate_key: Pubkey,
+        delegate_key: PublicKey,
     ) -> Result<Instruction, Error> {
         let payer = client.pubkey()?;
         let (organization_key, _organization) =
             organization::ensure_exists(client, OrgIdentifier::Oui(oui)).await?;
 
-        Ok(
-            organization_delegate::create(client, payer, delegate_key, organization_key, None)
-                .await?
-                .1,
+        Ok(organization_delegate::create(
+            client,
+            payer,
+            to_pubkey(&delegate_key)?,
+            organization_key,
+            None,
         )
+        .await?
+        .1)
     }
 
     pub async fn remove_delegate_key(
         client: &SolanaClient,
         oui: u64,
-        delegate_key: Pubkey,
+        delegate_key: PublicKey,
     ) -> Result<Instruction, Error> {
         let authority = client.pubkey()?;
         let (organization_key, _organization) =
             organization::ensure_exists(client, OrgIdentifier::Oui(oui)).await?;
 
-        Ok(
-            organization_delegate::remove(client, authority, delegate_key, organization_key)
-                .await?,
+        Ok(organization_delegate::remove(
+            client,
+            authority,
+            to_pubkey(&delegate_key)?,
+            organization_key,
         )
+        .await?)
     }
 
     pub async fn add_devaddr_constraint(
@@ -213,15 +241,20 @@ impl OrgSolanaOperations {
 
     pub async fn remove_devaddr_constraint(
         client: &SolanaClient,
-        devaddr_constraint_key: Pubkey,
+        devaddr_constraint_key: PublicKey,
     ) -> Result<Instruction, Error> {
         let authority = client.pubkey()?;
-        Ok(devaddr_constraint::remove(client, authority, devaddr_constraint_key).await?)
+        Ok(
+            devaddr_constraint::remove(client, authority, to_pubkey(&devaddr_constraint_key)?)
+                .await?,
+        )
     }
 }
 
 impl_sign!(OrgEnableReqV1, signature);
+impl_sign!(OrgDisableReqV1, signature);
 
 impl_verify!(OrgListResV2, signature);
 impl_verify!(OrgResV2, signature);
 impl_verify!(OrgEnableResV1, signature);
+impl_verify!(OrgDisableResV1, signature);

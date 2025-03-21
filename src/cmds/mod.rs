@@ -8,7 +8,6 @@ use crate::{
 use anyhow::Context;
 use clap::{Args, Parser, Subcommand};
 use helium_crypto::PublicKey;
-use solana_sdk::pubkey::Pubkey;
 use std::path::PathBuf;
 
 pub mod admin;
@@ -17,14 +16,13 @@ pub mod gateway;
 pub mod org;
 pub mod route;
 
-pub const ENV_CONFIG_HOST: &str = "HELIUM_CONFIG_HOST";
-pub const ENV_CONFIG_PUBKEY: &str = "HELIUM_CONFIG_PUBKEY";
-pub const ENV_KEYPAIR_BIN: &str = "HELIUM_KEYPAIR_BIN";
-pub const ENV_NET_ID: &str = "HELIUM_NET_ID";
-pub const ENV_OUI: &str = "HELIUM_OUI";
-pub const ENV_MAX_COPIES: &str = "HELIUM_MAX_COPIES";
-pub const ENV_SOLANA_KEYPAIR: &str = "SOLANA_KEYPAIR";
-pub const ENV_SOLANA_URL: &str = "SOLANA_URL";
+pub static ENV_CONFIG_HOST: &str = "HELIUM_CONFIG_HOST";
+pub static ENV_CONFIG_PUBKEY: &str = "HELIUM_CONFIG_PUBKEY";
+pub static ENV_KEYPAIR_BIN: &str = "HELIUM_KEYPAIR_BIN";
+pub static ENV_NET_ID: &str = "HELIUM_NET_ID";
+pub static ENV_OUI: &str = "HELIUM_OUI";
+pub static ENV_MAX_COPIES: &str = "HELIUM_MAX_COPIES";
+pub static ENV_SOLANA_URL: &str = "SOLANA_URL";
 
 #[derive(Debug, Parser)]
 #[command(name = "helium-config-cli")]
@@ -57,18 +55,15 @@ pub struct Cli {
     )]
     pub keypair: PathBuf,
 
-    pub print_command: bool,
-}
-
-#[derive(Debug, Args)]
-pub struct SolanaArgs {
-    /// Solana keypair file path
-    #[arg(long, alias = "solana-keypair", env = ENV_SOLANA_KEYPAIR)]
-    pub solana_keypair: Option<PathBuf>,
-
-    /// Solana RPC URL
-    #[arg(long, alias = "solana-url", env = ENV_SOLANA_URL)]
+    #[arg(
+        global = true,
+        long,
+        env = ENV_SOLANA_URL,
+        default_value = "https://solana-rpc.web.helium.io:443?session-key=Pluto"
+    )]
     pub solana_url: String,
+
+    pub print_command: bool,
 }
 
 #[derive(Debug, Subcommand)]
@@ -477,6 +472,8 @@ pub enum OrgCommands {
     Approve(ApproveOrg),
     /// Enable a locked Oui
     Enable(EnableOrg),
+    /// Disable a unlocked Oui
+    Disable(DisableOrg),
     /// Update Org record
     Update {
         #[command(subcommand)]
@@ -743,6 +740,8 @@ pub struct SubnetMask {
 pub struct EnvInfo {
     #[arg(long, env = ENV_CONFIG_HOST, default_value="unset")]
     pub config_host: Option<String>,
+    #[arg(long, env = ENV_SOLANA_URL, default_value="unset")]
+    pub solana_url: Option<String>,
     #[arg(long, env = ENV_KEYPAIR_BIN, default_value="unset")]
     pub keypair: Option<PathBuf>,
     #[arg(long, env = ENV_NET_ID)]
@@ -795,7 +794,7 @@ pub struct ListOrgs {
 
 #[derive(Debug, Args)]
 pub struct GetOrg {
-    #[arg(long, env = "HELIUM_OUI")]
+    #[arg(long, short, env = "HELIUM_OUI")]
     pub oui: Oui,
     #[arg(from_global)]
     pub config_host: String,
@@ -813,8 +812,8 @@ pub struct CreateNetId {
     pub config_host: String,
     #[arg(from_global)]
     pub config_pubkey: String,
-    #[command(flatten)]
-    pub solana: SolanaArgs,
+    #[arg(from_global)]
+    pub solana_url: String,
     #[arg(long)]
     pub commit: bool,
 }
@@ -822,7 +821,7 @@ pub struct CreateNetId {
 #[derive(Debug, Args)]
 pub struct CreateHelium {
     #[arg(long)]
-    pub owner: Option<Pubkey>,
+    pub owner: Option<PublicKey>,
     #[arg(long, value_enum)]
     pub net_id: HeliumNetId,
     #[arg(from_global)]
@@ -831,8 +830,8 @@ pub struct CreateHelium {
     pub config_host: String,
     #[arg(from_global)]
     pub config_pubkey: String,
-    #[command(flatten)]
-    pub solana: SolanaArgs,
+    #[arg(from_global)]
+    pub solana_url: String,
     #[arg(long)]
     pub commit: bool,
 }
@@ -840,7 +839,7 @@ pub struct CreateHelium {
 #[derive(Debug, Args)]
 pub struct CreateRoaming {
     #[arg(long)]
-    pub owner: Option<Pubkey>,
+    pub owner: Option<PublicKey>,
     #[arg(long)]
     pub net_id: HexNetID,
     #[arg(from_global)]
@@ -849,8 +848,8 @@ pub struct CreateRoaming {
     pub config_host: String,
     #[arg(from_global)]
     pub config_pubkey: String,
-    #[command(flatten)]
-    pub solana: SolanaArgs,
+    #[arg(from_global)]
+    pub solana_url: String,
     #[arg(long)]
     pub commit: bool,
 }
@@ -865,8 +864,8 @@ pub struct ApproveOrg {
     pub config_host: String,
     #[arg(from_global)]
     pub config_pubkey: String,
-    #[command(flatten)]
-    pub solana: SolanaArgs,
+    #[arg(from_global)]
+    pub solana_url: String,
     #[arg(long)]
     pub commit: bool,
 }
@@ -890,15 +889,15 @@ pub struct OrgUpdateKey {
     #[arg(long, short)]
     pub oui: u64,
     #[arg(long, short)]
-    pub pubkey: Pubkey,
+    pub pubkey: PublicKey,
     #[arg(from_global)]
     pub keypair: PathBuf,
     #[arg(from_global)]
     pub config_host: String,
     #[arg(from_global)]
     pub config_pubkey: String,
-    #[command(flatten)]
-    pub solana: SolanaArgs,
+    #[arg(from_global)]
+    pub solana_url: String,
     #[arg(long)]
     pub commit: bool,
 }
@@ -915,15 +914,29 @@ pub struct DevaddrUpdateConstraint {
     pub config_host: String,
     #[arg(from_global)]
     pub config_pubkey: String,
-    #[command(flatten)]
-    pub solana: SolanaArgs,
+    #[arg(from_global)]
+    pub solana_url: String,
     #[arg(long)]
     pub commit: bool,
 }
 
 #[derive(Debug, Args)]
 pub struct EnableOrg {
+    #[arg(long, short)]
+    pub oui: u64,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
     #[arg(long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct DisableOrg {
+    #[arg(long, short)]
     pub oui: u64,
     #[arg(from_global)]
     pub keypair: PathBuf,

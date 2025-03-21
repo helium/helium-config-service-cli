@@ -77,6 +77,7 @@ pub async fn handle_cli(cli: Cli) -> Result<Msg> {
             Org::CreateRoaming(args) => org::create_roaming_org(args).await,
             Org::Approve(args) => org::approve_org(args).await,
             Org::Enable(args) => org::enable_org(args).await,
+            Org::Disable(args) => org::disable_org(args).await,
             Org::Update { command } => match command {
                 cmds::OrgUpdateCommand::Owner(args) => org::update_owner(args).await,
                 cmds::OrgUpdateCommand::DelegateAdd(args) => org::add_delegate_key(args).await,
