@@ -24,6 +24,10 @@ pub static ENV_OUI: &str = "HELIUM_OUI";
 pub static ENV_MAX_COPIES: &str = "HELIUM_MAX_COPIES";
 pub static ENV_SOLANA_URL: &str = "SOLANA_URL";
 
+pub const CONFIG_HOST: &str = "https://config.iot.mainnet.helium.io:6080";
+pub const KEYPAIR_PATH: &str = "./keypair.bin";
+pub const SOLANA_URL: &str = "https://solana-rpc.web.helium.io:443?session-key=Pluto";
+
 #[derive(Debug, Parser)]
 #[command(name = "helium-config-cli")]
 #[command(author, version, about, long_about=None)]
@@ -35,7 +39,7 @@ pub struct Cli {
         global = true,
         long,
         env = ENV_CONFIG_HOST,
-        default_value = "https://config.iot.mainnet.helium.io:6080"
+        default_value = CONFIG_HOST
     )]
     pub config_host: String,
 
@@ -51,7 +55,7 @@ pub struct Cli {
         global = true,
         long,
         env = ENV_KEYPAIR_BIN,
-        default_value = "./keypair.bin"
+        default_value = KEYPAIR_PATH
     )]
     pub keypair: PathBuf,
 
@@ -59,7 +63,7 @@ pub struct Cli {
         global = true,
         long,
         env = ENV_SOLANA_URL,
-        default_value = "https://solana-rpc.web.helium.io:443?session-key=Pluto"
+        default_value = SOLANA_URL
     )]
     pub solana_url: String,
 

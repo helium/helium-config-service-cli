@@ -5,7 +5,10 @@ use super::{
     EnvInfo, GenerateKeypair, ENV_CONFIG_HOST, ENV_KEYPAIR_BIN, ENV_MAX_COPIES, ENV_NET_ID,
     ENV_OUI, ENV_SOLANA_URL,
 };
-use crate::{hex_field, Msg, Oui, PrettyJson, Result};
+use crate::{
+    cmds::{CONFIG_HOST, KEYPAIR_PATH, SOLANA_URL},
+    hex_field, Msg, Oui, PrettyJson, Result,
+};
 use anyhow::Context;
 use dialoguer::Input;
 use helium_crypto::Keypair;
@@ -13,60 +16,83 @@ use helium_lib::keypair::Signer;
 use rand::rngs::OsRng;
 use serde_json::json;
 
+fn prompt_input<T>(prompt: &str, default: Option<&str>, allow_empty: bool) -> Result<T>
+where
+    T: std::str::FromStr,
+    T::Err: std::fmt::Display,
+{
+    let mut input = Input::new();
+
+    input.with_prompt(prompt);
+
+    if let Some(default_value) = default {
+        input.default(default_value.to_string());
+    }
+
+    let result: String = input.interact_text()?;
+
+    if !allow_empty && result.trim().is_empty() {
+        return Err(anyhow::anyhow!("Input cannot be empty"));
+    }
+
+    let value_to_parse = if result.trim().is_empty() && allow_empty {
+        if let Some(default_value) = default {
+            default_value.to_string()
+        } else {
+            result
+        }
+    } else {
+        result
+    };
+
+    match value_to_parse.parse::<T>() {
+        Ok(parsed) => Ok(parsed),
+        Err(e) => Err(anyhow::anyhow!("Failed to parse input: {}", e)),
+    }
+}
+
 pub async fn env_init() -> Result<Msg> {
     println!("----- Leave blank to ignore...");
-    let config_host: String = Input::new()
-        .with_prompt("Config Service Host")
-        .allow_empty(true)
-        .interact()?;
-    let solana_url: String = Input::new()
-        .with_prompt("Solana RCP URL")
-        .allow_empty(true)
-        .interact()?;
-    let keypair_path: String = Input::<String>::new()
-        .with_prompt("Keypair Location")
-        .with_initial_text("./keypair.bin")
-        .allow_empty(true)
-        .interact()?;
+    let config_host: String = prompt_input("Config Service Host", Some(CONFIG_HOST), true)?;
+    let solana_url: String = prompt_input("Solana RPC URL", Some(SOLANA_URL), true)?;
+    let keypair_path: String = prompt_input("Keypair Location", Some(KEYPAIR_PATH), true)?;
     println!("----- Enter all zeros to ignore...");
-    let net_id = Input::<hex_field::HexNetID>::new()
-        .with_prompt("Net ID")
-        .with_initial_text("000000")
-        .interact()?;
+    let net_id: hex_field::HexNetID = prompt_input("Net ID", Some("000000"), false)?;
     println!("----- Enter zero to ignore...");
-    let oui: Oui = Input::new()
-        .with_prompt("Assigned OUI")
-        .with_initial_text("0")
-        .allow_empty(true)
-        .interact()?;
-    let max_copies: u32 = Input::new()
-        .with_prompt("Default Max Copies")
-        .allow_empty(true)
-        .with_initial_text("15")
-        .interact()?;
+    let oui: Oui = prompt_input("Assigned OUI", Some("0"), true)?;
+    let max_copies: u32 = prompt_input("Default Max Copies", Some("15"), true)?;
 
     let mut report = vec![
         "".to_string(),
         "Put these in your environment".to_string(),
         "------------------------------------".to_string(),
     ];
-    if !config_host.is_empty() {
-        report.push(format!("{ENV_CONFIG_HOST}={config_host}"));
-    }
-    if !solana_url.is_empty() {
-        report.push(format!("{ENV_SOLANA_URL}={solana_url}"))
-    }
-    if !keypair_path.is_empty() {
-        report.push(format!("{ENV_KEYPAIR_BIN}={keypair_path}"))
-    }
-    if net_id != hex_field::net_id(0) {
-        report.push(format!("{ENV_NET_ID}={net_id}"));
-    }
-    if oui != 0 {
-        report.push(format!("{ENV_OUI}={oui}"));
-    }
-    if max_copies != 0 {
-        report.push(format!("{ENV_MAX_COPIES}={max_copies}"));
+
+    let env_vars = vec![
+        (
+            ENV_CONFIG_HOST,
+            config_host.clone(),
+            !config_host.is_empty(),
+        ),
+        (ENV_SOLANA_URL, solana_url.clone(), !solana_url.is_empty()),
+        (
+            ENV_KEYPAIR_BIN,
+            keypair_path.clone(),
+            !keypair_path.is_empty(),
+        ),
+        (
+            ENV_NET_ID,
+            net_id.to_string(),
+            net_id != hex_field::net_id(0),
+        ),
+        (ENV_OUI, oui.to_string(), oui != 0),
+        (ENV_MAX_COPIES, max_copies.to_string(), max_copies != 0),
+    ];
+
+    for (key, value, condition) in env_vars {
+        if condition {
+            report.push(format!("{key}={value}"));
+        }
     }
 
     Msg::ok(report.join("\n"))
