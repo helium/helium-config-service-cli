@@ -13,7 +13,6 @@ use anyhow::{anyhow, Error};
 use helium_crypto::PublicKey;
 use route::Route;
 use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
 use std::fmt::Display;
 use subnet::DevaddrConstraint;
 
@@ -108,7 +107,6 @@ pub struct OrgList {
     pub orgs: Vec<Org>,
 }
 
-#[serde_as]
 #[derive(Debug, Clone, Serialize)]
 pub struct Org {
     pub oui: Oui,
