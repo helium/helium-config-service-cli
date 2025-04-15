@@ -470,7 +470,7 @@ pub enum OrgCommands {
     CreateNetId(CreateNetId),
     /// Create a new Helium Organization
     CreateHelium(CreateHelium),
-    /// Create a new Roaming Organization (admin only)
+    /// Create a new Roaming Organization
     CreateRoaming(CreateRoaming),
     /// Approve an organization
     Approve(ApproveOrg),
