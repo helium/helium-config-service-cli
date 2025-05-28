@@ -1,5 +1,5 @@
 use super::{GetHotspot, PathBufKeypair};
-use crate::{client, region::Region, Msg, PrettyJson, Result};
+use crate::{clients, region::Region, Msg, PrettyJson, Result};
 use angry_purple_tiger::AnimalName;
 use helium_crypto::PublicKey;
 use helium_proto::services::iot_config::{
@@ -9,7 +9,7 @@ use serde::Serialize;
 use std::str::FromStr;
 
 pub async fn location(args: GetHotspot) -> Result<Msg> {
-    let mut client = client::GatewayClient::new(&args.config_host, &args.config_pubkey).await?;
+    let mut client = clients::GatewayClient::new(&args.config_host, &args.config_pubkey).await?;
     match client
         .location(&args.hotspot, &args.keypair.to_keypair()?)
         .await
@@ -26,7 +26,7 @@ pub async fn location(args: GetHotspot) -> Result<Msg> {
 }
 
 pub async fn info(args: GetHotspot) -> Result<Msg> {
-    let mut client = client::GatewayClient::new(&args.config_host, &args.config_pubkey).await?;
+    let mut client = clients::GatewayClient::new(&args.config_host, &args.config_pubkey).await?;
     match client
         .info(&args.hotspot, &args.keypair.to_keypair()?)
         .await

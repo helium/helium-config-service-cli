@@ -1,6 +1,8 @@
-pub mod client;
+pub mod clients;
 pub mod cmds;
+pub mod helium_netids;
 pub mod hex_field;
+pub mod lora_field;
 pub mod region;
 pub mod region_params;
 pub mod route;
@@ -16,10 +18,9 @@ use subnet::DevaddrConstraint;
 
 pub mod proto {
     pub use helium_proto::services::iot_config::{
-        admin_add_key_req_v1::KeyTypeV1, org_create_helium_req_v1::HeliumNetId,
-        route_skf_update_req_v1::RouteSkfUpdateV1, ActionV1, DevaddrConstraintV1, DevaddrRangeV1,
-        EuiPairV1, GatewayLocationResV1, OrgEnableResV1, OrgListResV1, OrgResV1, OrgV1,
-        RouteListResV1, SkfV1,
+        admin_add_key_req_v1::KeyTypeV1, route_skf_update_req_v1::RouteSkfUpdateV1, ActionV1,
+        DevaddrConstraintV1, DevaddrRangeV1, EuiPairV1, GatewayLocationResV1, OrgEnableResV1,
+        OrgListResV2, OrgResV2, OrgV2, RouteListResV1, SkfV1,
     };
 }
 
@@ -80,26 +81,6 @@ impl<S: ?Sized + serde::Serialize> PrettyJson for S {
     }
 }
 
-#[derive(clap::ValueEnum, Clone, Debug)]
-pub enum HeliumNetId {
-    #[value(alias("0x00003c"))]
-    Type0_0x00003c,
-    #[value(alias("0x60002d"))]
-    Type3_0x60002d,
-    #[value(alias("0xc00053"))]
-    Type6_0xc00053,
-}
-
-impl From<HeliumNetId> for proto::HeliumNetId {
-    fn from(id: HeliumNetId) -> Self {
-        match id {
-            HeliumNetId::Type0_0x00003c => proto::HeliumNetId::Type00x00003c,
-            HeliumNetId::Type3_0x60002d => proto::HeliumNetId::Type30x60002d,
-            HeliumNetId::Type6_0xc00053 => proto::HeliumNetId::Type60xc00053,
-        }
-    }
-}
-
 #[derive(Debug, Serialize)]
 pub struct OrgResponse {
     pub org: Org,
@@ -107,8 +88,8 @@ pub struct OrgResponse {
     pub devaddr_constraints: Vec<DevaddrConstraint>,
 }
 
-impl From<proto::OrgResV1> for OrgResponse {
-    fn from(res: proto::OrgResV1) -> Self {
+impl From<proto::OrgResV2> for OrgResponse {
+    fn from(res: proto::OrgResV2) -> Self {
         Self {
             org: res.org.expect("no org returned during creation").into(),
             net_id: hex_field::net_id(res.net_id),
@@ -129,9 +110,11 @@ pub struct OrgList {
 #[derive(Debug, Clone, Serialize)]
 pub struct Org {
     pub oui: Oui,
+    pub address: PublicKey,
     pub owner: PublicKey,
-    pub payer: PublicKey,
+    pub escrow_key: String,
     pub delegate_keys: Vec<PublicKey>,
+    pub approved: bool,
     pub locked: bool,
 }
 
@@ -298,34 +281,38 @@ impl From<Skf> for proto::SkfV1 {
     }
 }
 
-impl From<proto::OrgListResV1> for OrgList {
-    fn from(org_list: proto::OrgListResV1) -> Self {
+impl From<proto::OrgListResV2> for OrgList {
+    fn from(org_list: proto::OrgListResV2) -> Self {
         Self {
             orgs: org_list.orgs.into_iter().map(|o| o.into()).collect(),
         }
     }
 }
 
-impl From<proto::OrgV1> for Org {
-    fn from(org: proto::OrgV1) -> Self {
+impl From<proto::OrgV2> for Org {
+    fn from(org: proto::OrgV2) -> Self {
         let d = org.delegate_keys.into_iter().flat_map(PublicKey::try_from);
         Self {
             oui: org.oui,
+            address: PublicKey::try_from(org.address).unwrap(),
             owner: PublicKey::try_from(org.owner).unwrap(),
-            payer: PublicKey::try_from(org.payer).unwrap(),
+            escrow_key: org.escrow_key,
             delegate_keys: d.collect(),
+            approved: org.approved,
             locked: org.locked,
         }
     }
 }
 
-impl From<Org> for proto::OrgV1 {
+impl From<Org> for proto::OrgV2 {
     fn from(org: Org) -> Self {
         Self {
             oui: org.oui,
+            address: org.address.into(),
             owner: org.owner.into(),
-            payer: org.payer.into(),
+            escrow_key: org.escrow_key,
             delegate_keys: org.delegate_keys.iter().map(|key| key.into()).collect(),
+            approved: org.approved,
             locked: org.locked,
         }
     }

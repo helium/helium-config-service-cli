@@ -72,17 +72,18 @@ pub async fn handle_cli(cli: Cli) -> Result<Msg> {
         Commands::Org { command } => match command {
             Org::List(args) => org::list_orgs(args).await,
             Org::Get(args) => org::get_org(args).await,
+            Org::CreateNetId(args) => org::create_net_id(args).await,
             Org::CreateHelium(args) => org::create_helium_org(args).await,
             Org::CreateRoaming(args) => org::create_roaming_org(args).await,
+            Org::Approve(args) => org::approve_org(args).await,
             Org::Enable(args) => org::enable_org(args).await,
+            Org::Disable(args) => org::disable_org(args).await,
             Org::Update { command } => match command {
                 cmds::OrgUpdateCommand::Owner(args) => org::update_owner(args).await,
-                cmds::OrgUpdateCommand::Payer(args) => org::update_payer(args).await,
                 cmds::OrgUpdateCommand::DelegateAdd(args) => org::add_delegate_key(args).await,
                 cmds::OrgUpdateCommand::DelegateRemove(args) => {
                     org::remove_delegate_key(args).await
                 }
-                cmds::OrgUpdateCommand::DevaddrSlabAdd(args) => org::add_devaddr_slab(args).await,
                 cmds::OrgUpdateCommand::DevaddrConstraintAdd(args) => {
                     org::add_devaddr_constraint(args).await
                 }

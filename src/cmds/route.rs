@@ -1,16 +1,15 @@
-use helium_crypto::Keypair;
-
 use super::{
     ActivateRoute, AddGwmpRegion, DeactivateRoute, DeleteRoute, GetRoute, ListRoutes, NewRoute,
     RemoveGwmpRegion, SetIgnoreEmptySkf, UpdateHttp, UpdateMaxCopies, UpdatePacketRouter,
     UpdateServer,
 };
 use crate::{
-    client, cmds::PathBufKeypair, route::Route, server::Protocol, Msg, PrettyJson, Result,
+    clients, cmds::PathBufKeypair, route::Route, server::Protocol, Msg, PrettyJson, Result,
 };
+use helium_crypto::Keypair;
 
 pub async fn list_routes(args: ListRoutes) -> Result<Msg> {
-    let mut client = client::RouteClient::new(&args.config_host, &args.config_pubkey).await?;
+    let mut client = clients::RouteClient::new(&args.config_host, &args.config_pubkey).await?;
     match client.list(args.oui, &args.keypair.to_keypair()?).await {
         Ok(route_list) => Msg::ok(route_list.pretty_json()?),
         Err(err) => Msg::err(format!("could not list routes: {err}")),
@@ -18,7 +17,7 @@ pub async fn list_routes(args: ListRoutes) -> Result<Msg> {
 }
 
 pub async fn get_route(args: GetRoute) -> Result<Msg> {
-    let mut client = client::RouteClient::new(&args.config_host, &args.config_pubkey).await?;
+    let mut client = clients::RouteClient::new(&args.config_host, &args.config_pubkey).await?;
     let stats_str = if args.stats {
         let RouteStats {
             devaddr_count,
@@ -59,17 +58,17 @@ async fn counts_for_route(
     route_id: &str,
     keypair: &Keypair,
 ) -> Result<RouteStats> {
-    let devaddr_count = client::DevaddrClient::new(config_host, config_pubkey)
+    let devaddr_count = clients::DevaddrClient::new(config_host, config_pubkey)
         .await?
         .get_devaddrs(route_id, keypair)
         .await?
         .len();
-    let skf_count = client::SkfClient::new(config_host, config_pubkey)
+    let skf_count = clients::SkfClient::new(config_host, config_pubkey)
         .await?
         .list_filters(route_id, keypair)
         .await?
         .len();
-    let eui_count = client::EuiClient::new(config_host, config_pubkey)
+    let eui_count = clients::EuiClient::new(config_host, config_pubkey)
         .await?
         .get_euis(route_id, keypair)
         .await?
@@ -82,7 +81,7 @@ async fn counts_for_route(
 }
 
 pub async fn new_route(args: NewRoute) -> Result<Msg> {
-    let mut client = client::RouteClient::new(&args.config_host, &args.config_pubkey).await?;
+    let mut client = clients::RouteClient::new(&args.config_host, &args.config_pubkey).await?;
     let route = Route::new(args.net_id, args.oui, args.max_copies);
 
     if !args.commit {
@@ -103,7 +102,7 @@ pub async fn new_route(args: NewRoute) -> Result<Msg> {
 }
 
 pub async fn delete_route(args: DeleteRoute) -> Result<Msg> {
-    let mut client = client::RouteClient::new(&args.config_host, &args.config_pubkey).await?;
+    let mut client = clients::RouteClient::new(&args.config_host, &args.config_pubkey).await?;
 
     if !args.commit {
         return Msg::dry_run(format!("delete {}", args.route_id));
@@ -119,7 +118,7 @@ pub async fn delete_route(args: DeleteRoute) -> Result<Msg> {
 }
 
 pub async fn update_max_copies(args: UpdateMaxCopies) -> Result<Msg> {
-    let mut client = client::RouteClient::new(&args.config_host, &args.config_pubkey).await?;
+    let mut client = clients::RouteClient::new(&args.config_host, &args.config_pubkey).await?;
     let keypair = args.keypair.to_keypair()?;
 
     let mut route = client.get(&args.route_id, &keypair).await?;
@@ -148,7 +147,7 @@ pub async fn update_max_copies(args: UpdateMaxCopies) -> Result<Msg> {
 }
 
 pub async fn update_server(args: UpdateServer) -> Result<Msg> {
-    let mut client = client::RouteClient::new(&args.config_host, &args.config_pubkey).await?;
+    let mut client = clients::RouteClient::new(&args.config_host, &args.config_pubkey).await?;
     let keypair = args.keypair.to_keypair()?;
 
     let mut route = client.get(&args.route_id, &keypair).await?;
@@ -179,7 +178,7 @@ pub async fn update_server(args: UpdateServer) -> Result<Msg> {
 }
 
 pub async fn update_http(args: UpdateHttp) -> Result<Msg> {
-    let mut client = client::RouteClient::new(&args.config_host, &args.config_pubkey).await?;
+    let mut client = clients::RouteClient::new(&args.config_host, &args.config_pubkey).await?;
     let keypair = args.keypair.to_keypair()?;
 
     let mut route = client.get(&args.route_id, &keypair).await?;
@@ -214,7 +213,7 @@ pub async fn update_http(args: UpdateHttp) -> Result<Msg> {
 }
 
 pub async fn add_gwmp_region(args: AddGwmpRegion) -> Result<Msg> {
-    let mut client = client::RouteClient::new(&args.config_host, &args.config_pubkey).await?;
+    let mut client = clients::RouteClient::new(&args.config_host, &args.config_pubkey).await?;
     let keypair = args.keypair.to_keypair()?;
 
     let mut route = client.get(&args.route_id, &keypair).await?;
@@ -257,7 +256,7 @@ pub async fn add_gwmp_region(args: AddGwmpRegion) -> Result<Msg> {
 }
 
 pub async fn remove_gwmp_region(args: RemoveGwmpRegion) -> Result<Msg> {
-    let mut client = client::RouteClient::new(&args.config_host, &args.config_pubkey).await?;
+    let mut client = clients::RouteClient::new(&args.config_host, &args.config_pubkey).await?;
     let keypair = args.keypair.to_keypair()?;
 
     let mut route = client.get(&args.route_id, &keypair).await?;
@@ -295,7 +294,7 @@ pub async fn remove_gwmp_region(args: RemoveGwmpRegion) -> Result<Msg> {
 }
 
 pub async fn update_packet_router(args: UpdatePacketRouter) -> Result<Msg> {
-    let mut client = client::RouteClient::new(&args.config_host, &args.config_pubkey).await?;
+    let mut client = clients::RouteClient::new(&args.config_host, &args.config_pubkey).await?;
     let keypair = args.keypair.to_keypair()?;
 
     let mut route = client.get(&args.route_id, &keypair).await?;
@@ -325,7 +324,7 @@ pub async fn update_packet_router(args: UpdatePacketRouter) -> Result<Msg> {
 }
 
 pub async fn update_ignore_empty_skf(args: SetIgnoreEmptySkf) -> Result<Msg> {
-    let mut client = client::RouteClient::new(&args.config_host, &args.config_pubkey).await?;
+    let mut client = clients::RouteClient::new(&args.config_host, &args.config_pubkey).await?;
     let keypair = args.keypair.to_keypair()?;
 
     let mut route = client.get(&args.route_id, &keypair).await?;
@@ -356,7 +355,7 @@ pub async fn update_ignore_empty_skf(args: SetIgnoreEmptySkf) -> Result<Msg> {
 }
 
 pub async fn activate_route(args: ActivateRoute) -> Result<Msg> {
-    let mut client = client::RouteClient::new(&args.config_host, &args.config_pubkey).await?;
+    let mut client = clients::RouteClient::new(&args.config_host, &args.config_pubkey).await?;
     let keypair = args.keypair.to_keypair()?;
 
     let mut route = client.get(&args.route_id, &keypair).await?;
@@ -385,7 +384,7 @@ pub async fn activate_route(args: ActivateRoute) -> Result<Msg> {
 }
 
 pub async fn deactivate_route(args: DeactivateRoute) -> Result<Msg> {
-    let mut client = client::RouteClient::new(&args.config_host, &args.config_pubkey).await?;
+    let mut client = clients::RouteClient::new(&args.config_host, &args.config_pubkey).await?;
     let keypair = args.keypair.to_keypair()?;
 
     let mut route = client.get(&args.route_id, &keypair).await?;
@@ -415,7 +414,7 @@ pub async fn deactivate_route(args: DeactivateRoute) -> Result<Msg> {
 
 pub mod skfs {
     use crate::{
-        client,
+        clients,
         cmds::{
             AddFilter, ClearFilters, GetFilters, ListFilters, PathBufKeypair, RemoveFilter,
             UpdateFilters,
@@ -425,7 +424,7 @@ pub mod skfs {
     use anyhow::Context;
 
     pub async fn list_filters(args: ListFilters) -> Result<Msg> {
-        let mut client = client::SkfClient::new(&args.config_host, &args.config_pubkey).await?;
+        let mut client = clients::SkfClient::new(&args.config_host, &args.config_pubkey).await?;
         let filters = client
             .list_filters(&args.route_id, &args.keypair.to_keypair()?)
             .await?;
@@ -434,7 +433,7 @@ pub mod skfs {
     }
 
     pub async fn get_filters(args: GetFilters) -> Result<Msg> {
-        let mut client = client::SkfClient::new(&args.config_host, &args.config_pubkey).await?;
+        let mut client = clients::SkfClient::new(&args.config_host, &args.config_pubkey).await?;
         let filters = client
             .get_filters(&args.route_id, args.devaddr, &args.keypair.to_keypair()?)
             .await?;
@@ -443,7 +442,7 @@ pub mod skfs {
     }
 
     pub async fn add_filter(args: AddFilter) -> Result<Msg> {
-        let mut client = client::SkfClient::new(&args.config_host, &args.config_pubkey).await?;
+        let mut client = clients::SkfClient::new(&args.config_host, &args.config_pubkey).await?;
         let filter = Skf::new(
             args.route_id.clone(),
             args.devaddr,
@@ -463,7 +462,7 @@ pub mod skfs {
     }
 
     pub async fn remove_filter(args: RemoveFilter) -> Result<Msg> {
-        let mut client = client::SkfClient::new(&args.config_host, &args.config_pubkey).await?;
+        let mut client = clients::SkfClient::new(&args.config_host, &args.config_pubkey).await?;
         let filter = Skf::new(args.route_id.clone(), args.devaddr, args.session_key, None)?;
 
         if !args.commit {
@@ -478,7 +477,7 @@ pub mod skfs {
     }
 
     pub async fn clear_filters(args: ClearFilters) -> Result<Msg> {
-        let mut client = client::SkfClient::new(&args.config_host, &args.config_pubkey).await?;
+        let mut client = clients::SkfClient::new(&args.config_host, &args.config_pubkey).await?;
 
         if !args.commit {
             return Msg::dry_run(format!(
@@ -497,7 +496,7 @@ pub mod skfs {
     }
 
     pub async fn update_filters_from_file(args: UpdateFilters) -> Result<Msg> {
-        let mut client = client::SkfClient::new(&args.config_host, &args.config_pubkey).await?;
+        let mut client = clients::SkfClient::new(&args.config_host, &args.config_pubkey).await?;
 
         let data = std::fs::read_to_string(&args.update_file)
             .context("reading session key filter updates json file")?;
@@ -525,13 +524,13 @@ pub mod skfs {
 
 pub mod euis {
     use crate::{
-        client,
+        clients,
         cmds::{AddEui, ClearEuis, ListEuis, PathBufKeypair, RemoveEui},
         Eui, Msg, PrettyJson, Result,
     };
 
     pub async fn list_euis(args: ListEuis) -> Result<Msg> {
-        let mut client = client::EuiClient::new(&args.config_host, &args.config_pubkey).await?;
+        let mut client = clients::EuiClient::new(&args.config_host, &args.config_pubkey).await?;
         let mut euis_for_route = client
             .get_euis(&args.route_id, &args.keypair.to_keypair()?)
             .await?;
@@ -547,7 +546,7 @@ pub mod euis {
     }
 
     pub async fn add_eui(args: AddEui) -> Result<Msg> {
-        let mut client = client::EuiClient::new(&args.config_host, &args.config_pubkey).await?;
+        let mut client = clients::EuiClient::new(&args.config_host, &args.config_pubkey).await?;
         let eui_pair = Eui::new(args.route_id.clone(), args.app_eui, args.dev_eui)?;
 
         if !args.commit {
@@ -562,7 +561,7 @@ pub mod euis {
     }
 
     pub async fn remove_eui(args: RemoveEui) -> Result<Msg> {
-        let mut client = client::EuiClient::new(&args.config_host, &args.config_pubkey).await?;
+        let mut client = clients::EuiClient::new(&args.config_host, &args.config_pubkey).await?;
         let eui_pair = Eui::new(args.route_id.clone(), args.app_eui, args.dev_eui)?;
 
         if !args.commit {
@@ -577,7 +576,7 @@ pub mod euis {
     }
 
     pub async fn clear_euis(args: ClearEuis) -> Result<Msg> {
-        let mut client = client::EuiClient::new(&args.config_host, &args.config_pubkey).await?;
+        let mut client = clients::EuiClient::new(&args.config_host, &args.config_pubkey).await?;
 
         if !args.commit {
             return Msg::dry_run(format!("All Euis removed from {}", args.route_id));
@@ -592,7 +591,7 @@ pub mod euis {
 
 pub mod devaddrs {
     use crate::{
-        client,
+        clients,
         cmds::{
             AddDevaddr, ClearDevaddrs, ListDevaddrs, PathBufKeypair, RemoveDevaddr, RouteSubnetMask,
         },
@@ -601,7 +600,8 @@ pub mod devaddrs {
     };
 
     pub async fn list_devaddrs(args: ListDevaddrs) -> Result<Msg> {
-        let mut client = client::DevaddrClient::new(&args.config_host, &args.config_pubkey).await?;
+        let mut client =
+            clients::DevaddrClient::new(&args.config_host, &args.config_pubkey).await?;
         let devaddrs_for_route = client
             .get_devaddrs(&args.route_id, &args.keypair.to_keypair()?)
             .await?;
@@ -610,7 +610,8 @@ pub mod devaddrs {
     }
 
     pub async fn add_devaddr(args: AddDevaddr) -> Result<Msg> {
-        let mut client = client::DevaddrClient::new(&args.config_host, &args.config_pubkey).await?;
+        let mut client =
+            clients::DevaddrClient::new(&args.config_host, &args.config_pubkey).await?;
         let devaddr_range =
             DevaddrRange::new(args.route_id.clone(), args.start_addr, args.end_addr)?;
 
@@ -626,7 +627,8 @@ pub mod devaddrs {
     }
 
     pub async fn remove_devaddr(args: RemoveDevaddr) -> Result<Msg> {
-        let mut client = client::DevaddrClient::new(&args.config_host, &args.config_pubkey).await?;
+        let mut client =
+            clients::DevaddrClient::new(&args.config_host, &args.config_pubkey).await?;
         let devaddr_range =
             DevaddrRange::new(args.route_id.clone(), args.start_addr, args.end_addr)?;
 
@@ -642,7 +644,8 @@ pub mod devaddrs {
     }
 
     pub async fn clear_devaddrs(args: ClearDevaddrs) -> Result<Msg> {
-        let mut client = client::DevaddrClient::new(&args.config_host, &args.config_pubkey).await?;
+        let mut client =
+            clients::DevaddrClient::new(&args.config_host, &args.config_pubkey).await?;
 
         if !args.commit {
             return Msg::dry_run(format!("All Devadddrs removed from {}", args.route_id));
@@ -656,7 +659,8 @@ pub mod devaddrs {
     }
 
     pub async fn subnet_mask(args: RouteSubnetMask) -> Result<Msg> {
-        let mut client = client::DevaddrClient::new(&args.config_host, &args.config_pubkey).await?;
+        let mut client =
+            clients::DevaddrClient::new(&args.config_host, &args.config_pubkey).await?;
         let devaddrs_for_route: Vec<DevaddrSubnet> = client
             .get_devaddrs(&args.route_id, &args.keypair.to_keypair()?)
             .await?

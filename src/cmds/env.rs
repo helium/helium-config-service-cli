@@ -2,62 +2,97 @@ use serde::{Deserialize, Serialize};
 use std::{env, fs, path::PathBuf};
 
 use super::{
-    EnvInfo, GenerateKeypair, ENV_CONFIG_HOST, ENV_KEYPAIR_BIN, ENV_MAX_COPIES, ENV_NET_ID, ENV_OUI,
+    EnvInfo, GenerateKeypair, ENV_CONFIG_HOST, ENV_KEYPAIR_BIN, ENV_MAX_COPIES, ENV_NET_ID,
+    ENV_OUI, ENV_SOLANA_URL,
 };
-use crate::{hex_field, Msg, Oui, PrettyJson, Result};
+use crate::{
+    cmds::{CONFIG_HOST, KEYPAIR_PATH, SOLANA_URL},
+    hex_field, Msg, Oui, PrettyJson, Result,
+};
 use anyhow::Context;
 use dialoguer::Input;
 use helium_crypto::Keypair;
+use helium_lib::keypair::Signer;
 use rand::rngs::OsRng;
 use serde_json::json;
 
+fn prompt_input<T>(prompt: &str, default: Option<&str>, allow_empty: bool) -> Result<T>
+where
+    T: std::str::FromStr,
+    T::Err: std::fmt::Display,
+{
+    let mut input = Input::new();
+
+    input.with_prompt(prompt);
+
+    if let Some(default_value) = default {
+        input.default(default_value.to_string());
+    }
+
+    let result: String = input.interact_text()?;
+
+    if !allow_empty && result.trim().is_empty() {
+        return Err(anyhow::anyhow!("Input cannot be empty"));
+    }
+
+    let value_to_parse = if result.trim().is_empty() && allow_empty {
+        if let Some(default_value) = default {
+            default_value.to_string()
+        } else {
+            result
+        }
+    } else {
+        result
+    };
+
+    match value_to_parse.parse::<T>() {
+        Ok(parsed) => Ok(parsed),
+        Err(e) => Err(anyhow::anyhow!("Failed to parse input: {}", e)),
+    }
+}
+
 pub async fn env_init() -> Result<Msg> {
     println!("----- Leave blank to ignore...");
-    let config_host: String = Input::new()
-        .with_prompt("Config Service Host")
-        .allow_empty(true)
-        .interact()?;
-    let keypair_path: String = Input::<String>::new()
-        .with_prompt("Keypair Location")
-        .with_initial_text("./keypair.bin")
-        .allow_empty(true)
-        .interact()?;
+    let config_host: String = prompt_input("Config Service Host", Some(CONFIG_HOST), true)?;
+    let solana_url: String = prompt_input("Solana RPC URL", Some(SOLANA_URL), true)?;
+    let keypair_path: String = prompt_input("Keypair Location", Some(KEYPAIR_PATH), true)?;
     println!("----- Enter all zeros to ignore...");
-    let net_id = Input::<hex_field::HexNetID>::new()
-        .with_prompt("Net ID")
-        .with_initial_text("000000")
-        .interact()?;
+    let net_id: hex_field::HexNetID = prompt_input("Net ID", Some("000000"), false)?;
     println!("----- Enter zero to ignore...");
-    let oui: Oui = Input::new()
-        .with_prompt("Assigned OUI")
-        .with_initial_text("0")
-        .allow_empty(true)
-        .interact()?;
-    let max_copies: u32 = Input::new()
-        .with_prompt("Default Max Copies")
-        .allow_empty(true)
-        .with_initial_text("15")
-        .interact()?;
+    let oui: Oui = prompt_input("Assigned OUI", Some("0"), true)?;
+    let max_copies: u32 = prompt_input("Default Max Copies", Some("15"), true)?;
 
     let mut report = vec![
         "".to_string(),
         "Put these in your environment".to_string(),
         "------------------------------------".to_string(),
     ];
-    if !config_host.is_empty() {
-        report.push(format!("{ENV_CONFIG_HOST}={config_host}"));
-    }
-    if !keypair_path.is_empty() {
-        report.push(format!("{ENV_KEYPAIR_BIN}={keypair_path}"))
-    }
-    if net_id != hex_field::net_id(0) {
-        report.push(format!("{ENV_NET_ID}={net_id}"));
-    }
-    if oui != 0 {
-        report.push(format!("{ENV_OUI}={oui}"));
-    }
-    if max_copies != 0 {
-        report.push(format!("{ENV_MAX_COPIES}={max_copies}"));
+
+    let env_vars = vec![
+        (
+            ENV_CONFIG_HOST,
+            config_host.clone(),
+            !config_host.is_empty(),
+        ),
+        (ENV_SOLANA_URL, solana_url.clone(), !solana_url.is_empty()),
+        (
+            ENV_KEYPAIR_BIN,
+            keypair_path.clone(),
+            !keypair_path.is_empty(),
+        ),
+        (
+            ENV_NET_ID,
+            net_id.to_string(),
+            net_id != hex_field::net_id(0),
+        ),
+        (ENV_OUI, oui.to_string(), oui != 0),
+        (ENV_MAX_COPIES, max_copies.to_string(), max_copies != 0),
+    ];
+
+    for (key, value, condition) in env_vars {
+        if condition {
+            report.push(format!("{key}={value}"));
+        }
     }
 
     Msg::ok(report.join("\n"))
@@ -65,29 +100,33 @@ pub async fn env_init() -> Result<Msg> {
 
 pub fn env_info(args: EnvInfo) -> Result<Msg> {
     let env_keypair = env::var(ENV_KEYPAIR_BIN).ok().map(|i| i.into());
-    let (env_keypair_location, env_public_key, env_key_type) =
+    let (env_keypair_location, env_key_type, env_public_key, env_solana_public_key) =
         get_public_key_from_path(env_keypair);
-    let (arg_keypair_location, arg_public_key, arg_key_type) =
+    let (arg_keypair_location, arg_key_type, arg_public_key, arg_solana_public_key) =
         get_public_key_from_path(args.keypair);
 
     let output = json!({
         "environment": {
             ENV_CONFIG_HOST: env::var(ENV_CONFIG_HOST).unwrap_or_else(|_| "unset".into()),
+            ENV_SOLANA_URL: env::var(ENV_SOLANA_URL).unwrap_or_else(|_| "unset".into()),
             ENV_NET_ID:  env::var(ENV_NET_ID).unwrap_or_else(|_| "unset".into()),
             ENV_OUI:  env::var(ENV_OUI).unwrap_or_else(|_| "unset".into()),
             ENV_MAX_COPIES: env::var(ENV_MAX_COPIES).unwrap_or_else(|_| "unset".into()),
             ENV_KEYPAIR_BIN:  env_keypair_location,
-            "public_key_from_keypair": env_public_key,
             "key_type_from_keypair": env_key_type,
+            "helium_public_key_from_keypair": env_public_key,
+            "solana_public_key_from_keypair": env_solana_public_key,
         },
         "arguments": {
             "config_host": args.config_host,
+            "solana_url": args.solana_url,
             "net_id": args.net_id,
             "oui": args.oui,
             "max_copies": args.max_copies,
             "keypair": arg_keypair_location,
-            "public_key_from_keypair": arg_public_key,
-            "key_type_from_keypair": arg_key_type
+            "key_type_from_keypair": arg_key_type,
+            "helium_public_key_from_keypair": arg_public_key,
+            "solana_public_key_from_keypair": arg_solana_public_key,
         }
     });
     Msg::ok(output.pretty_json()?)
@@ -113,6 +152,7 @@ pub fn generate_keypair(args: GenerateKeypair) -> Result<Msg> {
         },
         &mut OsRng,
     );
+
     if let Some(parent) = args.out_file.parent() {
         fs::create_dir_all(parent)?;
     }
@@ -129,9 +169,10 @@ pub fn generate_keypair(args: GenerateKeypair) -> Result<Msg> {
     ))
 }
 
-pub fn get_public_key_from_path(path: Option<PathBuf>) -> (String, String, String) {
+pub fn get_public_key_from_path(path: Option<PathBuf>) -> (String, String, String, String) {
     match path {
         None => (
+            "unset".to_string(),
             "unset".to_string(),
             "unset".to_string(),
             "unset".to_string(),
@@ -139,14 +180,27 @@ pub fn get_public_key_from_path(path: Option<PathBuf>) -> (String, String, Strin
         Some(path) => {
             let display_path = path.as_path().display().to_string();
             match fs::read(path).with_context(|| format!("path does not exist: {display_path}")) {
-                Err(e) => (e.to_string(), "".to_string(), "".to_string()),
+                Err(e) => (
+                    e.to_string(),
+                    "".to_string(),
+                    "".to_string(),
+                    "".to_string(),
+                ),
                 Ok(data) => match Keypair::try_from(&data[..]) {
-                    Err(e) => (display_path, e.to_string(), "".to_string()),
-                    Ok(keypair) => (
-                        display_path,
-                        keypair.public_key().to_string(),
-                        keypair.key_tag().key_type.to_string(),
-                    ),
+                    Err(e) => (display_path, "".to_string(), e.to_string(), "".to_string()),
+                    Ok(keypair) => {
+                        let key_tag = keypair.key_tag();
+                        let public_key = keypair.public_key().to_string();
+                        let solana_pubkey = helium_lib::keypair::Keypair::try_from(keypair)
+                            .map(|solana_keypair| solana_keypair.pubkey().to_string())
+                            .unwrap_or_else(|e| e.to_string());
+                        (
+                            display_path,
+                            key_tag.key_type.to_string(),
+                            public_key,
+                            solana_pubkey,
+                        )
+                    }
                 },
             }
         }
@@ -189,6 +243,7 @@ mod tests {
 
         // Set the environment and arguments
         env::set_var(cmds::ENV_CONFIG_HOST, "env-localhost:1337");
+        env::set_var(cmds::ENV_SOLANA_URL, "env-solana-localhost:1337");
         env::set_var(cmds::ENV_NET_ID, "C0053");
         env::set_var(cmds::ENV_OUI, "42");
         env::set_var(cmds::ENV_MAX_COPIES, "42");
@@ -196,6 +251,7 @@ mod tests {
 
         let env_args = EnvInfo {
             config_host: Some("arg-localhost:1337".to_string()),
+            solana_url: Some("arg-solana-localhost:1337".to_string()),
             keypair: Some(arg_keypair.clone()),
             net_id: Some(hex_field::net_id(42)),
             oui: Some(4),
@@ -213,6 +269,7 @@ mod tests {
             |val: &serde_json::Value| !val.as_str().unwrap().to_string().is_empty();
 
         assert_eq!(env[cmds::ENV_CONFIG_HOST], "env-localhost:1337");
+        assert_eq!(env[cmds::ENV_SOLANA_URL], "env-solana-localhost:1337");
         assert_eq!(env[cmds::ENV_NET_ID], "C0053");
         assert_eq!(env[cmds::ENV_OUI], "42");
         assert_eq!(env[cmds::ENV_MAX_COPIES], "42");
@@ -223,6 +280,7 @@ mod tests {
         assert!(string_not_empty(&env["public_key_from_keypair"]));
 
         assert_eq!(arg["config_host"], "arg-localhost:1337");
+        assert_eq!(arg["solana_url"], "arg-solana-localhost:1337");
         assert_eq!(arg["keypair"], arg_keypair.display().to_string());
         assert!(string_not_empty(&arg["public_key_from_keypair"]));
         assert_eq!(arg["net_id"], "00002A");
@@ -232,10 +290,12 @@ mod tests {
 
     #[test]
     fn get_keypair_does_not_exist() {
-        let (location, pubkey, key_type) = get_public_key_from_path(Some("./nowhere.bin".into()));
+        let (location, key_type, pubkey, solana_pubkey) =
+            get_public_key_from_path(Some("./nowhere.bin".into()));
         assert_eq!(location, "path does not exist: ./nowhere.bin");
-        assert!(pubkey.is_empty());
         assert!(key_type.is_empty());
+        assert!(pubkey.is_empty());
+        assert!(solana_pubkey.is_empty());
     }
 
     #[test]
@@ -246,17 +306,20 @@ mod tests {
         fs::write(arg_keypair.clone(), "invalid key").unwrap();
 
         // =======
-        let (location, pubkey, key_type) = get_public_key_from_path(Some(arg_keypair.clone()));
+        let (location, key_type, pubkey, solana_pubkey) =
+            get_public_key_from_path(Some(arg_keypair.clone()));
         assert_eq!(location, arg_keypair.display().to_string());
-        assert_eq!(pubkey, "decode error");
         assert_eq!(key_type, "");
+        assert_eq!(pubkey, "decode error");
+        assert_eq!(solana_pubkey, "")
     }
 
     #[test]
     fn get_keypair_not_provided() {
-        let (location, pubkey, key_type) = get_public_key_from_path(None);
+        let (location, key_type, pubkey, solana_pubkey) = get_public_key_from_path(None);
         assert_eq!(location, "unset");
-        assert_eq!(pubkey, "unset");
         assert_eq!(key_type, "unset");
+        assert_eq!(pubkey, "unset");
+        assert_eq!(solana_pubkey, "unset");
     }
 }

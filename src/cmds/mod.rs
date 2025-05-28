@@ -1,8 +1,9 @@
 use crate::{
     cmds::env::NetworkArg,
+    helium_netids::HeliumNetId,
     hex_field::{self, HexNetID},
     region::Region,
-    DevaddrConstraint, HeliumNetId, KeyType, Msg, Oui, PrettyJson, Result,
+    DevaddrConstraint, KeyType, Msg, Oui, PrettyJson, Result,
 };
 use anyhow::Context;
 use clap::{Args, Parser, Subcommand};
@@ -15,12 +16,17 @@ pub mod gateway;
 pub mod org;
 pub mod route;
 
-pub const ENV_CONFIG_HOST: &str = "HELIUM_CONFIG_HOST";
-pub const ENV_CONFIG_PUBKEY: &str = "HELIUM_CONFIG_PUBKEY";
-pub const ENV_KEYPAIR_BIN: &str = "HELIUM_KEYPAIR_BIN";
-pub const ENV_NET_ID: &str = "HELIUM_NET_ID";
-pub const ENV_OUI: &str = "HELIUM_OUI";
-pub const ENV_MAX_COPIES: &str = "HELIUM_MAX_COPIES";
+pub static ENV_CONFIG_HOST: &str = "HELIUM_CONFIG_HOST";
+pub static ENV_CONFIG_PUBKEY: &str = "HELIUM_CONFIG_PUBKEY";
+pub static ENV_KEYPAIR_BIN: &str = "HELIUM_KEYPAIR_BIN";
+pub static ENV_NET_ID: &str = "HELIUM_NET_ID";
+pub static ENV_OUI: &str = "HELIUM_OUI";
+pub static ENV_MAX_COPIES: &str = "HELIUM_MAX_COPIES";
+pub static ENV_SOLANA_URL: &str = "SOLANA_URL";
+
+pub const CONFIG_HOST: &str = "https://config.iot.mainnet.helium.io:6080";
+pub const KEYPAIR_PATH: &str = "./keypair.bin";
+pub const SOLANA_URL: &str = "https://solana-rpc.web.helium.io:443?session-key=Pluto";
 
 #[derive(Debug, Parser)]
 #[command(name = "helium-config-cli")]
@@ -33,7 +39,7 @@ pub struct Cli {
         global = true,
         long,
         env = ENV_CONFIG_HOST,
-        default_value = "https://config.iot.mainnet.helium.io:6080"
+        default_value = CONFIG_HOST
     )]
     pub config_host: String,
 
@@ -49,11 +55,18 @@ pub struct Cli {
         global = true,
         long,
         env = ENV_KEYPAIR_BIN,
-        default_value = "./keypair.bin"
+        default_value = KEYPAIR_PATH
     )]
     pub keypair: PathBuf,
 
-    #[arg(global = true, long)]
+    #[arg(
+        global = true,
+        long,
+        env = ENV_SOLANA_URL,
+        default_value = SOLANA_URL
+    )]
+    pub solana_url: String,
+
     pub print_command: bool,
 }
 
@@ -443,17 +456,28 @@ pub enum SkfCommands {
 }
 
 #[derive(Debug, Subcommand)]
+pub enum NetIdCommands {
+    List(ListNetIds),
+}
+
+#[derive(Debug, Subcommand)]
 pub enum OrgCommands {
     /// Get all Orgs
     List(ListOrgs),
     /// Get an Organization you own
     Get(GetOrg),
+    /// Create a new NetId
+    CreateNetId(CreateNetId),
     /// Create a new Helium Organization
     CreateHelium(CreateHelium),
-    /// Create a new Roaming Organization (admin only)
+    /// Create a new Roaming Organization
     CreateRoaming(CreateRoaming),
+    /// Approve an organization
+    Approve(ApproveOrg),
     /// Enable a locked Oui
     Enable(EnableOrg),
+    /// Disable a unlocked Oui
+    Disable(DisableOrg),
     /// Update Org record
     Update {
         #[command(subcommand)]
@@ -720,6 +744,8 @@ pub struct SubnetMask {
 pub struct EnvInfo {
     #[arg(long, env = ENV_CONFIG_HOST, default_value="unset")]
     pub config_host: Option<String>,
+    #[arg(long, env = ENV_SOLANA_URL, default_value="unset")]
+    pub solana_url: Option<String>,
     #[arg(long, env = ENV_KEYPAIR_BIN, default_value="unset")]
     pub keypair: Option<PathBuf>,
     #[arg(long, env = ENV_NET_ID)]
@@ -738,9 +764,28 @@ pub struct GenerateKeypair {
     /// The helium network for which to issue keys
     #[arg(long, short, value_enum, default_value = "mainnet")]
     pub network: NetworkArg,
+
     /// overwrite <out_file> if it already exists
     #[arg(long)]
     pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct ListNetIds {
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
+}
+
+#[derive(Debug, Args)]
+pub struct GetNetId {
+    #[arg(long, env = ENV_NET_ID, default_value = "000024")]
+    pub net_id: HexNetID,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
 }
 
 #[derive(Debug, Args)]
@@ -753,7 +798,7 @@ pub struct ListOrgs {
 
 #[derive(Debug, Args)]
 pub struct GetOrg {
-    #[arg(long, env = "HELIUM_OUI")]
+    #[arg(long, short, env = "HELIUM_OUI")]
     pub oui: Oui,
     #[arg(from_global)]
     pub config_host: String,
@@ -762,15 +807,25 @@ pub struct GetOrg {
 }
 
 #[derive(Debug, Args)]
+pub struct CreateNetId {
+    #[arg(long, value_enum)]
+    pub net_id: HexNetID,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
+    #[arg(from_global)]
+    pub solana_url: String,
+    #[arg(long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
 pub struct CreateHelium {
     #[arg(long)]
-    pub owner: PublicKey,
-    #[arg(long)]
-    pub payer: PublicKey,
-    #[arg(long)]
-    pub delegate: Option<Vec<PublicKey>>,
-    #[arg(long)]
-    pub devaddr_count: u64,
+    pub owner: Option<PublicKey>,
     #[arg(long, value_enum)]
     pub net_id: HeliumNetId,
     #[arg(from_global)]
@@ -779,6 +834,8 @@ pub struct CreateHelium {
     pub config_host: String,
     #[arg(from_global)]
     pub config_pubkey: String,
+    #[arg(from_global)]
+    pub solana_url: String,
     #[arg(long)]
     pub commit: bool,
 }
@@ -786,11 +843,7 @@ pub struct CreateHelium {
 #[derive(Debug, Args)]
 pub struct CreateRoaming {
     #[arg(long)]
-    pub owner: PublicKey,
-    #[arg(long)]
-    pub payer: PublicKey,
-    #[arg(long)]
-    pub delegate: Option<Vec<PublicKey>>,
+    pub owner: Option<PublicKey>,
     #[arg(long)]
     pub net_id: HexNetID,
     #[arg(from_global)]
@@ -799,6 +852,24 @@ pub struct CreateRoaming {
     pub config_host: String,
     #[arg(from_global)]
     pub config_pubkey: String,
+    #[arg(from_global)]
+    pub solana_url: String,
+    #[arg(long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct ApproveOrg {
+    #[arg(long, short)]
+    pub oui: u64,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
+    #[arg(from_global)]
+    pub solana_url: String,
     #[arg(long)]
     pub commit: bool,
 }
@@ -807,8 +878,6 @@ pub struct CreateRoaming {
 pub enum OrgUpdateCommand {
     /// Update the org owner pubkey
     Owner(OrgUpdateKey),
-    /// Update the org payer pubkey
-    Payer(OrgUpdateKey),
     /// Add delegate key to org
     DelegateAdd(OrgUpdateKey),
     /// Remove delegate key from org
@@ -816,9 +885,7 @@ pub enum OrgUpdateCommand {
     /// Add devaddr constraint to org
     DevaddrConstraintAdd(DevaddrUpdateConstraint),
     /// Remove devaddr constraint from org
-    DevaddrConstraintRemove(DevaddrUpdateConstraint),
-    /// Add an even-numbered Devaddr slab to org
-    DevaddrSlabAdd(DevaddrSlabAdd),
+    DevaddrConstraintRemove(OrgUpdateKey),
 }
 
 #[derive(Debug, Args)]
@@ -833,22 +900,8 @@ pub struct OrgUpdateKey {
     pub config_host: String,
     #[arg(from_global)]
     pub config_pubkey: String,
-    #[arg(long)]
-    pub commit: bool,
-}
-
-#[derive(Debug, Args)]
-pub struct DevaddrSlabAdd {
-    #[arg(long, short)]
-    pub oui: u64,
-    #[arg(long, short)]
-    pub devaddr_count: u64,
     #[arg(from_global)]
-    pub keypair: PathBuf,
-    #[arg(from_global)]
-    pub config_host: String,
-    #[arg(from_global)]
-    pub config_pubkey: String,
+    pub solana_url: String,
     #[arg(long)]
     pub commit: bool,
 }
@@ -857,10 +910,24 @@ pub struct DevaddrSlabAdd {
 pub struct DevaddrUpdateConstraint {
     #[arg(long, short)]
     pub oui: u64,
-    #[arg(short, long, value_parser = hex_field::validate_devaddr)]
-    pub start_addr: hex_field::HexDevAddr,
-    #[arg(short, long, value_parser = hex_field::validate_devaddr)]
-    pub end_addr: hex_field::HexDevAddr,
+    #[arg(short, long)]
+    pub num_blocks: u32,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
+    #[arg(from_global)]
+    pub solana_url: String,
+    #[arg(long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct EnableOrg {
+    #[arg(long, short)]
+    pub oui: u64,
     #[arg(from_global)]
     pub keypair: PathBuf,
     #[arg(from_global)]
@@ -872,8 +939,8 @@ pub struct DevaddrUpdateConstraint {
 }
 
 #[derive(Debug, Args)]
-pub struct EnableOrg {
-    #[arg(long)]
+pub struct DisableOrg {
+    #[arg(long, short)]
     pub oui: u64,
     #[arg(from_global)]
     pub keypair: PathBuf,

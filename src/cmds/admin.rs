@@ -1,4 +1,4 @@
-use crate::{client, cmds::PathBufKeypair, region_params::RegionParams, Msg, Result};
+use crate::{clients, cmds::PathBufKeypair, region_params::RegionParams, Msg, Result};
 use anyhow::Context;
 use helium_proto::Region as ProtoRegion;
 use std::{
@@ -10,7 +10,7 @@ use super::{AdminAddKey, AdminLoadRegionParams, AdminRemoveKey};
 
 pub async fn add_key(args: AdminAddKey) -> Result<Msg> {
     if args.commit {
-        let mut client = client::AdminClient::new(&args.config_host, &args.config_pubkey).await?;
+        let mut client = clients::AdminClient::new(&args.config_host, &args.config_pubkey).await?;
         client
             .add_key(&args.pubkey, args.key_type, &args.keypair.to_keypair()?)
             .await?;
@@ -22,7 +22,7 @@ pub async fn add_key(args: AdminAddKey) -> Result<Msg> {
 
 pub async fn remove_key(args: AdminRemoveKey) -> Result<Msg> {
     if args.commit {
-        let mut client = client::AdminClient::new(&args.config_host, &args.config_pubkey).await?;
+        let mut client = clients::AdminClient::new(&args.config_host, &args.config_pubkey).await?;
         client
             .remove_key(&args.pubkey, &args.keypair.to_keypair()?)
             .await?;
@@ -32,7 +32,7 @@ pub async fn remove_key(args: AdminRemoveKey) -> Result<Msg> {
 }
 
 pub async fn load_region(args: AdminLoadRegionParams) -> Result<Msg> {
-    let mut client = client::AdminClient::new(&args.config_host, &args.config_pubkey).await?;
+    let mut client = clients::AdminClient::new(&args.config_host, &args.config_pubkey).await?;
     let params = RegionParams::from_file(&args.params_file)?;
 
     let index_bytes = if let Some(index_path) = &args.index_file {
