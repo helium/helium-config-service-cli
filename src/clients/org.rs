@@ -1,4 +1,3 @@
-use helium_anchor_gen::iot_routing_manager;
 use helium_crypto::{Keypair, PublicKey};
 use helium_lib::{
     dao,
@@ -10,7 +9,9 @@ use helium_lib::{
         organization::{self, OrgIdentifier},
         organization_delegate, routing_manager_key,
     },
+    iot_routing_manager::{self},
     keypair::to_pubkey,
+    solana_sdk::{instruction::Instruction, pubkey::Pubkey},
 };
 use helium_proto::{
     services::iot_config::{
@@ -19,7 +20,6 @@ use helium_proto::{
     },
     Message,
 };
-use solana_sdk::{instruction::Instruction, pubkey::Pubkey};
 use std::str::FromStr;
 
 use crate::{
@@ -101,7 +101,7 @@ impl OrgSolanaOperations {
         let (net_id_key, create_net_id_ix) = net_id::create(
             client,
             payer,
-            iot_routing_manager::InitializeNetIdArgsV0 { net_id },
+            iot_routing_manager::types::InitializeNetIdArgsV0 { net_id },
             Some(payer),
         )
         .await?;
@@ -163,7 +163,7 @@ impl OrgSolanaOperations {
             client,
             current_authority,
             organization_key,
-            iot_routing_manager::UpdateOrganizationArgsV0 {
+            iot_routing_manager::types::UpdateOrganizationArgsV0 {
                 authority: Some(to_pubkey(&authority)?),
             },
         )
@@ -230,7 +230,7 @@ impl OrgSolanaOperations {
         Ok(devaddr_constraint::create(
             client,
             payer,
-            iot_routing_manager::InitializeDevaddrConstraintArgsV0 { num_blocks },
+            iot_routing_manager::types::InitializeDevaddrConstraintArgsV0 { num_blocks },
             organization_key,
             net_id_key,
             None,
