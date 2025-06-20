@@ -136,9 +136,9 @@ impl From<proto::TaggedSpreading> for TaggedSpreading {
 
 impl RegionSpreading {
     pub fn from_i32(v: i32) -> Result<Self> {
-        proto::RegionSpreading::from_i32(v)
+        proto::RegionSpreading::try_from(v)
             .map(|rs| rs.into())
-            .ok_or_else(|| anyhow!("unsupported region spreading {v}"))
+            .map_err(|e| anyhow!("unsupported region spreading {v}: {e:?}"))
     }
 }
 

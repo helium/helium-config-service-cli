@@ -167,9 +167,9 @@ pub enum FlowType {
 
 impl FlowType {
     fn from_i32(v: i32) -> Result<Self> {
-        proto::FlowTypeV1::from_i32(v)
+        proto::FlowTypeV1::try_from(v)
             .map(|ft| ft.into())
-            .ok_or_else(|| anyhow!("unsupported flow type {v}"))
+            .map_err(|e| anyhow!("unsupported flow type {v}: {e:?}"))
     }
 }
 
