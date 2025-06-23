@@ -40,9 +40,9 @@ pub enum Region {
 
 impl Region {
     pub fn from_i32(v: i32) -> Result<Self> {
-        ProtoRegion::from_i32(v)
+        ProtoRegion::try_from(v)
             .map(|r| r.into())
-            .ok_or_else(|| anyhow!("unsupported region {v}"))
+            .map_err(|e| anyhow!("unsupported region {v}: {e:?}"))
     }
 }
 
