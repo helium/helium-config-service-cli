@@ -324,14 +324,22 @@ pub async fn update_packet_router(args: UpdatePacketRouter) -> Result<Msg> {
     }
 }
 
-pub async fn update_ignore_empty_skf(args: SetIgnoreEmptySkf) -> Result<Msg> {
+pub async fn allow_empty_skf(args: SetIgnoreEmptySkf) -> Result<Msg> {
+    set_ignore_empty_skf(args, false).await
+}
+
+pub async fn ignore_empty_skf(args: SetIgnoreEmptySkf) -> Result<Msg> {
+    set_ignore_empty_skf(args, true).await
+}
+
+pub async fn set_ignore_empty_skf(args: SetIgnoreEmptySkf, ignore: bool) -> Result<Msg> {
     let mut client = client::RouteClient::new(&args.config_host, &args.config_pubkey).await?;
     let keypair = args.keypair.to_keypair()?;
 
     let mut route = client.get(&args.route_id, &keypair).await?;
     let old_route = route.clone();
 
-    route.ignore_empty_skf = args.ignore;
+    route.ignore_empty_skf = ignore;
 
     if !args.commit {
         return Msg::dry_run(format!(
