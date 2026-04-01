@@ -30,21 +30,21 @@ use std::{
 };
 
 pub struct OrgClient {
-    client: org_client::OrgClient<helium_proto::services::Channel>,
+    client: org_client::OrgClient<tonic::transport::Channel>,
     server_pubkey: PublicKey,
 }
 pub struct RouteClient {
-    client: route_client::RouteClient<helium_proto::services::Channel>,
+    client: route_client::RouteClient<tonic::transport::Channel>,
     server_pubkey: PublicKey,
 }
 
 pub struct AdminClient {
-    client: admin_client::AdminClient<helium_proto::services::Channel>,
+    client: admin_client::AdminClient<tonic::transport::Channel>,
     server_pubkey: PublicKey,
 }
 
 pub struct GatewayClient {
-    client: gateway_client::GatewayClient<helium_proto::services::Channel>,
+    client: gateway_client::GatewayClient<tonic::transport::Channel>,
     server_pubkey: PublicKey,
 }
 

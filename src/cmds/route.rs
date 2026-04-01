@@ -2,11 +2,15 @@ use helium_crypto::Keypair;
 
 use super::{
     ActivateRoute, AddGwmpRegion, DeactivateRoute, DeleteRoute, GetRoute, ListRoutes, NewRoute,
-    RemoveGwmpRegion, SetIgnoreEmptySkf, UpdateHttp, UpdateMaxCopies, UpdatePacketRouter,
-    UpdateServer,
+    RemoveGwmpRegion, RemoveMultiBuy, SetIgnoreEmptySkf, SetMultiBuy, UpdateHttp, UpdateMaxCopies,
+    UpdatePacketRouter, UpdateServer,
 };
 use crate::{
-    client, cmds::PathBufKeypair, route::Route, server::Protocol, Msg, PrettyJson, Result,
+    client,
+    cmds::PathBufKeypair,
+    route::{MultiBuy, Route},
+    server::Protocol,
+    Msg, PrettyJson, Result,
 };
 
 pub async fn list_routes(args: ListRoutes) -> Result<Msg> {
@@ -352,6 +356,69 @@ pub async fn update_ignore_empty_skf(args: SetIgnoreEmptySkf) -> Result<Msg> {
         Err(err) => Msg::err(format!(
             "Count not update route ignore empty skf setting: {err}"
         )),
+    }
+}
+
+pub async fn update_multi_buy(args: SetMultiBuy) -> Result<Msg> {
+    let mut client = client::RouteClient::new(&args.config_host, &args.config_pubkey).await?;
+    let keypair = args.keypair.to_keypair()?;
+
+    let mut route = client.get(&args.route_id, &keypair).await?;
+    let old_route = route.clone();
+
+    route.multi_buy = Some(MultiBuy {
+        protocol: args.protocol,
+        host: args.host,
+        port: args.port,
+        fail_on_unavailable: args.fail_on_unavailable,
+    });
+
+    if !args.commit {
+        return Msg::dry_run(format!(
+            "Updated {}\n== Old\n{}\n== New\n{}",
+            route.id,
+            old_route.pretty_json()?,
+            route.pretty_json()?,
+        ));
+    }
+
+    match client.push(route, &keypair).await {
+        Ok(updated_route) => Msg::ok(format!(
+            "Updated {}\n== Old\n{}\n== New\n{}",
+            updated_route.id,
+            old_route.pretty_json()?,
+            updated_route.pretty_json()?
+        )),
+        Err(err) => Msg::err(format!("could not update multi_buy: {err}")),
+    }
+}
+
+pub async fn remove_multi_buy(args: RemoveMultiBuy) -> Result<Msg> {
+    let mut client = client::RouteClient::new(&args.config_host, &args.config_pubkey).await?;
+    let keypair = args.keypair.to_keypair()?;
+
+    let mut route = client.get(&args.route_id, &keypair).await?;
+    let old_route = route.clone();
+
+    route.multi_buy = None;
+
+    if !args.commit {
+        return Msg::dry_run(format!(
+            "Updated {}\n== Old\n{}\n== New\n{}",
+            route.id,
+            old_route.pretty_json()?,
+            route.pretty_json()?,
+        ));
+    }
+
+    match client.push(route, &keypair).await {
+        Ok(updated_route) => Msg::ok(format!(
+            "Updated {}\n== Old\n{}\n== New\n{}",
+            updated_route.id,
+            old_route.pretty_json()?,
+            updated_route.pretty_json()?
+        )),
+        Err(err) => Msg::err(format!("could not remove multi_buy: {err}")),
     }
 }
 

@@ -44,6 +44,8 @@ pub async fn handle_cli(cli: Cli) -> Result<Msg> {
                 RouteUpdateCommand::IgnoreEmptySkf(args) => {
                     route::update_ignore_empty_skf(args).await
                 }
+                RouteUpdateCommand::SetMultiBuy(args) => route::update_multi_buy(args).await,
+                RouteUpdateCommand::RemoveMultiBuy(args) => route::remove_multi_buy(args).await,
             },
             RouteCommands::Euis { command } => match command {
                 cmds::EuiCommands::List(args) => euis::list_euis(args).await,
