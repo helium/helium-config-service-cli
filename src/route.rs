@@ -3,9 +3,7 @@ use crate::{
     server::{GwmpMap, Http, Server},
     Oui, Result,
 };
-use helium_proto::services::iot_config::{
-    multi_buy_v1, MultiBuyV1, RouteV1 as ProtoRoute,
-};
+use helium_proto::services::iot_config::{multi_buy_v1, MultiBuyV1, RouteV1 as ProtoRoute};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
