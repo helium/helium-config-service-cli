@@ -12,7 +12,7 @@ dialoguer = "0.12"
 clap = { version = "4.6", features = ["derive", "env"] }
 futures = "0.3"
 helium-crypto = "0.9"
-helium-proto = { git = "https://github.com/helium/proto", branch = "macpie/multibuy2.0", features = [
+helium-proto = { git = "https://github.com/helium/proto", branch = "master", features = [
     "services",
 ] }
 h3o = { version = "0.9", features = ["serde"] }
