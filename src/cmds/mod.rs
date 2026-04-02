@@ -2,6 +2,7 @@ use crate::{
     cmds::env::NetworkArg,
     hex_field::{self, HexNetID},
     region::Region,
+    route::MultiBuyProtocol,
     DevaddrConstraint, HeliumNetId, KeyType, Msg, Oui, PrettyJson, Result,
 };
 use anyhow::Context;
@@ -269,6 +270,10 @@ pub enum RouteUpdateCommand {
     PacketRouter(UpdatePacketRouter),
     /// Set route `ignore_empty_skf` boolean
     IgnoreEmptySkf(SetIgnoreEmptySkf),
+    /// Set custom multi_buy server for a Route
+    SetMultiBuy(SetMultiBuy),
+    /// Remove custom multi_buy server from a Route (use HPR default)
+    RemoveMultiBuy(RemoveMultiBuy),
 }
 
 #[derive(Debug, Args)]
@@ -389,6 +394,47 @@ pub struct SetIgnoreEmptySkf {
     pub route_id: String,
     #[arg(short, long)]
     pub ignore: bool,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
+    #[arg(long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct SetMultiBuy {
+    #[arg(short, long)]
+    pub route_id: String,
+    /// Protocol for the multi_buy server
+    #[arg(short, long, value_enum)]
+    pub protocol: MultiBuyProtocol,
+    /// Host address for the multi_buy server
+    #[arg(long)]
+    pub host: String,
+    /// Port for the multi_buy server
+    #[arg(long)]
+    pub port: u32,
+    /// If true, drop packet when multi_buy server is unavailable.
+    /// Otherwise use HPR's default multi_buy server.
+    #[arg(short, long)]
+    pub fail_on_unavailable: bool,
+    #[arg(from_global)]
+    pub keypair: PathBuf,
+    #[arg(from_global)]
+    pub config_host: String,
+    #[arg(from_global)]
+    pub config_pubkey: String,
+    #[arg(long)]
+    pub commit: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct RemoveMultiBuy {
+    #[arg(short, long)]
+    pub route_id: String,
     #[arg(from_global)]
     pub keypair: PathBuf,
     #[arg(from_global)]

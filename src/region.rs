@@ -90,6 +90,7 @@ impl From<Region> for ProtoRegion {
     }
 }
 
+#[allow(deprecated)]
 impl From<&Region> for ProtoRegion {
     fn from(sr: &Region) -> Self {
         match sr {
@@ -126,6 +127,7 @@ impl From<&Region> for ProtoRegion {
     }
 }
 
+#[allow(deprecated)]
 impl From<ProtoRegion> for Region {
     fn from(r: ProtoRegion) -> Self {
         match r {

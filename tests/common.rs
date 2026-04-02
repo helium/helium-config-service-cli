@@ -25,7 +25,6 @@ pub const CONFIG_PUBKEY: &str = "config-server-signing-pubkey";
 /// ```
 ///
 /// The clients are used so the test can use information from the config service directly.
-
 pub fn generate_keypair(path: PathBuf) -> Result<PublicKey> {
     let out = cmds::env::generate_keypair(cmds::GenerateKeypair {
         network: cmds::env::NetworkArg::Mainnet,

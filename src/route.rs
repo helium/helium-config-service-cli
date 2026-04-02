@@ -3,8 +3,63 @@ use crate::{
     server::{GwmpMap, Http, Server},
     Oui, Result,
 };
-use helium_proto::services::iot_config::RouteV1 as ProtoRoute;
+use helium_proto::services::iot_config::{multi_buy_v1, MultiBuyV1, RouteV1 as ProtoRoute};
 use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct MultiBuy {
+    pub protocol: MultiBuyProtocol,
+    pub host: String,
+    pub port: u32,
+    pub fail_on_unavailable: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, clap::ValueEnum)]
+#[serde(rename_all = "lowercase")]
+pub enum MultiBuyProtocol {
+    Http,
+    Https,
+}
+
+impl From<MultiBuy> for MultiBuyV1 {
+    fn from(mb: MultiBuy) -> Self {
+        Self {
+            protocol: multi_buy_v1::Protocol::from(mb.protocol) as i32,
+            host: mb.host,
+            port: mb.port,
+            fail_on_unavailable: mb.fail_on_unavailable,
+        }
+    }
+}
+
+impl From<MultiBuyV1> for MultiBuy {
+    fn from(mb: MultiBuyV1) -> Self {
+        Self {
+            protocol: MultiBuyProtocol::from_i32(mb.protocol),
+            host: mb.host,
+            port: mb.port,
+            fail_on_unavailable: mb.fail_on_unavailable,
+        }
+    }
+}
+
+impl From<MultiBuyProtocol> for multi_buy_v1::Protocol {
+    fn from(p: MultiBuyProtocol) -> Self {
+        match p {
+            MultiBuyProtocol::Http => Self::Http,
+            MultiBuyProtocol::Https => Self::Https,
+        }
+    }
+}
+
+impl MultiBuyProtocol {
+    fn from_i32(v: i32) -> Self {
+        match multi_buy_v1::Protocol::try_from(v) {
+            Ok(multi_buy_v1::Protocol::Https) => Self::Https,
+            _ => Self::Http,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Route {
@@ -16,6 +71,7 @@ pub struct Route {
     pub active: bool,
     pub locked: bool,
     pub ignore_empty_skf: bool,
+    pub multi_buy: Option<MultiBuy>,
 }
 
 impl Route {
@@ -29,6 +85,7 @@ impl Route {
             locked: false,
             active: true,
             ignore_empty_skf: false,
+            multi_buy: None,
         }
     }
 
@@ -60,6 +117,7 @@ impl From<ProtoRoute> for Route {
             locked: route.locked,
             active: route.active,
             ignore_empty_skf: route.ignore_empty_skf,
+            multi_buy: route.multi_buy.map(MultiBuy::from),
         }
     }
 }
@@ -75,6 +133,7 @@ impl From<Route> for ProtoRoute {
             locked: route.locked,
             active: route.active,
             ignore_empty_skf: route.ignore_empty_skf,
+            multi_buy: route.multi_buy.map(MultiBuyV1::from),
         }
     }
 }
@@ -97,6 +156,7 @@ mod tests {
             locked: true,
             active: true,
             ignore_empty_skf: false,
+            multi_buy: None,
         };
 
         let v1 = RouteV1 {
@@ -112,6 +172,7 @@ mod tests {
             locked: true,
             active: true,
             ignore_empty_skf: false,
+            multi_buy: None,
         };
         assert_eq!(route, Route::from(v1.clone()));
         assert_eq!(v1, RouteV1::from(route));
