@@ -24,7 +24,7 @@ serde_json = "1.0"
 serde_test = "1.0"
 tokio = { version = "1.50", features = ["macros", "rt-multi-thread"] }
 tokio-stream = "0.1"
-tonic = "0.14"
+tonic = { version = "0.14", features = ["tls-native-roots", "tls-aws-lc"] }
 tracing = "0.1"
 tracing-subscriber = "0.3"
 
