@@ -28,6 +28,18 @@ use std::{
     str::FromStr,
     time::{SystemTime, UNIX_EPOCH},
 };
+use tonic::transport::{ClientTlsConfig, Endpoint};
+
+async fn connect_channel(host: &str) -> Result<tonic::transport::Channel> {
+    let endpoint = Endpoint::from_shared(host.to_owned())?;
+    let endpoint = if host.starts_with("https") {
+        endpoint.tls_config(ClientTlsConfig::new().with_enabled_roots())?
+    } else {
+        endpoint
+    };
+    let channel = endpoint.connect().await?;
+    Ok(channel)
+}
 
 pub struct OrgClient {
     client: org_client::OrgClient<tonic::transport::Channel>,
@@ -55,7 +67,7 @@ pub type SkfClient = RouteClient;
 impl GatewayClient {
     pub async fn new(host: &str, server_pubkey: &str) -> Result<Self> {
         Ok(Self {
-            client: gateway_client::GatewayClient::connect(host.to_owned()).await?,
+            client: gateway_client::GatewayClient::new(connect_channel(host).await?),
             server_pubkey: helium_crypto::PublicKey::from_str(server_pubkey)?,
         })
     }
@@ -93,7 +105,7 @@ impl GatewayClient {
 impl OrgClient {
     pub async fn new(host: &str, server_pubkey: &str) -> Result<Self> {
         Ok(Self {
-            client: org_client::OrgClient::connect(host.to_owned()).await?,
+            client: org_client::OrgClient::new(connect_channel(host).await?),
             server_pubkey: helium_crypto::PublicKey::from_str(server_pubkey)?,
         })
     }
@@ -460,7 +472,7 @@ impl EuiClient {
 impl RouteClient {
     pub async fn new(host: &str, server_pubkey: &str) -> Result<Self> {
         Ok(Self {
-            client: route_client::RouteClient::connect(host.to_owned()).await?,
+            client: route_client::RouteClient::new(connect_channel(host).await?),
             server_pubkey: helium_crypto::PublicKey::from_str(server_pubkey)?,
         })
     }
@@ -691,7 +703,7 @@ impl SkfClient {
 impl AdminClient {
     pub async fn new(host: &str, server_pubkey: &str) -> Result<Self> {
         Ok(Self {
-            client: admin_client::AdminClient::connect(host.to_owned()).await?,
+            client: admin_client::AdminClient::new(connect_channel(host).await?),
             server_pubkey: helium_crypto::PublicKey::from_str(server_pubkey)?,
         })
     }

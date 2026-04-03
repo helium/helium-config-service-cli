@@ -4,25 +4,20 @@ on:
   push:
     tags: ["*"]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   release-linux:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          default: true
-          override: true
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
 
-      - name: Cancel previous runs
-        uses: styfle/cancel-workflow-action@0.5.0
-        with:
-          access_token: ${{ github.token }}
-
-      - name: Install protoc
-        run: sudo apt-get install -y protobuf-compiler
+      - name: Install dependencies
+        run: sudo apt-get install -y protobuf-compiler cmake
 
       - name: Build
         run: cargo build --release
@@ -45,7 +40,7 @@ jobs:
           sha256sum -b --tag $NAME.tar.gz > $NAME.checksum
 
       - name: Push Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
@@ -58,24 +53,16 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
         with:
-          toolchain: stable
-          target: x86_64-apple-darwin
-          default: true
-          override: true
+          targets: x86_64-apple-darwin
 
-      - name: Cancel previous runs
-        uses: styfle/cancel-workflow-action@0.5.0
-        with:
-          access_token: ${{ github.token }}
-
-      - name: Install protoc
-        run: brew install protobuf
+      - name: Install dependencies
+        run: brew install protobuf cmake
 
       - name: Build
-        run: cargo build --release
+        run: cargo build --release --target x86_64-apple-darwin
 
       - name: Name Release
         if: startsWith(github.ref, 'refs/tags/')
@@ -88,14 +75,56 @@ jobs:
           NAME: ${{ steps.name_release.outputs.RELEASE }}
         run: |
           mkdir $NAME
-          mv target/release/helium-config-service-cli $NAME/
+          mv target/x86_64-apple-darwin/release/helium-config-service-cli $NAME/
           cp README.md $NAME/
           cp LICENSE $NAME/
           gtar -zcvf $NAME.tar.gz $NAME/
           shasum -a 256 -b --tag $NAME.tar.gz > $NAME.checksum
 
       - name: Push Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            ${{ steps.name_release.outputs.RELEASE }}.tar.gz
+            ${{ steps.name_release.outputs.RELEASE }}.checksum
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+  release-mac-arm:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - name: Install dependencies
+        run: brew install protobuf cmake
+
+      - name: Build
+        run: cargo build --release --target aarch64-apple-darwin
+
+      - name: Name Release
+        if: startsWith(github.ref, 'refs/tags/')
+        id: name_release
+        run: echo "RELEASE=helium-config-service-cli-${GITHUB_REF/refs\/tags\//}-aarch64-macos" >> $GITHUB_OUTPUT
+
+      - name: Prepare Release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          NAME: ${{ steps.name_release.outputs.RELEASE }}
+        run: |
+          mkdir $NAME
+          mv target/aarch64-apple-darwin/release/helium-config-service-cli $NAME/
+          cp README.md $NAME/
+          cp LICENSE $NAME/
+          gtar -zcvf $NAME.tar.gz $NAME/
+          shasum -a 256 -b --tag $NAME.tar.gz > $NAME.checksum
+
+      - name: Push Release
+        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
@@ -110,33 +139,25 @@ jobs:
     steps:
       - name: Cache LLVM and Clang
         id: cache-llvm
-        uses: actions/cache@v2
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5
         with:
           path: ${{ runner.temp }}/llvm
           key: llvm-12.0
 
       - name: Install LLVM and Clang
-        uses: KyleMayes/install-llvm-action@v1
+        uses: KyleMayes/install-llvm-action@ebc0426251bc40c7cd31162802432c68818ab8f0 # v2
         with:
           version: "12.0"
           directory: ${{ runner.temp }}/llvm
           cached: ${{ steps.cache-llvm.outputs.cache-hit }}
 
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
         with:
-          toolchain: stable
-          target: x86_64-pc-windows-gnu
-          default: true
-          override: true
+          targets: x86_64-pc-windows-gnu
 
-      - name: Cancel previous runs
-        uses: styfle/cancel-workflow-action@0.5.0
-        with:
-          access_token: ${{ github.token }}
-
-      - name: Install protoc
-        run: choco install protoc
+      - name: Install dependencies
+        run: choco install protoc cmake
 
       - name: Build
         run: cargo build --release
@@ -160,7 +181,7 @@ jobs:
           certUtil -hashfile "$env:NAME.zip" SHA256 > "$env:NAME.checksum"
 
       - name: Push Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
