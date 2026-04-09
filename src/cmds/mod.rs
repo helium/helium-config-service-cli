@@ -25,7 +25,7 @@ pub const ENV_MAX_COPIES: &str = "HELIUM_MAX_COPIES";
 
 #[derive(Debug, Parser)]
 #[command(name = "helium-config-cli")]
-#[command(author, version, about, long_about=None)]
+#[command(author, version = env!("GIT_VERSION"), about, long_about=None)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
